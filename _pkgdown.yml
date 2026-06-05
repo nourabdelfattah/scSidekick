@@ -1,0 +1,180 @@
+url: https://nourabdelfattah.github.io/scSidekick/
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: '#2f4b7c'
+    link-color: '#227ed4'
+home:
+  title: scSidekick — Single-Cell & Spatial Transcriptomics Toolkit
+  description: |
+    A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
+  links:
+  - text: Report a bug
+    href: https://github.com/nourabdelfattah/scSidekick/issues
+navbar:
+  structure:
+    left:
+    - intro
+    - reference
+    - articles
+    - news
+    right: github
+  components:
+    intro:
+      text: Get started
+      href: articles/01_getting_started.html
+    articles:
+      text: Vignettes
+      menu:
+      - text: Setup
+      - text: 01 — Getting Started
+        href: articles/01_getting_started.html
+      - text: 02 — Dimensionality Reduction
+        href: articles/02_dim_reduction.html
+      - text: ─────────────────
+      - text: Visualization
+      - text: 03 — UMAP Visualization
+        href: articles/03_umap_visualization.html
+      - text: 04 — Feature Expression
+        href: articles/04_feature_expression.html
+      - text: 05 — Heatmaps & Dot Plots
+        href: articles/05_heatmaps_dotplots.html
+      - text: ─────────────────
+      - text: Analysis
+      - text: 06 — Cell Annotation
+        href: articles/06_cell_annotation.html
+      - text: 07 — Spatial Transcriptomics
+        href: articles/07_spatial.html
+      - text: 08 — Pathway Analysis
+        href: articles/08_pathway_analysis.html
+      - text: 09 — Cell-Cell Communication
+        href: articles/09_cellchat.html
+      - text: ─────────────────
+      - text: Reporting
+      - text: 10 — Reporting & Utilities
+        href: articles/10_reporting_utilities.html
+    github:
+      icon: fab fa-github
+      href: https://github.com/nourabdelfattah/scSidekick
+      aria-label: GitHub
+reference:
+- title: Setup & Colors
+  desc: Prepare objects and manage color palettes
+  contents:
+  - PrepObject
+  - ShowColors
+  - GetColors
+  - Nour_pal
+  - Nour_cols
+  - Nour_cols20
+  - Nour18
+  - Nour20
+  - Nour_palettes
+  - scale_color_Nour
+  - scale_fill_Nour
+- title: Dimensionality Reduction
+  desc: Dimension selection helpers
+  contents: Determine_nDims
+- title: UMAP & Composition
+  desc: Visualize dimensionality reductions and cell-type composition trends
+  contents:
+  - PlotDimPlots
+  - PlotGridUMAP
+  - PlotTrendAndUMAP
+  - PlotTrendLabeled
+  - PlotComposition
+  - PlotPieUMAP
+- title: Feature Expression
+  desc: Gene expression overlay on embeddings
+  contents:
+  - PlotFeaturePlots
+  - GenerateFeatureMaps
+  - PlotMultiFeature
+- title: Heatmaps & Dot Plots
+  desc: Group-level expression summaries
+  contents:
+  - GroupHeatmap
+  - SplitDotPlot
+  - SplitDotPlot2
+  - FastDotPlot
+  - FastDotPlot2
+  - StackedVlnPlot
+- title: Differential Expression
+  desc: Volcano plots, enrichment visualization, leading edge
+  contents:
+  - PlotVolcano
+  - PlotEnrichment
+  - PlotGSEAEnrichment
+  - VisualizeLeadingEdge
+- title: Cell Annotation
+  desc: Automated cell-type assignment
+  contents: CellTypeAssignmentHelper
+- title: Spatial Transcriptomics
+  desc: Visualize spatial gene expression and cell-type distributions
+  contents:
+  - PlotSpatialDimPlots
+  - GenerateSpatialDimMaps
+  - PlotSpatialFeaturePlots
+  - GenerateSpatialFeatureMaps
+  - PlotMasterMaps
+  - GenerateMasterGeneMaps
+- title: Pathway Analysis
+  desc: GSEA and gene set enrichment
+  contents:
+  - RunGSEA
+  - RunGSEA_pseudobulk
+  - RunSCssGSEA
+  - RunEnrichment
+- title: Cell-Cell Communication
+  desc: CellChat pipeline wrappers
+  contents:
+  - RunCellChat
+  - CompareCellChat
+  - RankCellChatPathways
+  - RenameCellTypeInCC
+- title: Quality Control
+  desc: QC metrics and data loading
+  contents:
+  - PlotQCMetrics
+  - LoadSamplesRNA
+- title: Reporting & Utilities
+  desc: Methods text, PPTX builder, theme, and session tools
+  contents:
+  - ExtractMethods
+  - InspectPlot
+  - create_analysis_pptx
+  - log_analysis_params
+  - log_figure_legend
+  - theme_NourMin
+  - roundUpNice
+- title: Session Logger
+  desc: Passive R session logging and summarization
+  contents:
+  - start_session_logger
+  - summarize_r_session
+  - logger_log_file
+  - logger_plot_dir
+articles:
+- title: Setup
+  navbar: Setup
+  contents:
+  - 01_getting_started
+  - 02_dim_reduction
+- title: Visualization
+  navbar: Visualization
+  contents:
+  - 03_umap_visualization
+  - 04_feature_expression
+  - 05_heatmaps_dotplots
+- title: Analysis
+  navbar: Analysis
+  contents:
+  - 06_cell_annotation
+  - 07_spatial
+  - 08_pathway_analysis
+  - 09_cellchat
+- title: Reporting
+  navbar: Reporting
+  contents: 10_reporting_utilities
+

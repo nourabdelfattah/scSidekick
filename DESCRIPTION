@@ -1,0 +1,68 @@
+Package: scSidekick
+Title: A Single-Cell and Spatial Transcriptomics Toolkit
+Version: 0.1.0
+Authors@R:
+    person(given = "Nourhan",
+           family = "Abdelfattah",
+           role = c("aut", "cre"),
+           email = "neabdelfattah@gmail.com")
+Description: A toolkit for single-cell RNA-seq and spatial
+    transcriptomics analysis. Provides enhanced visualization functions
+    (dot plots, UMAP grids, feature maps, spatial plots), a custom
+    ggplot2 theme and color palettes, GSEA pathway analysis wrappers,
+    CellChat pipeline wrappers, and utility functions for extracting
+    methods text from Seurat objects. Also includes a PowerPoint summary
+    builder (PDFs → PPTX via officer/magick), a passive session logger
+    that auto-captures commands and plots, and a rule-based session
+    summarizer that generates a markdown report and a clean R script.
+    Designed to work seamlessly with Seurat.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.1.0)
+Imports:
+    ggplot2 (>= 3.4.0),
+    dplyr (>= 1.1.0),
+    tidyr (>= 1.3.0),
+    tibble (>= 3.2.0),
+    stringr (>= 1.5.0),
+    scales (>= 1.2.0),
+    patchwork (>= 1.1.0),
+    ggrepel (>= 0.9.0),
+    ggpubr (>= 0.6.0),
+    viridis (>= 0.6.0),
+    methods,
+    stats,
+    utils
+Suggests:
+    Seurat (>= 5.0.0),
+    SeuratObject (>= 5.0.0),
+    presto,
+    fgsea,
+    msigdbr,
+    pheatmap,
+    enrichR,
+    CellChat,
+    ComplexHeatmap,
+    ggalluvial,
+    ggsignif,
+    officer,
+    magick,
+    jsonlite,
+    openxlsx,
+    circlize,
+    reshape2,
+    RColorBrewer,
+    rcellmarker,
+    SingleR,
+    celldex,
+    scuttle,
+    SingleCellExperiment,
+    knitr,
+    rmarkdown,
+    ggforce,
+    enrichR
+URL: https://nourabdelfattah.github.io/scSidekick/

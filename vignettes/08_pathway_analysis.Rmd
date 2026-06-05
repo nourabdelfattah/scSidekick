@@ -1,0 +1,207 @@
+---
+title: "scSidekick — Pathway Analysis: RunGSEA"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Pathway Analysis: RunGSEA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+`RunGSEA()` performs gene set enrichment analysis on a Seurat object.
+It handles the full pipeline internally:
+
+1. Subset by `split.by` (e.g. one GSEA per broad cell type)
+2. Run Wilcoxon DE with `presto::wilcoxauc()`, grouped by `group.by`
+3. Run `fgsea` against one or more MSigDB collections
+4. Save lollipop plots (top/bottom 10 pathways per group) and NES heatmaps
+
+No pre-computed DE table is needed — just pass the Seurat object.
+
+---
+
+## Standard setup
+
+```{r standard-setup, eval=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- bmcite %>%
+  NormalizeData() %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2", "seurat_clusters"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+---
+
+## 1. Basic call
+
+```{r gsea-basic, eval=FALSE}
+res <- RunGSEA(bmcite,
+  group.by   = "celltype.l1",
+  split.by   = NULL,
+  output_dir = tempdir())
+```
+
+`group.by` defines the groups being compared (e.g. cell types, clusters).
+`split.by = NULL` runs a single GSEA on the whole object. Set `split.by` to
+a broad cell-type column (e.g. `"celltype.l1"`) to run GSEA separately within
+each major lineage.
+
+By default `RunGSEA` tests four MSigDB collections: Hallmark, KEGG, Reactome,
+and WikiPathways.
+
+---
+
+## 2. Split by broad cell type
+
+The most common use: compare detailed subtypes (`celltype.l2`) within each
+major lineage (`celltype.l1`).
+
+```{r gsea-split, eval=FALSE}
+res <- RunGSEA(bmcite,
+  group.by   = "celltype.l2",
+  split.by   = "celltype.l1",
+  output_dir = tempdir())
+```
+
+This produces one independent GSEA per level of `celltype.l1`. For each,
+DE is computed between `celltype.l2` groups and pathways are ranked by NES.
+
+---
+
+## 3. Custom pathway collections
+
+Supply any combination of MSigDB collections via `pathway_sets`. Each element
+needs a `category` and an optional `subcategory`.
+
+```{r gsea-custom-sets, eval=FALSE}
+res <- RunGSEA(bmcite,
+  group.by     = "celltype.l1",
+  split.by     = NULL,
+  output_dir   = tempdir(),
+  pathway_sets = list(
+    Hallmark    = list(category = "H"),
+    ImmuneSigDB = list(category = "C7", subcategory = "IMMUNESIGDB"),
+    GO_BP       = list(category = "C5", subcategory = "GO:BP")
+  ))
+```
+
+Run `msigdbr::msigdbr_collections()` to see all available collections.
+
+---
+
+## 4. Mouse datasets
+
+```{r gsea-mouse, eval=FALSE}
+res <- RunGSEA(brain,
+  group.by   = "seurat_clusters",
+  split.by   = NULL,
+  species    = "Mus musculus",
+  output_dir = tempdir())
+```
+
+---
+
+## 5. Adjusting thresholds
+
+`padj_thresh` and `logfc_thresh` filter DE results before ranking.
+`top_n` controls how many pathways appear per group in summary heatmaps.
+
+```{r gsea-thresholds, eval=FALSE}
+res <- RunGSEA(bmcite,
+  group.by      = "celltype.l1",
+  split.by      = NULL,
+  padj_thresh   = 0.01,
+  logfc_thresh  = 0.25,
+  top_n         = 10L,
+  output_dir    = tempdir())
+```
+
+---
+
+## 6. Resuming a long run
+
+`resume = TRUE` skips subsets for which output files already exist in
+`output_dir`. Essential when restarting a run that was interrupted.
+
+```{r gsea-resume, eval=FALSE}
+res <- RunGSEA(bmcite,
+  group.by   = "celltype.l2",
+  split.by   = "celltype.l1",
+  output_dir = tempdir(),
+  resume     = TRUE)
+```
+
+---
+
+## 7. Return value
+
+`RunGSEA` returns a nested list. The top level is split by `split.by` level
+(or `"all"` when `split.by = NULL`), then by `pathway_sets` name.
+
+```{r gsea-return, eval=FALSE}
+# NES heatmap for the Hallmark collection, whole object
+res$all$Hallmark$heatmap
+
+# Full fgsea results table
+head(res$all$Hallmark$results)
+
+# Top pathways per group
+res$all$Hallmark$top_pathways
+```
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Clustered, annotated Seurat object |
+| `group.by` | character | `"Assignment"` | Column defining groups for DE comparison |
+| `split.by` | character or `NULL` | `"GlobalAssignment"` | Column for independent sub-runs (`NULL` = whole object) |
+| `label.by` | character or `NULL` | `NULL` | Outer subsetting column |
+| `pathway_sets` | named list | Hallmark + KEGG + Reactome + WP | MSigDB collections to test |
+| `species` | character | `"Homo sapiens"` | Species for `msigdbr` |
+| `padj_thresh` | numeric | `0.05` | DE/fgsea adjusted p-value cutoff |
+| `logfc_thresh` | numeric | `0.1` | Minimum log-fold-change for DE filtering |
+| `top_n` | integer | `5` | Top/bottom pathways per group in summary heatmaps |
+| `output_dir` | character or `NULL` | `NULL` | Directory for PDFs and CSVs (`NULL` = return only) |
+| `resume` | logical | `FALSE` | Skip already-completed subsets |
+| `heatmap_params` | named list | `list(...)` | Extra arguments forwarded to `ComplexHeatmap::Heatmap()` |
+
+---
+
+## See also
+
+- Vignette 05: `GroupHeatmap` — gene-level expression heatmap
+- Vignette 06: `CellTypeAssignmentHelper` — annotate clusters before pathway analysis
+- Vignette 09: `RunCellChat` — pathway-level cell-cell communication
+
+---
+
+## Session info
+
+```{r session-info, eval=FALSE}
+sessionInfo()
+```

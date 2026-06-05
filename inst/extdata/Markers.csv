@@ -1,0 +1,242 @@
+Type,Cell types,Note,Mouse,Human,AltCell types
+Tumor,Tumor,MB,Ptprd,PTPRD,Neuronal/Tumor
+Tumor,Tumor,MB,Smo,SMO,Neuronal/Tumor
+Tumor,Tumor,MB,Sfrp1,SFRP1,Neuronal/Tumor
+Tumor,Tumor,Glioma,Ptprf,PTPRF,Neuronal/Tumor
+Tumor,Tumor,Glioma,Pdgfra,PDGFRA,Neuronal/Tumor
+Tumor,Tumor,Glioma,Olig2,OLIG2,Neuronal/Tumor
+Brain Stroma,Dopaminergic.Neurons,,Foxa2,FOXA2,Dopaminergic.Neurons
+Brain Stroma,Dopaminergic.Neurons,,Kcnj6,KCNJ6,Dopaminergic.Neurons
+Brain Stroma,Dopaminergic.Neurons,,Lmx1b,LMX1B,Dopaminergic.Neurons
+Brain Stroma,Dopaminergic.Neurons,,Nr4a2,NR4A2,Dopaminergic.Neurons
+Brain Stroma,Dopaminergic.Neurons,,Ppp1r1b,PPP1R1B,Dopaminergic.Neurons
+Brain Stroma,Serotonergic.Neurons,,Fev,FEV,Serotonergic.Neurons
+Brain Stroma,Serotonergic.Neurons,,Htr1a,HTR1A,Serotonergic.Neurons
+Brain Stroma,Serotonergic.Neurons,,Htr1b,HTR1B,Serotonergic.Neurons
+Brain Stroma,Serotonergic.Neurons,,Slc6a4,SLC6A4,Serotonergic.Neurons
+Brain Stroma,Serotonergic.Neurons,,Tph1,TPH1,Serotonergic.Neurons
+Brain Stroma,Glutamatergic.Neurons,,Gls,GLS,Glutamatergic.Neurons
+Brain Stroma,Glutamatergic.Neurons,,Grin1,GRIN1,Glutamatergic.Neurons
+Brain Stroma,Glutamatergic.Neurons,,Grin2a,GRIN2A,Glutamatergic.Neurons
+Brain Stroma,Glutamatergic.Neurons,,Grin2b,GRIN2B,Glutamatergic.Neurons
+Brain Stroma,Glutamatergic.Neurons,,Slc17a6,SLC17A6,Glutamatergic.Neurons
+Brain Stroma,Ex.Neurons,,Nrgn,NRGN,Ex.Neurons
+Brain Stroma,Ex.Neurons,,Slc17a7,SLC17A7,Ex.Neurons
+Brain Stroma,Ex.Neurons,,Ryr3,RYR3,Ex.Neurons
+Brain Stroma,Ex.Neurons,,Tbr1,TBR1,Ex.Neurons
+Brain Stroma,Ex.Neurons,,Cux2,CUX2,Ex.Neurons
+Brain Stroma,Inh.Neurons,,Gad1,GAD1,Inh.Neurons
+Brain Stroma,Inh.Neurons,,Sst,SST,Inh.Neurons
+Brain Stroma,Inh.Neurons,,Slc32a1,SLC32A1,Inh.Neurons
+Brain Stroma,Inh.Neurons,,Grik1,GRIK1,Inh.Neurons
+Brain Stroma,Inh.Neurons,,Vip,VIP,Inh.Neurons
+Brain Stroma,NEP,,Cdh1,CDH1,Neuroepithelial cells
+Brain Stroma,NEP,,Hes1,HES1,Neuroepithelial cells
+Brain Stroma,NEP,,Hes3,HES3,Neuroepithelial cells
+Brain Stroma,NEP,,Notch1,NOTCH1,Neuroepithelial cells
+Brain Stroma,NEP,,Ocln,OCLN,Neuroepithelial cells
+Brain Stroma,Choroid plexus,,Clic6,CLIC6,Choroid plexus
+Brain Stroma,Choroid plexus,,Folr1,FOLR1,Choroid plexus
+Brain Stroma,Choroid plexus,,Otx2,OTX2,Choroid plexus
+Brain Stroma,Choroid plexus,,Otx2-as1,OTX2-AS1,Choroid plexus
+Brain Stroma,Choroid plexus,,Slc13a4,SLC13A4,Choroid plexus
+Brain Stroma,Choroid plexus,,Tmem72,TMEM72,Choroid plexus
+Brain Stroma,Neuroblasts,,Dcx,DCX,Neuroblasts
+Brain Stroma,Neuroblasts,,Dlx2,DLX2,Neuroblasts
+Brain Stroma,Neuroblasts,,Neurod1,NEUROD1,Neuroblasts
+Brain Stroma,Neuroblasts,,Prox1,PROX1,Neuroblasts
+Brain Stroma,nmSC,,L1cam,L1CAM,Non myelinating Schwann cells
+Brain Stroma,nmSC,,Ngfr,NGFR,Non myelinating Schwann cells
+Brain Stroma,nmSC,,Sox10,SOX10,Non myelinating Schwann cells
+Brain Stroma,Scprec,,Dhh,DHH,Scprec
+Brain Stroma,Scprec,,Fabp7,FABP7,Scprec
+Brain Stroma,Scprec,,Gap43,GAP43,Scprec
+Brain Stroma,Scprec,,Mpz,MPZ,Scprec
+Brain Stroma,Stem,,Pax6,PAX6,Stem
+Brain Stroma,Stem,,Sox1,SOX1,Stem
+Brain Stroma,Stem,,Msi1,MSI1,Stem
+Brain Stroma,Stem,,Ptprz1,PTPRZ1,Stem
+Brain Stroma,Stem,,Sox2,SOX2,Stem
+Brain Stroma,Stem,,Nes,NES,Stem
+Brain Stroma,Astro,,Aqp4,AQP4,Astro
+Brain Stroma,Astro,,Gpc5,GPC5,Astro
+Brain Stroma,Astro,,Gfap,GFAP,Astro
+Brain Stroma,Oligo,,Mbp,MBP,Oligo
+Brain Stroma,Oligo,,Mog,MOG,Oligo
+Brain Stroma,Oligo,,Plp1,PLP1,Oligo
+Brain Stroma,OPC,,Olig1,OLIG1,OPC
+Brain Stroma,OPC,,Tnr,TNR,OPC
+Brain Stroma,OPC,,Gpr17,GPR17,OPC
+Brain Stroma,Pericytes,,Acta2,ACTA2,Pericytes
+Brain Stroma,Pericytes,,Vtn,VTN,Pericytes
+Brain Stroma,Pericytes,,Pdgfrb,PDGFRB,Pericytes
+Brain Stroma,Endo,,Cd34,CD34,Endo
+Brain Stroma,Endo,,Pecam1,PECAM1,Endo
+Brain Stroma,Endo,,Col3a1,TEK,Endo
+Brain Stroma,hMic,,Tmem119,TMEM119,hMic
+Brain Stroma,hMic,,Cx3cr1,CX3CR1,hMic
+Brain Stroma,hMic,,P2ry12,P2RY12,hMic
+Brain Stroma,aMic,,Tmem176a,TMEM176A,aMic
+Brain Stroma,aMic,,Egr1,EGR1,aMic
+Brain Stroma,aMic,,Ms4a7,MS4A7,aMic
+Brain Stroma,Mic,,Slc2a5,SLC2A5,Mic
+Brain Stroma,Mic,,Siglech,SIGLEC8,Mic
+Brain Stroma,Mic,,Trem2,TREM2,Mic
+Bone Marrow Derived,BMD,hMic is negative,Ptprc,PTPRC,BMD
+Bone Marrow Derived,BMD,hMic is negative,Ptprj,PTPRJ,BMD
+Bone Marrow Derived,BMD,most Mics are negative,Itga4,ITGA4,BMD
+Macrophages,Macs,,Itgam,ITGAM,Macs
+Macrophages,Macs,,Cd68,CD68,Macs
+Macrophages,Macs,,Fcrls,FCRL2,Macs
+Macrophages,Macs,,Ccl3,CCL3,Macs
+Macrophages,Macs,,Ccl4,CCL4,Macs
+Macrophages,Macs,,Mrc1,MRC1,Macs
+Macrophages,Macs,,Msr1,MSR1,Macs
+Macrophages,Macs,,Cd163,CD163,Macs
+Macrophages,Macs,,Vegfa,VEGFA,Macs
+Macrophages,Macs,,Pf4,PF4,Macs
+Macrophages,Macs,,Cbr2,CBR1,Macs
+Macrophages,Macs,,Stab1,STAB1,Macs
+Macrophages,Macs,,Lyve1,LYVE1,Macs
+Macrophages,Macs,,Tgfb1,TGFB1,Macs
+Macrophages,Macs,,Arg1,ARG1,Macs
+Dendritic cells,AP,,H2-Eb1,HLA-DRA,AP
+Dendritic cells,AP,,H2-DMa,HLA-DRB5,AP
+Dendritic cells,AP,,H2-DMb1,HLA-DOB,AP
+Dendritic cells,AP,,H2-Eb2,HLA-DOA,AP
+Dendritic cells,cDC_CLEC9A,,Clec9a,CLEC9A,cDC_CLEC9A
+Dendritic cells,cDC_CLEC9A,,Cpne3,CPNE3,cDC_CLEC9A
+Dendritic cells,cDC_CLEC9A,,Dnase1l3,DNASE1L3,cDC_CLEC9A
+Dendritic cells,cDC_CLEC9A,,Wdfy4,WDFY4,cDC_CLEC9A
+Dendritic cells,cDC_LAMP3,,Ccr7,CCR7,cDC_LAMP3
+Dendritic cells,cDC_LAMP3,,Fscn1,FSCN1,cDC_LAMP3
+Dendritic cells,cDC_LAMP3,,Cd52,LAMP3,cDC_LAMP3
+Dendritic cells,cDC_LAMP3,,Marcksl1,MARCKSL1,cDC_LAMP3
+Dendritic cells,cDC3_CD1C,,Crip1,CD1C,cDC3_CD1C
+Dendritic cells,cDC3_CD1C,,Clec10a,CLEC10A,cDC3_CD1C
+Dendritic cells,cDC3_CD1C,,Fcer1a,FCER1A,cDC3_CD1C
+Dendritic cells,cDC_All,,Ppan,PPA1,cDC_All
+Dendritic cells,cDC_All,,Cd74,CD74,DCs
+Dendritic cells,pDCs,,Gzmb,GZMB,pDCs
+Dendritic cells,pDCs,,Ly6d,LILRA4,pDCs
+Dendritic cells,pDCs,,Dntt,JCHAIN,pDCs
+Dendritic cells,pDCs,,Ccr9,CLIC3,pDCs
+Dendritic cells,CD14_Mono,,S100a12,S100A12,CD14_Mono
+Monocytes,CD14_Mono,Type1,Fcna,FCN1,CD14_Mono
+Monocytes,CD14_Mono,Type1,Cd14,CD14,CD14_Mono
+Monocytes,CD14_Mono,Type1,Vcan,VCAN,CD14_Mono
+Monocytes,CD14_Mono2,Type2-hypox,G0s2,G0S2,CD14_Mono2
+Monocytes,CD14_Mono2,Type2-hypox,Ccl20,CCL20,CD14_Mono
+Monocytes,CD14_Mono2,Type2-hypox,Il1b,IL1B,CD14_Mono
+Monocytes,CD16_Mono,,Fcgr3,FCGR3A,CD16_Mono
+Monocytes,CD16_Mono,,Lyn,LYN,CD16_Mono
+Monocytes,CD16_Mono,,Lst1,LST1,CD16_Mono
+Monocytes,CD16_Mono,,Lilrb2,LILRB2,CD16_Mono
+Monocytes,CD16_Mono,,Hk3,HK3,CD16_Mono
+Monocytes,MDSCs,,Plin2,PLIN2,MDSCs
+Monocytes,MDSCs,,Mt1x,MT1X,MDSCs
+Monocytes,MDSCs,,Hk2,HK2,MDSCs
+Monocytes,MDSCs,,Adm,ADM,MDSCs
+Monocytes,MDSCs,,Bnip3,BNIP3,MDSCs
+Monocytes,MDSCs,,Tmem45a,TMEM45A,MDSCs
+Monocytes,MDSCs,,Slamf9,SLAMF9,MDSCs
+Monocytes,MDSCs,,Angptl4,ANGPTL4,MDSCs
+Monocytes,MDSCs2,,Ereg,EREG,MDSCs2
+Monocytes,MDSCs2,,Anpep,ANPEP,MDSCs2
+Monocytes,MDSCs2,,Clec5a,CLEC5A,MDSCs2
+Monocytes,MDSCs2,,Thbd,THBD,MDSCs2
+Monocytes,MDSCs2,,Cxcl3,CXCL3,MDSCs2
+Monocytes,MDSCs2,,EhD1,EHD1,MDSCs2
+Monocytes,MDSCs2,,Thbs1,THBS1,MDSCs2
+Monocytes,MDSCs2,,Cd300e,CD300E,MDSCs2
+Monocytes,MDSCs_MME,,Mme,MME,MDSCs_MME
+Monocytes,MDSCs_MME,,Camp,CAMP,MDSCs_MME
+Monocytes,MDSCs_MME,,Mmp8,MMP8,MDSCs_MME
+Monocytes,Mono,Also immature Neut,Plac8,PLAC8,Mono
+Monocytes,Mono,,Nr4a1,NR4A1,Mono
+Monocytes,Neutrophils_Mono,Also immature Neut,Elane,ELANE,Mono
+Granulocytes,Neutrophils_Mono,,Apobec3a,APOBEC3A,Neutrophils/Mono
+Granulocytes,Neutrophils_Mono,,Ly6e,LY6E,Neutrophils/Mono
+Granulocytes,Neutrophils,,Cxcl9,CXCL9,Neutrophils
+Granulocytes,Neutrophils,,Cxcl10,CXCL10,Neutrophils
+Granulocytes,Neutrophils,,Cxcl11,CXCL11,Neutrophils
+Granulocytes,Neutrophils_IFNG,,Ifit2,IFIT1,Neutrophils/IFNG res
+Granulocytes,Neutrophils_IFNG,,Rsad2,RSAD2,Neutrophils/IFNG res
+Granulocytes,Neutrophils_IFNG,,Stat1,STAT1,Neutrophils/IFNG res
+Granulocytes,Neutrophils_Mono,Mature,S100a8,S100A8,Neut
+Granulocytes,Neutrophils_Mono,Mature,S100a9,S100A9,Neut
+Granulocytes,Neutrophils,Mature,Fgl2,FGL2,Neut
+Granulocytes,Neutrophils,Mature,Stfa2l1,CSTA,Neut
+Granulocytes,Neutrophils,Mature,Cxcl2,CXCL2,Neut
+Granulocytes,Neutrophils,Mature,Ly6g,LY6G5B,Neut
+Granulocytes,Neutrophils,Mature,Mmp9,MMP9,Neut
+Granulocytes,Basophils,,Itga2,ITGA2,Basophils
+Granulocytes,Basophils,,Cd9,CD9,Basophils
+Granulocytes,Basophils,,Clec12a,CLEC12A,Basophils
+Granulocytes,Mast,,Kit,KIT,Mast
+Granulocytes,Mast,,Tpsab1,TPSAB1,Mast
+Granulocytes,Mast,,Cpa3,CPA3,Mast
+Granulocytes,Mast,,Clu,CLU,Mast
+Lymphocytes,Bcells,,Cd19,CD19,Bcells
+Lymphocytes,Bcells,,Cd79a,CD79A,Bcells
+Lymphocytes,Bcells,,Ms4a1,MS4A1,Bcells
+Lymphocytes,Tcells,,Cd247,CD247,Tcells
+Lymphocytes,Tcells,,Cd3g,CD3G,Tcells
+Lymphocytes,Tcells,,Cd4,CD4,Tcells
+Lymphocytes,Tcells,,Cd8a,CD8A,Tcells
+Lymphocytes,Tcells,,Skap1,SKAP1,Tcells
+Lymphocytes,Tcells,,Lck,LCK,Tcells
+Lymphocytes,Tcells,,Cd3e,CD3E,Tcells
+Lymphocytes,Treg,,Tigit,TIGIT,Treg
+Lymphocytes,Treg,,Foxp3,FOXP3,Treg
+Lymphocytes,Treg,,Batf,BATF,Treg
+Lymphocytes,Treg,,Ctla4,CTLA4,Treg
+Lymphocytes,Treg,,Il2ra,IL2RA,Treg
+Lymphocytes,Treg,,Ikzf2,IKZF2,Treg
+Lymphocytes,Th1,,Tbx21,TBX21,Th1
+Lymphocytes,Th1,,Ifng,IFNG,Th1
+Lymphocytes,Th1,,Il2,IL2,Th1
+Lymphocytes,Th2,,Il4,IL4,Th2
+Lymphocytes,Th2,,Lima1,LIMA1,Th2
+Lymphocytes,Th2,,Pparg,PPARG,Th2
+Lymphocytes,ActEff,,Fas,FAS,ActEff
+Lymphocytes,ActEff,,Cd44,CD44,ActEff
+Lymphocytes,ActEff,,Cd69,CD69,ActEff
+Lymphocytes,ActEff,,Cd38,CD38,ActEff
+Lymphocytes,ActEff,,Klrd1,KLRD1,ActEff
+Lymphocytes,Costim,,Tnfrsf25,TNFRSF25,Costim
+Lymphocytes,Costim,,Tnfrsf1b,TNFRSF1B,Costim
+Lymphocytes,Costim,,Tnfrsf4,TNFRSF4,Costim
+Lymphocytes,Costim,,Cd27,CD27,Costim
+Lymphocytes,Costim,,Cd28,CD28,Costim
+Lymphocytes,Costim,,Cd48,CD48,Costim
+Lymphocytes,Cytotox,,Prf1,PRF1,Cytotox
+Lymphocytes,Cytotox,,Gzma,GZMA,Cytotox
+Lymphocytes,Exhausted,,Vsir,VSIR,Exhausted
+Lymphocytes,Exhausted,,Layn,LAYN,Exhausted
+Lymphocytes,Exhausted,,Havrc2,HAVRC2,Exhausted
+Lymphocytes,Exhausted,,Lag3,LAG3,Exhausted
+Lymphocytes,Exhausted,,Entpd1,ENTPD1,Exhausted
+Lymphocytes,Exhausted,,Tox,TOX,Exhausted
+Lymphocytes,Naive,,Il7r,IL7R,Na夫e
+Lymphocytes,Naive,,Tcf7,TCF7,Na夫e
+Lymphocytes,Naive,,Foxp1,FOXP1,Na夫e
+Lymphocytes,Naive,,Lef1,LEF1,Na夫e
+Lymphocytes,Naive,,Tob1,TOB1,Na夫e
+Lymphocytes,GDT,,Trdc,TRDC,__T
+Lymphocytes,Th17,,Il17a,IL17A,Th17
+Lymphocytes,Th17,,Rorc,RORC,Th18
+Lymphocytes,Th17,,Irf4,IRF4,Th19
+Lymphocytes,TRT,,Cd39,CD39,Tumor reactive
+Lymphocytes,TRT,,Gzmk,CXCL13,Tumor reactive
+Lymphocytes,MAIT,,Ncr3,NCR3,MAIT
+Lymphocytes,MAIT,,Klrb1,KLRB1,MAIT
+Lymphocytes,MAIT,,Slc4a10,SLC4A10,MAIT
+Lymphocytes,MAIT,,Alox5ap,ALOX5AP,MAIT
+Lymphocytes,NKcells,,Klrk1,KLRK1,NKcells
+Lymphocytes,NKcells,,Nkg7,NKG7,NKcells
+Lymphocytes,NKcells,,Ncr1,NCR1,NKcells
+Lymphocytes,NKcells,,Klre1,KLRG1,NKcells
+All,Prol,,Mki67,MKI67,Prol
+All,Prol,,Stmn1,STMN1,Prol
+All,Prol,,Tubb5,TUBB5,Prol

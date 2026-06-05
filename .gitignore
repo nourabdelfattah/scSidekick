@@ -1,0 +1,26 @@
+# R package build artefacts
+*.Rcheck/
+*.tar.gz
+*.zip
+*.so
+*.dll
+*.o
+# RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# macOS
+.DS_Store
+__MACOSX/
+# Dropbox sync artefacts
+.dropbox
+Icon
+# Test / temp outputs
+*.pdf
+*.pptx
+# Compiled vignettes (built by R CMD check / pkgdown)
+inst/doc/
+vignettes/*.html
+vignettes/*.R

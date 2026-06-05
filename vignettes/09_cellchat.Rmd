@@ -1,0 +1,283 @@
+---
+title: "scSidekick — Cell-Cell Communication: RunCellChat & CompareCellChat"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Cell-Cell Communication: RunCellChat and CompareCellChat}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+scSidekick wraps CellChat to provide a streamlined, reproducible cell-cell
+communication workflow. Two functions cover the full analysis:
+
+- **`RunCellChat()`** — runs the complete CellChat pipeline for each level of
+  a grouping variable (e.g. one CellChat object per condition) and saves
+  summary figures.
+- **`CompareCellChat()`** — takes a list of pre-computed CellChat objects and
+  generates comparative plots (interaction count differences, chord diagrams,
+  pathway-level comparisons).
+
+Both functions are designed for multi-condition studies where you want to ask
+"which interactions are gained or lost between Control and Treated?"
+
+---
+
+## Standard setup
+
+```{r standard-setup, eval=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(CellChat)
+
+library(dplyr)
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- bmcite %>%
+  NormalizeData() %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2", "seurat_clusters"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+Note: for real analyses, each "group" in `group.by` should have at least a few
+hundred cells. With the fake `Condition` column here, results are illustrative
+only.
+
+---
+
+## `RunCellChat`
+
+### 1. Basic call
+
+`RunCellChat()` splits the Seurat object by the levels of `group.by`, builds
+one CellChat object per level, runs the full inference pipeline on each, and
+saves summary figures.
+
+```{r cellchat-basic, eval=FALSE}
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "seurat_clusters",   # cell identity column
+  group.by   = "celltype.l1",       # one CellChat run per cell type
+  output_dir = tempdir())
+```
+
+`cell.by` defines the cell-type identity used for communication inference.
+`group.by` defines the groups (e.g. conditions) that are run separately.
+The function returns a named list of CellChat objects, one per level of
+`group.by`.
+
+### 2. Specifying groups explicitly
+
+Use `groups` to run only a subset of levels, or to fix the order:
+
+```{r cellchat-groups, eval=FALSE}
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  groups     = c("Control", "Treated"),
+  output_dir = tempdir())
+```
+
+### 3. Mouse data
+
+Set `species = "mouse"` to use the CellChatDB.mouse ligand-receptor database:
+
+```{r cellchat-mouse, eval=FALSE}
+# brain is the stxBrain object from vignette 07
+cc_brain <- RunCellChat(brain,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  species    = "mouse",
+  output_dir = tempdir())
+```
+
+### 4. Custom colors
+
+Pass a named character vector to `colors` to override the cluster palette
+used in CellChat chord diagrams and network plots. Colors should be keyed by
+the levels of `cell.by`.
+
+```{r cellchat-colors, eval=FALSE}
+cluster_cols <- GetColors(bmcite, "seurat_clusters")
+
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  colors     = cluster_cols,
+  output_dir = tempdir())
+```
+
+### 5. Resuming an interrupted run
+
+`resume = TRUE` checks `output_dir` for already-completed CellChat `.rds`
+files and skips those groups, resuming from where the run stopped. Essential
+for large datasets.
+
+```{r cellchat-resume, eval=FALSE}
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  output_dir = tempdir(),
+  resume     = TRUE)
+```
+
+### 6. Communication pattern analysis
+
+`run.patterns = TRUE` (default) additionally runs `identifyCommunicationPatterns`
+to extract global signaling patterns (incoming and outgoing) using NMF. Set to
+`FALSE` to skip this step and save time.
+
+```{r cellchat-patterns, eval=FALSE}
+cc_results <- RunCellChat(bmcite,
+  cell.by      = "seurat_clusters",
+  group.by     = "Condition",
+  output_dir   = tempdir(),
+  run.patterns = FALSE)   # skip pattern analysis
+```
+
+### 7. Outputs produced per group
+
+For each level of `group.by`, `RunCellChat()` saves the following files to
+`output_dir`:
+
+| File | Content |
+|------|---------|
+| `{group}_CellChat.rds` | Serialized CellChat object for downstream use |
+| `{group}_interaction_heatmap.pdf` | Heatmap of interaction counts/weights between cell types |
+| `{group}_chord_diagram.pdf` | Chord diagram of significant ligand-receptor pairs |
+| `{group}_bubble_plot.pdf` | Bubble plot: dot size = p-value, color = communication probability |
+| `{group}_pathway_summary.pdf` | Bar chart of top signaling pathways by total interaction strength |
+| `{group}_outgoing_patterns.pdf` | (if `run.patterns = TRUE`) Outgoing communication patterns |
+| `{group}_incoming_patterns.pdf` | (if `run.patterns = TRUE`) Incoming communication patterns |
+
+---
+
+## `CompareCellChat`
+
+`CompareCellChat()` takes a named list of CellChat objects (one per condition)
+and generates comparative visualizations side by side.
+
+### 1. Basic comparison
+
+```{r compare-basic, eval=FALSE}
+# cc_results is the list returned by RunCellChat()
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir = tempdir()
+)
+```
+
+Pass the list returned directly by `RunCellChat()`. The names of the list
+elements (e.g. `"Control"` and `"Treated"`) are used as labels in all plots.
+
+### 2. Loading saved CellChat objects
+
+If you previously ran `RunCellChat()` in a different session, reload the
+`.rds` files and build the list manually:
+
+```{r compare-reload, eval=FALSE}
+cc_ctrl    <- readRDS(file.path(tempdir(), "Control_CellChat.rds"))
+cc_treated <- readRDS(file.path(tempdir(), "Treated_CellChat.rds"))
+
+CompareCellChat(
+  cellchat_list = list(Control = cc_ctrl, Treated = cc_treated),
+  output_dir = tempdir()
+)
+```
+
+### 3. What the comparison plots show
+
+`CompareCellChat()` saves the following files to `output_dir`:
+
+| File | What it shows |
+|------|---------------|
+| `Comparison_interaction_count_bar.pdf` | Total interaction counts per cell type per condition; bars grouped by cell type |
+| `Comparison_interaction_strength_bar.pdf` | Same as above but for total interaction strength (probability) |
+| `Comparison_differential_heatmap.pdf` | Differential interaction strength (Treated minus Control); red = gained, blue = lost |
+| `Comparison_chord_gained.pdf` | Chord diagram showing interactions present or strengthened in the second condition |
+| `Comparison_chord_lost.pdf` | Chord diagram showing interactions diminished or lost in the second condition |
+| `Comparison_pathway_heatmap.pdf` | Pathway-level NES comparison across all conditions; rows = pathways, columns = conditions |
+| `Comparison_scatter_pathway.pdf` | Scatter plot: x = information flow (condition 1), y = information flow (condition 2); deviations from diagonal = changed pathways |
+
+The differential heatmap and scatter plot are the two most commonly cited
+figures for condition comparisons in publications.
+
+---
+
+## Typical two-condition workflow
+
+```{r full-workflow, eval=FALSE}
+# Step 1: run CellChat for each condition
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  groups     = c("Control", "Treated"),
+  colors     = GetColors(bmcite, "seurat_clusters"),
+  output_dir = file.path(tempdir(), "CellChat"),
+  resume     = TRUE)
+
+# Step 2: compare
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir = file.path(tempdir(), "CellChat", "Comparison"))
+```
+
+---
+
+## Parameter reference — `RunCellChat`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Processed, annotated Seurat object |
+| `cell.by` | character | required | Metadata column defining cell identity |
+| `group.by` | character | required | Metadata column defining groups (one run per level) |
+| `groups` | character vector | `NULL` | Subset or reorder levels of `group.by` |
+| `species` | character | `"human"` | `"human"` or `"mouse"` |
+| `colors` | named character | `NULL` | Override cell-type palette |
+| `output_dir` | character | required | Directory for saving outputs |
+| `resume` | logical | `FALSE` | Skip groups with existing `.rds` files |
+| `run.patterns` | logical | `TRUE` | Run communication pattern NMF analysis |
+
+## Parameter reference — `CompareCellChat`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cellchat_list` | named list | required | Named list of CellChat objects (or paths to `.rds` files) |
+| `output_dir` | character | required | Directory for saving comparison plots |
+| `groups.show` | character vector | `NULL` | Subset of groups to include in comparison plots |
+| `group.merged` | character | `NULL` | Merge these groups before comparison |
+| `colors` | named character | `NULL` | Override cell-type palette |
+| `species` | character | `"human"` | `"human"` or `"mouse"` |
+| `thresh` | numeric | `0.05` | P-value threshold for significant interactions |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` — register cell-type colors used in chord diagrams
+- Vignette 06: `CellTypeAssignmentHelper` — assign cell types before CellChat
+- Vignette 08: `RunGSEA` — pathway-level analysis complementary to CellChat
+
+---
+
+## Session Info
+
+```{r session-info, eval=FALSE}
+sessionInfo()
+```

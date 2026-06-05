@@ -1,0 +1,185 @@
+---
+title: "scSidekick — Dimensionality Reduction: Determine_nDims"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Dimensionality Reduction: Determine_nDims}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 7,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Choosing how many dimensions to retain after PCA (or LSI, ICA, etc.) is one of
+the most consequential decisions in a single-cell pipeline. Too few and you lose
+biological signal; too many and you add noise.
+
+`Determine_nDims()` automates this using two complementary heuristics and
+returns the more **conservative** (lower) of the two — a safe default that you
+can override if the plot suggests otherwise.
+
+---
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+```
+
+```{r load-data, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  object_name = "bmcite")
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA(npcs = 50)
+```
+
+## 1. Basic call
+
+```{r determine-ndims}
+dims <- Determine_nDims(bmcite, reduction = "pca")
+```
+
+The console output shows both heuristics and the final selection. The plot
+displays every PC as a number — blue = selected, orange = discarded. Vertical
+lines mark the two cutoffs.
+
+```{r show-plot}
+dims$plot
+```
+
+---
+
+## 2. Accessing the result
+
+```{r access-result}
+# Recommended number of dimensions
+dims$n_dims
+
+# Heuristic 1 — cumulative variance plateau
+dims$cum_thresh
+
+# Heuristic 2 — elbow
+dims$elbow_thresh
+```
+
+`dims$n_dims` is a plain integer: pass it to `dims = 1:dims$n_dims` in all
+downstream Seurat calls to guarantee consistency.
+
+---
+
+## 3. Using the result downstream
+
+```{r downstream}
+bmcite <- RunUMAP(bmcite,       dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite,  resolution = 0.5)
+```
+
+After this, `bmcite` has a UMAP embedding and cluster assignments ready for
+all visualization functions in vignettes 03–05.
+
+---
+
+## 4. Adjusting thresholds
+
+The defaults (`threshold_cum_pct = 90`, `threshold_pct = 5`) work well for
+most datasets. Adjust them if the elbow plot looks unusual.
+
+```{r custom-thresholds, eval=FALSE}
+# Stricter: require 85 % cumulative variance, per-dim contribution < 3 %
+dims_strict <- Determine_nDims(bmcite,
+  threshold_cum_pct = 85,
+  threshold_pct     = 3)
+dims_strict$n_dims
+
+# More permissive: 95 % cumulative, 1 % marginal drop
+dims_loose <- Determine_nDims(bmcite,
+  threshold_cum_pct = 95,
+  threshold_pct     = 1)
+dims_loose$n_dims
+```
+
+---
+
+## 5. Using with any linear reduction
+
+The function works with any named reduction slot — PCA, LSI (ATAC), ICA, or
+Harmony.
+
+```{r other-reduction, eval=FALSE}
+# After RunHarmony():
+library(harmony)
+bmcite <- RunHarmony(bmcite, group.by.vars = "donor")
+dims_h <- Determine_nDims(bmcite, reduction = "harmony")
+```
+
+---
+
+## 6. Saving the elbow plot
+
+`dims$plot` is a standard `ggplot2` object.
+
+```{r save-plot, eval=FALSE}
+ggplot2::ggsave(
+  filename = "bmcite_elbow.pdf",
+  plot     = dims$plot,
+  width    = 6, height = 4)
+```
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Object with a linear reduction computed |
+| `reduction` | character | `"pca"` | Name of the reduction slot |
+| `threshold_pct` | numeric | `5` | Max per-dim variance (%) for a selected dimension |
+| `threshold_cum_pct` | numeric | `90` | Target cumulative variance (%) |
+| `threshold_diff_pct` | numeric | `0.1` | Min consecutive drop to count as elbow |
+| `elbow_plot` | logical | `TRUE` | Return annotated elbow plot |
+
+## Return value
+
+| Element | Type | Description |
+|---------|------|-------------|
+| `$n_dims` | integer | Recommended number of dimensions |
+| `$cum_thresh` | integer | Dimension from heuristic 1 (cumulative plateau) |
+| `$elbow_thresh` | integer | Dimension from heuristic 2 (elbow) |
+| `$plot` | ggplot | Annotated elbow plot |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` — run after clustering to register colors
+- Vignette 03: `PlotDimPlots` — UMAP visualization after `RunUMAP(dims = 1:dims$n_dims)`
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

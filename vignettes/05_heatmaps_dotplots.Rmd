@@ -1,0 +1,263 @@
+---
+title: "scSidekick — Heatmaps & Dot Plots: GroupHeatmap, SplitDotPlot, FastDotPlot"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Heatmaps and Dot Plots: GroupHeatmap, SplitDotPlot, FastDotPlot}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 9,
+  fig.height = 6
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Three functions for comparing gene expression across groups:
+
+- **`GroupHeatmap()`** — ComplexHeatmap with average expression per group,
+  optional dot-size overlay, and gene-category annotations.
+- **`SplitDotPlot()`** — dot plot organized by cell-type gene blocks; accepts
+  a `markers_df` data frame.
+- **`FastDotPlot()`** — quick dot plot from an explicit gene list or regex
+  pattern, no `markers_df` required.
+
+---
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+```
+
+```{r build-bmcite, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  object_name = "bmcite")
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
+```
+
+```{r marker-genes, include=FALSE}
+# Bone marrow CITE-seq markers
+bm_markers <- c(
+  "CD3E","CD4","CD8A",       # T cells
+  "NKG7","GNLY","NCAM1",     # NK
+  "CD79A","MS4A1",           # B cells
+  "LYZ","S100A8","CD14",     # Monocytes
+  "CLEC9A","FCER1A"          # DCs
+)
+
+markers_df <- data.frame(
+  Genes    = bm_markers,
+  CellType = c(
+    rep("T cell",    3),
+    rep("NK",        3),
+    rep("B cell",    2),
+    rep("Monocyte",  3),
+    rep("DC",        2)
+  )
+)
+```
+
+## `GroupHeatmap`
+
+### 1. Basic heatmap
+
+```{r heatmap-basic}
+GroupHeatmap(bmcite,
+  group.by = "celltype.l1",
+  features = bm_markers)
+```
+
+Each column is one cell type; each row is one gene. Color = scaled mean
+expression (z-score across groups). Column colors at the top come from
+`PrepObject`.
+
+### 2. Gene-category row annotation with `feature_split`
+
+`feature_split` is a named vector (names = genes, values = category labels).
+Genes are grouped into labeled row blocks.
+
+```{r heatmap-feature-split, fig.height=7}
+feature_split <- setNames(markers_df$CellType, markers_df$Genes)
+
+GroupHeatmap(bmcite,
+  group.by      = "celltype.l1",
+  features      = names(feature_split),
+  feature_split = feature_split)
+```
+
+### 3. Dot overlay
+
+`add_dot = TRUE` overlays circles sized by percent-expressed on top of the
+color-encoded expression — a dot-heatmap hybrid.
+
+```{r heatmap-dot, fig.height=7}
+GroupHeatmap(bmcite,
+  group.by = "celltype.l1",
+  features = bm_markers,
+  add_dot  = TRUE,
+  add_bg   = TRUE)
+```
+
+### 4. Multiple `group.by`
+
+```{r heatmap-multi-group, eval=FALSE}
+GroupHeatmap(bmcite,
+  group.by = c("celltype.l1", "seurat_clusters"),
+  features = bm_markers)
+```
+
+### 5. Saving to disk
+
+```{r heatmap-save, eval=FALSE}
+GroupHeatmap(bmcite,
+  group.by      = "celltype.l1",
+  features      = names(feature_split),
+  feature_split = feature_split,
+  add_dot       = TRUE,
+  output_dir    = "./bmcite_Figures",
+  object_name   = "bmcite")
+```
+
+---
+
+## `SplitDotPlot`
+
+`SplitDotPlot` accepts a `markers_df` data frame (gene + cell-type column) and
+organizes genes into annotated blocks along the x-axis.
+
+### 1. Basic dot plot
+
+```{r splitdot-basic, fig.height=5}
+SplitDotPlot(bmcite,
+  markers_df = markers_df,
+  group.by   = "celltype.l1")
+```
+
+Clusters on the x-axis, grouped by their `CellType` block; genes on the y-axis.
+Dot color = scaled mean expression; dot size = percent-expressed.
+
+### 2. With `split.by`
+
+Adding `split.by` stacks one dot plot per level, enabling direct expression
+comparison across conditions or batches.
+
+```{r splitdot-split, echo=TRUE}
+SplitDotPlot(bmcite,
+  markers_df = markers_df,
+  group.by   = "celltype.l1",
+  split.by   = "donor")
+```
+
+### 3. `SplitDotPlot2` — with gene clustering
+
+`SplitDotPlot2` adds hierarchical clustering within gene blocks.
+
+```{r splitdot2, echo=TRUE}
+SplitDotPlot2(bmcite,
+  markers_df    = markers_df,
+  group.by      = "celltype.l1",
+  ClusterGenes  = TRUE,
+  min.pct.exp   = 10)
+```
+
+---
+
+## `FastDotPlot`
+
+`FastDotPlot` is a quick path when you don't need cell-type block annotations.
+
+### 1. Explicit gene list
+
+```{r fastdot-list, fig.height=4}
+FastDotPlot(bmcite,
+  features = c("CD3E", "CD8A", "NKG7", "CD79A", "LYZ", "CD14"),
+  group.by = "celltype.l1")
+```
+
+### 2. Regex pattern
+
+`pattern` selects all matching genes; `k_genes` keeps only the top *k* most
+variable per cluster.
+
+```{r fastdot-pattern, echo=TRUE}
+FastDotPlot(bmcite,
+  pattern  = "^CD",
+  group.by = "celltype.l1",
+  k_genes  = 3)
+```
+
+---
+
+## Parameter reference — `GroupHeatmap`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group.by` | character (vector) | required | Variable(s) defining columns |
+| `features` | character vector | required | Genes to display |
+| `feature_split` | named character | `NULL` | Gene-to-category mapping |
+| `column_split_by` | character | `NULL` | Variable for column grouping |
+| `add_dot` | logical | `TRUE` | Overlay dots by percent-expressed |
+| `add_bg` | logical | `TRUE` | Background rectangles |
+| `output_dir` | character | `NULL` | Directory for saving |
+
+## Parameter reference — `SplitDotPlot`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `markers_df` | data.frame | required | Gene-to-cell-type mapping |
+| `gene_column` | character | `"Genes"` | Column name for genes |
+| `gene_group_column` | character | `"CellType"` | Column name for group labels |
+| `group.by` | character | `"seurat_clusters"` | Metadata column for x-axis groups |
+| `split.by` | character | `NULL` | Variable for stacked panels |
+
+## Parameter reference — `FastDotPlot`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character vector | `NULL` | Gene list (or use `pattern`) |
+| `pattern` | character | `NULL` | Regex to select genes |
+| `group.by` | character | `"seurat_clusters"` | X-axis groups |
+| `k_genes` | integer | `1` | Top k genes per cluster (pattern mode) |
+| `min.pct.exp` | numeric | `15` | Min % expression filter |
+
+---
+
+## See also
+
+- Vignette 04: `PlotFeaturePlots` — per-gene UMAP expression maps
+- Vignette 06: `CellTypeAssignmentHelper` — uses markers for annotation
+- Vignette 08: `RunGSEA` — pathway-level analysis
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

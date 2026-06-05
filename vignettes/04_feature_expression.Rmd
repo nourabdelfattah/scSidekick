@@ -1,0 +1,201 @@
+---
+title: "scSidekick — Feature Expression: PlotFeaturePlots & PlotMultiFeature"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Feature Expression: PlotFeaturePlots and PlotMultiFeature}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 10,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Two functions for visualizing gene expression on UMAP (or any reduction):
+
+- **`PlotFeaturePlots()`** — one panel per gene × split group. Saves to disk
+  by convention; alias `GenerateFeatureMaps()`.
+- **`PlotMultiFeature()`** — co-expression of several genes on a single panel
+  (gene mode, intersection mode, or continuous scale mode).
+
+---
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+```
+
+```{r build-bmcite, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  object_name = "bmcite")
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
+```
+
+## `PlotFeaturePlots`
+
+### 1. Single gene
+
+```{r single-gene}
+PlotFeaturePlots(bmcite,
+  features = "CD3E")
+```
+
+### 2. Multiple genes — one row per gene
+
+```{r multi-gene-rows, fig.height=8}
+PlotFeaturePlots(bmcite,
+  features = c("CD3E", "CD79A", "LYZ"))
+```
+
+### 3. Split by donor — one column per donor
+
+`split.by` creates one column per level. Combined with multiple features, this
+produces a gene × donor grid.
+
+```{r split-by-donor, eval=FALSE}
+PlotFeaturePlots(bmcite,
+  features = c("CD3E", "NKG7", "CD79A"),
+  split.by = "donor")
+```
+
+### 4. Cluster labels overlay
+
+`label = TRUE` prints cell-type labels at cluster centroids, so you can
+immediately connect expression hotspots to their identity.
+
+```{r with-labels, fig.height=7}
+PlotFeaturePlots(bmcite,
+  features = c("CD3E", "CD79A"),
+  label    = TRUE,
+  label_by = "celltype.l1")
+```
+
+### 5. Multiple `split.by` — iterate automatically
+
+Passing a vector to `split.by` generates one complete figure per split variable.
+
+```{r multi-split, eval=FALSE}
+PlotFeaturePlots(bmcite,
+  features = c("CD3E", "NKG7", "CD79A"),
+  split.by = c("lane"),row_var = "donor",layout_method = "metadata")
+```
+
+### 6. Saving to disk
+
+```{r save, eval=FALSE, include=FALSE}
+PlotFeaturePlots(bmcite,
+  features    = c("CD3E", "CD4", "CD8A", "NKG7", "CD79A", "LYZ"),
+  split.by    = "donor",
+  output_dir  = tempdir(),
+  object_name = "bmcite",
+  subset_name = "AllCells")
+```
+
+---
+
+## `PlotMultiFeature`
+
+### Mode 1 — Gene mode (default)
+
+Each gene gets a distinct color. Cells expressing a gene above `threshold` are
+colored accordingly; cells expressing more than one gene get a blended color.
+A single UMAP panel shows all lineages at once.
+
+```{r multi-gene-mode}
+PlotMultiFeature(bmcite,
+  features = c("CD3E", "CD79A", "LYZ", "NKG7") )
+```
+
+### Mode 2 — Intersection mode
+
+Highlights only cells that co-express **all** listed genes above the cutoff.
+Useful for identifying rare dual-positive populations.
+
+```{r intersection-mode, fig.width=6}
+PlotMultiFeature(bmcite,
+  features           = c("CD3E", "CD8A"),
+  plot_mode          = "intersection",
+  pct_cutoff         = 0.5,
+  intersection_label = "CD3+CD8+ T cells")
+```
+
+### Mode 3 — Scale mode
+
+Plots a single gene (or averaged signature) as a continuous gradient. Equivalent
+to `FeaturePlot()` but integrated with the scSidekick saving pipeline.
+
+```{r scale-mode, fig.width=6}
+PlotMultiFeature(bmcite,
+  features  = "CD3E",
+  plot_mode = "scale")
+```
+
+---
+
+## Parameter reference — `PlotFeaturePlots`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character vector | required | Genes to plot |
+| `split.by` | character (vector) | `NULL` | Variable(s) for column splitting |
+| `label` | logical | `FALSE` | Add group labels at centroids |
+| `label_by` | character | `NULL` | Metadata column for centroid labels |
+| `output_dir` | character | `NULL` | Directory for saving |
+| `object_name` | character | `""` | Label used in filenames |
+| `subset_name` | character | `""` | Sub-label used in filenames |
+
+## Parameter reference — `PlotMultiFeature`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character vector | required | Genes to co-visualize |
+| `plot_mode` | character | `"gene"` | `"gene"`, `"intersection"`, or `"scale"` |
+| `colors` | character vector | `NULL` | Colors per gene (gene mode) |
+| `threshold` | numeric | `0.0125` | Min expression to count a cell as "expressing" |
+| `pct_cutoff` | numeric | `0.3` | Co-expression cutoff (intersection mode) |
+| `intersection_label` | character | `NULL` | Label for co-expressing population |
+| `output_dir` | character | `NULL` | Directory for saving |
+
+---
+
+## See also
+
+- Vignette 03: `PlotDimPlots` — cell-type UMAP without expression overlay
+- Vignette 05: `GroupHeatmap`, `FastDotPlot` — expression across clusters
+- Vignette 07: `PlotSpatialFeaturePlots` — same concept for spatial data
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

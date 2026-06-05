@@ -1,0 +1,228 @@
+---
+title: "scSidekick — UMAP Visualization: PlotDimPlots"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{UMAP Visualization: PlotDimPlots}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 10,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+`PlotDimPlots()` generates a grid of UMAP (or any reduction) scatter plots.
+
+- **`group.by`** controls which metadata column colors each cell
+- **`split.by`** creates one column of panels per level (one panel per donor,
+  sample, condition, etc.)
+- **`row.by`** creates one row of panels per level
+- Pass a **vector** to `group.by` and scSidekick iterates, producing one
+  complete figure per variable
+
+Colors come from `PrepObject` automatically — no need to pass them manually.
+
+---
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+```
+
+```{r build-bmcite, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  object_name = "bmcite")
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
+```
+
+## 1. Basic UMAP by cell type
+
+```{r basic}
+PlotDimPlots(bmcite, group.by = "celltype.l1",split.by = NULL)
+```
+
+---
+
+## 2. Split across donors
+
+`split.by = "donor"` creates one panel per donor. Each panel shows only that
+donor's cells, colored by cell type. The legend is shared.
+
+```{r split-by-donor, fig.height=4}
+PlotDimPlots(bmcite,
+  group.by = "celltype.l1",
+  split.by = "donor")
+```
+
+---
+
+## 3. Adding a composition trend panel
+
+`show_trend = TRUE` appends a stacked bar chart to the right showing the
+proportional cell-type composition per split group — reads as a combined
+spatial + compositional figure.
+
+```{r trend, fig.height=4}
+PlotDimPlots(bmcite,
+  group.by   = "celltype.l1",
+  split.by   = "donor",
+  show_trend = TRUE)
+```
+
+---
+
+## 4. Cluster labels at centroids
+
+`show_labels = TRUE` overlays the level name at the centroid of each group,
+avoiding legend look-up.
+
+```{r labels}
+PlotDimPlots(bmcite,
+  group.by    = "celltype.l1",
+  show_labels = TRUE)
+```
+
+---
+
+## 5. Multiple `group.by` — one figure per variable
+
+Pass a character vector to produce one complete figure per grouping variable.
+This is the primary way to compare how different annotations map onto the same
+embedding.
+
+```{r multi-group, fig.height=4}
+p=PlotDimPlots(bmcite,
+  group.by = c("celltype.l1", "celltype.l2"))
+patchwork::wrap_plots(p,ncol = 1)
+```
+
+---
+
+## 6. Row grouping with `row.by`
+
+`row.by` creates a 2-D grid: rows = levels of `row.by`, columns = levels of
+`split.by`. Use this to compare two categorical cuts simultaneously.
+
+```{r row-by, eval=FALSE}
+PlotDimPlots(bmcite,
+  group.by = "celltype.l1",
+  row.by = "donor",
+  split.by   = "lane")
+```
+
+---
+
+## 7. Custom colors
+
+Override `PrepObject` defaults by passing a named vector to `colors`.
+
+```{r custom-colors, eval=FALSE}
+my_cols <- c(
+  "CD4 T"  = "#003f5c",
+  "CD8 T"  = "#227ed4",
+  "NK"     = "#a05195",
+  "B"      = "#d45087",
+  "Mono"   = "#ffa600",
+  "DC"     = "#42a665"
+)
+
+PlotDimPlots(bmcite,
+  group.by = "celltype.l1",
+  colors   = my_cols)
+```
+
+---
+
+## 8. Controlling column order
+
+`split.col.levels` enforces a specific column order. Useful when donors or
+samples have a meaningful biological order (e.g. time points).
+
+```{r col-levels, eval=FALSE}
+PlotDimPlots(bmcite,
+  group.by         = "celltype.l1",
+  split.by         = "donor",
+  split.col.levels = c("batch2", "batch1"))
+```
+
+---
+
+## 9. Saving to disk
+
+Supply `output_dir` and `object_name` to auto-save every figure as a PDF. The
+filename is constructed from `object_name`, `group.by`, and `split.by`.
+
+```{r save, eval=FALSE}
+PlotDimPlots(bmcite,
+  group.by    = c("celltype.l1", "celltype.l2", "seurat_clusters"),
+  split.by    = "donor",
+  show_trend  = TRUE,
+  output_dir  = "./bmcite_Figures",
+  object_name = "bmcite",
+  subset_name = "AllCells")
+```
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group.by` | character (vector) | from `PrepObject` | Variable(s) used to color cells |
+| `split.by` | character (vector) | from `PrepObject` | Variable(s) that create columns |
+| `row.by` | character | `NULL` | Variable that creates rows |
+| `show_trend` | logical | `FALSE` | Append stacked-bar trend panel |
+| `show_labels` | logical | `FALSE` | Overlay group labels at centroids |
+| `colors` | named character | `NULL` | Override palette |
+| `reduction` | character | `"umap"` | Reduction to plot |
+| `pt.size` | numeric | `0.1` | Point size |
+| `trend_width` | numeric | `1` | Relative width of the trend panel |
+| `split.col.levels` | character vector | `NULL` | Explicit column ordering |
+| `output_dir` | character | `NULL` | Directory for saving figures |
+| `object_name` | character | `""` | Label used in saved filenames |
+| `subset_name` | character | `""` | Sub-label used in saved filenames |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` — set default `group.by`, `split.by`, and colors
+- Vignette 02: `Determine_nDims` — choose `dims` before running `RunUMAP()`
+- Vignette 04: `PlotFeaturePlots` — gene expression overlaid on the same layout
+- Vignette 10: `PlotTrendLabeled` — standalone composition figure
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```
