@@ -1,0 +1,237 @@
+---
+title: "scSidekick — Reporting & Utilities"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Reporting and Utilities}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 8,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Utility and reporting functions in scSidekick:
+
+- **`GetColors()`** — retrieve a stored color vector by variable name
+- **`ShowColors()`** — visual swatch grid of all registered palettes
+- **`theme_NourMin()`** — minimal ggplot2 theme consistent with scSidekick figures
+- **`PlotTrendLabeled()`** — standalone composition bar chart for manuscripts
+- **`PlotComposition()`** — composition bar chart without trend direction
+- **`ExtractMethods()`** — auto-generate a methods paragraph from the Seurat command log
+- **`create_analysis_pptx()`** — assemble a PowerPoint deck from saved figures
+
+---
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r build-bmcite, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  object_name = "bmcite")
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
+```
+
+## 1. `GetColors()` — retrieve stored colors
+
+`GetColors()` returns the named color vector for a variable, ready to pass into
+`scale_color_manual()` or any scSidekick `colors` argument.
+
+```{r get-colors}
+# Single variable
+ct_cols <- GetColors(bmcite, "celltype.l1")
+ct_cols
+```
+
+```{r get-all-colors}
+# All registered variables at once
+all_cols <- GetColors(bmcite)
+names(all_cols)
+```
+
+---
+
+## 2. `ShowColors()` — visual swatch grid
+
+`ShowColors()` renders a color tile for every registered variable and level.
+
+```{r show-colors, fig.height=7}
+ShowColors(bmcite)
+```
+
+---
+
+## 3. `theme_NourMin()` — minimal ggplot2 theme
+
+`theme_NourMin()` removes excess chart junk while keeping axis labels, titles,
+and a clean panel border. Layer it after any standard `theme_*()` call.
+
+```{r theme-demo, fig.height=4, fig.width=6}
+VlnPlot(bmcite, features = "CD3E", group.by = "celltype.l1", pt.size = 0) +
+  theme_NourMin() +
+  scale_fill_manual(values = GetColors(bmcite, "celltype.l1")) +
+  theme(legend.position = "none")
+```
+
+---
+
+## 4. `PlotTrendLabeled()` — composition bar chart
+
+`PlotTrendLabeled()` is a standalone composition figure: one stacked bar per
+`group.by` level within each `split.by` panel, with percentage labels on each
+segment. Use this for publications; use `PlotDimPlots(show_trend=TRUE)` for
+exploratory talks.
+
+```{r trend-labeled, fig.height=5, fig.width=10}
+PlotTrendLabeled(bmcite,
+  stat.by    = "celltype.l1",
+  group.by   = "donor",
+  split.by   = "lane",
+  label.side = "right")
+```
+
+---
+
+## 5. `PlotComposition()` — composition without trend direction
+
+`PlotComposition()` shows proportional composition as a straightforward stacked
+bar chart without the directional label emphasis. Good for summarizing
+multi-sample distributions.
+
+```{r composition, fig.height=4}
+PlotComposition(bmcite,
+  group.by = "celltype.l1",
+  split.by = "donor")
+```
+
+---
+
+## 6. `ExtractMethods()` — auto-generate a methods paragraph
+
+`ExtractMethods()` reads the Seurat command log (`bmcite@commands`) and
+reconstructs key analysis steps as a prose paragraph and a structured summary.
+
+```{r extract-methods, eval=FALSE}
+methods_out <- ExtractMethods(bmcite, cite_seurat = TRUE)
+
+# Paste into a manuscript
+cat(methods_out$methods_text)
+
+# Step-by-step summary (data frame)
+print(methods_out$summary)
+```
+
+---
+
+## 7. `Nour_pal()` — the built-in palette system
+
+scSidekick ships with `Nour18` (18 qualitative colors) and `Nour20` (20-color
+full-spectrum). Both plug into `Nour_pal()`.
+
+```{r palette-demo, fig.width=9, fig.height=3}
+# Display all 18 colors
+scales::show_col(Nour18, cex_label = 0.6)
+```
+
+```{r palette-ggplot, fig.width=6, fig.height=3}
+# Use in a custom ggplot
+df <- data.frame(x = 1:8, y = 1, grp = LETTERS[1:8])
+ggplot(df, aes(x, y, color = grp)) +
+  geom_point(size = 6) +
+  scale_color_manual(values = Nour_pal("main")(8)) +
+  theme_NourMin()
+```
+
+---
+
+## 8. `create_analysis_pptx()` — auto-assemble a slide deck
+
+`create_analysis_pptx()` scans `output_dir` for saved PDF/PNG figures from
+scSidekick functions, groups them into sections by filename keyword, and writes
+a `.pptx` file.
+
+```{r pptx, eval=FALSE}
+create_analysis_pptx(
+  output_dir  = "./bmcite_Figures",
+  object_name = "bmcite")
+```
+
+Section grouping rules (keyword in filename → section label):
+
+| Keyword | Section |
+|---------|---------|
+| `UMAP`, `DimPlot` | Dimensionality Reduction |
+| `Feature`, `Expression` | Gene Expression |
+| `Heatmap`, `Dot` | Heatmaps & Dot Plots |
+| `Spatial` | Spatial |
+| `GSEA`, `Pathway` | Pathway Analysis |
+| `CellChat`, `Communication` | Cell-Cell Communication |
+| `Annotation`, `Assignment` | Cell Annotation |
+| anything else | Miscellaneous |
+
+Include or exclude sections by name:
+
+```{r pptx-sections, eval=FALSE}
+create_analysis_pptx(
+  output_dir       = "./bmcite_Figures",
+  object_name      = "bmcite",
+  include_sections = c("Dimensionality Reduction", "Gene Expression"))
+```
+
+---
+
+## When to use `show_trend` vs `PlotTrendLabeled`
+
+| | `PlotDimPlots(show_trend=TRUE)` | `PlotTrendLabeled()` |
+|---|---|---|
+| Primary figure | UMAP scatter | Bar chart |
+| Trend panel | Appended right of UMAPs | Standalone |
+| Labels | None by default | Percentage labels |
+| Best for | Talks, exploratory | Manuscripts |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject`, `ShowColors`, `GetColors` — color management
+- Vignette 03: `PlotDimPlots` — UMAP with optional trend panel
+- All other vignettes save to `output_dir`, which feeds into `create_analysis_pptx`
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

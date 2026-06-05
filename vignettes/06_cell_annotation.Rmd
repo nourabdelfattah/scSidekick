@@ -1,0 +1,291 @@
+---
+title: "scSidekick — Cell Annotation: CellTypeAssignmentHelper"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Cell Annotation: CellTypeAssignmentHelper}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+`CellTypeAssignmentHelper()` runs three independent annotation methods in a
+single function call and saves a summary PDF for each:
+
+| Method | Package | Approach |
+|--------|---------|----------|
+| **scType** | scType | Marker-based scoring against a tissue-specific database |
+| **rcellmarker** | rcellmarker | Enrichment against the CellMarker database |
+| **SingleR** | SingleR | Reference-based transcriptomic label transfer |
+
+Running all three simultaneously gives you a majority-vote-style sanity check:
+when two or three methods agree, the annotation is high-confidence; when they
+disagree, the cluster warrants manual inspection.
+
+---
+
+## Standard setup
+
+```{r standard-setup, eval=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- bmcite %>%
+  NormalizeData() %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2", "seurat_clusters"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+---
+
+## 1. Preparing differential expression markers
+
+`CellTypeAssignmentHelper` requires a pre-computed markers table. The fastest
+approach is `presto::wilcoxauc()`, which runs a Wilcoxon rank-sum test for all
+clusters simultaneously.
+
+```{r markers-presto, eval=FALSE}
+# Fast (recommended): presto
+library(presto)
+markers <- presto::wilcoxauc(bmcite, group_by = "seurat_clusters")
+
+# Check the structure
+head(markers)
+# feature | group | logFC | pct_in | pct_out | padj | ...
+```
+
+Alternatively, use Seurat's `FindAllMarkers()`:
+
+```{r markers-seurat, eval=FALSE}
+markers_seurat <- Seurat::FindAllMarkers(bmcite,
+  only.pos      = TRUE,
+  min.pct       = 0.25,
+  logfc.threshold = 0.25)
+```
+
+`CellTypeAssignmentHelper` accepts either format; it auto-detects column names.
+The `presto` output is strongly recommended for large datasets because it runs
+in seconds rather than minutes.
+
+---
+
+## 2. Full `CellTypeAssignmentHelper` call
+
+```{r annotation-full, eval=FALSE}
+bmcite <- CellTypeAssignmentHelper(bmcite,
+  markers          = markers,
+  cluster_column   = "seurat_clusters",
+  output_dir       = tempdir(),
+  sctype_tissues   = c("Immune system"),
+  run_sctype       = TRUE,
+  run_rcellmarker  = TRUE,
+  run_singler      = TRUE,
+  singler_ref      = "HumanPrimaryCellAtlasData")
+```
+
+The function runs all three methods, stores results in the Seurat object's
+`meta.data`, and saves one PDF summary figure per method to `output_dir`.
+Progress messages are printed to the console for each method.
+
+---
+
+## 3. `sctype_tissues` options
+
+The `sctype_tissues` argument filters the scType database to the tissues most
+relevant to your sample. Providing the correct tissue dramatically improves
+annotation accuracy.
+
+| Value | Appropriate for |
+|-------|----------------|
+| `"Immune system"` | PBMCs, spleen, lymph node, bone marrow |
+| `"Brain"` | Cortex, hippocampus, cerebellum, CNS |
+| `"Liver"` | Hepatocytes, Kupffer cells, stellate cells |
+| `"Pancreas"` | Endocrine / exocrine pancreas |
+| `"Kidney"` | Proximal tubule, glomerulus, collecting duct |
+| `"Lung"` | Airway epithelium, alveoli, endothelium |
+| `"Eye"` | Retina, cornea |
+| `"Muscle"` | Skeletal and cardiac muscle |
+
+Pass a character vector to query multiple tissues simultaneously:
+
+```{r sctype-tissues, eval=FALSE}
+# For a brain tumor dataset: query both brain and immune compartments
+bmcite <- CellTypeAssignmentHelper(bmcite,
+  markers        = markers,
+  cluster_column = "seurat_clusters",
+  output_dir     = tempdir(),
+  sctype_tissues = c("Brain", "Immune system"))
+```
+
+---
+
+## 4. `singler_ref` options
+
+SingleR requires a reference expression dataset. scSidekick exposes the most
+commonly used references from the `celldex` package:
+
+| Value | Reference | Best for |
+|-------|-----------|----------|
+| `"HumanPrimaryCellAtlasData"` | Human Primary Cell Atlas | General human tissue |
+| `"BlueprintEncodeData"` | Blueprint + ENCODE | Haematopoietic and stromal |
+| `"MonacoImmuneData"` | Monaco Immune | Detailed immune cell types |
+| `"ImmGenData"` | ImmGen | Mouse immune cells |
+| `"MouseRNAseqData"` | Mouse bulk RNA | General mouse tissue |
+| `"NovershternHematopoieticData"` | Novershtern | Detailed human haematopoietic |
+
+```{r singler-ref, eval=FALSE}
+# For a detailed immune classification
+bmcite <- CellTypeAssignmentHelper(bmcite,
+  markers     = markers,
+  output_dir  = tempdir(),
+  run_sctype  = FALSE,
+  run_singler = TRUE,
+  singler_ref = "MonacoImmuneData")
+```
+
+---
+
+## 5. Running a subset of methods
+
+Set any `run_*` argument to `FALSE` to skip that method. This is useful when
+one method is slow or when you only need a quick single-reference annotation.
+
+```{r run-subset, eval=FALSE}
+# scType only (fastest, no internet required)
+bmcite <- CellTypeAssignmentHelper(bmcite,
+  markers         = markers,
+  cluster_column  = "seurat_clusters",
+  output_dir      = tempdir(),
+  sctype_tissues  = "Immune system",
+  run_sctype      = TRUE,
+  run_rcellmarker = FALSE,
+  run_singler     = FALSE)
+```
+
+---
+
+## 6. Reading the output PDFs
+
+Each method produces a PDF in `output_dir` named, for example:
+`bmcite_scType_annotation.pdf`, `bmcite_rcellmarker_annotation.pdf`,
+`bmcite_SingleR_annotation.pdf`.
+
+Each PDF contains:
+- A UMAP colored by the predicted cell type label for that method
+- A bar chart showing the annotation confidence (scType score, enrichment score,
+  or SingleR delta) per cluster
+- A table summarizing the top predicted label and the runner-up for each cluster
+
+Use the confidence charts to identify ambiguous clusters: low scores or a
+near-tie between the top two candidates warrant manual review.
+
+---
+
+## 7. Accessing results in the Seurat object
+
+After the function returns, three new columns are added to `bmcite@meta.data`:
+
+```{r access-results, eval=FALSE}
+# scType predictions
+head(bmcite$scType_CellType)
+
+# rcellmarker predictions
+head(bmcite$rcellmarker_CellType)
+
+# SingleR predictions
+head(bmcite$SingleRAssignment)
+
+# Quick agreement check
+table(bmcite$scType_CellType, bmcite$SingleRAssignment)
+```
+
+The agreement table is a fast way to spot discordant clusters before
+committing to a final label.
+
+---
+
+## 8. Finalizing annotations
+
+After reviewing the three method outputs, assign a final label to a new column
+and re-run `PrepObject()` to register it.
+
+```{r final-annotation, eval=FALSE}
+# Manually assign based on consensus + prior knowledge
+cluster_labels <- c(
+  "0" = "CD4 T cell",
+  "1" = "CD14 Monocyte",
+  "2" = "CD4 T cell",
+  "3" = "B cell",
+  "4" = "CD8 T cell",
+  "5" = "NK cell",
+  "6" = "CD16 Monocyte",
+  "7" = "Dendritic cell",
+  "8" = "Platelet"
+)
+
+pbmc$Assignment <- cluster_labels[as.character(bmcite$seurat_clusters)]
+
+# Register the new column — use force = TRUE to update nk_settings
+bmcite <- PrepObject(bmcite,
+  variables = c("seurat_clusters", "Sample", "Condition", "Assignment"),
+  force     = TRUE)
+
+# Confirm
+ShowColors(bmcite)
+```
+
+`PrepObject()` with `force = TRUE` assigns a distinct color to every unique
+cell type in `Assignment` and stores it alongside the existing cluster colors.
+All subsequent plots that use `group.by = "Assignment"` will use this palette
+automatically.
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Clustered Seurat object |
+| `markers` | data.frame | required | DE markers (presto or FindAllMarkers output) |
+| `cluster_column` | character | `"Cluster"` | Column in `meta.data` holding cluster labels |
+| `output_dir` | character | `NULL` | Directory for saving PDF summaries |
+| `sctype_tissues` | character vector | `c("Immune system","Brain")` | Tissues to query in scType database |
+| `run_sctype` | logical | `TRUE` | Whether to run scType |
+| `run_rcellmarker` | logical | `TRUE` | Whether to run rcellmarker |
+| `run_singler` | logical | `TRUE` | Whether to run SingleR |
+| `singler_ref` | character | `NULL` | celldex reference name for SingleR |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` — register the `Assignment` column after annotation
+- Vignette 03: `PlotDimPlots` — visualize the final `Assignment` coloring on UMAP
+- Vignette 05: `GroupHeatmap` — confirm marker expression aligns with assignment
+
+---
+
+## Session Info
+
+```{r session-info, eval=FALSE}
+sessionInfo()
+```

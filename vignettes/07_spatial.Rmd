@@ -1,0 +1,294 @@
+---
+title: "scSidekick — Spatial Transcriptomics: PlotSpatialDimPlots, PlotSpatialFeaturePlots, PlotMasterMaps"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Spatial Transcriptomics: PlotSpatialDimPlots, PlotSpatialFeaturePlots, PlotMasterMaps}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+## Overview
+
+scSidekick's three spatial plotting functions mirror their scRNA-seq counterparts
+but render expression and metadata directly on the tissue image:
+
+- **`PlotSpatialDimPlots()`** — color spots by a metadata variable (e.g.
+  cluster, condition, spatial domain). Long-form alias:
+  `GenerateSpatialDimMaps()`.
+- **`PlotSpatialFeaturePlots()`** — color spots by gene expression. Long-form
+  alias: `GenerateSpatialFeatureMaps()`.
+- **`PlotMasterMaps()`** — combined figure: tissue image + gene expression
+  panels + cluster-colored UMAP side by side. Long-form alias:
+  `GenerateMasterGeneMaps()`.
+
+All three functions accept `group.by`, `split.by`, `layout_method`, and
+`output_dir` with the same conventions as the scRNA-seq equivalents.
+
+---
+
+## Demo dataset — mouse brain (Visium)
+
+```{r spatial-setup, eval=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+
+InstallData("stxBrain")
+brain <- LoadData("stxBrain", type = "anterior1")
+
+# Standard processing
+brain <- NormalizeData(brain)
+brain <- FindVariableFeatures(brain)
+brain <- ScaleData(brain)
+brain <- RunPCA(brain)
+brain <- RunUMAP(brain, dims = 1:30)
+brain <- FindNeighbors(brain, dims = 1:30)
+brain <- FindClusters(brain, resolution = 0.5)
+
+# Fake condition column for split demos
+set.seed(42)
+brain$Condition <- sample(c("WT","KO"), ncol(brain), replace = TRUE)
+
+# Register colors
+brain <- PrepObject(brain,
+  variables   = c("seurat_clusters", "Condition"),
+  group.by    = "seurat_clusters",
+  output_dir  = tempdir(),
+  object_name = "MouseBrain")
+```
+
+After `PrepObject()`, the cluster palette is stored and will appear
+consistently across all spatial figures.
+
+---
+
+## `PlotSpatialDimPlots`
+
+### 1. Basic spatial cluster map
+
+```{r spatial-dim-basic, eval=FALSE}
+PlotSpatialDimPlots(brain,
+  group.by = "seurat_clusters")
+```
+
+Each spot on the tissue section is colored by its cluster assignment. The
+tissue H&E image is shown as a grey-scale background. A legend maps colors
+to cluster numbers. The palette comes from `PrepObject`.
+
+### 2. Multiple variables — iterate
+
+Passing a vector to `group.by` produces one spatial map per variable.
+
+```{r spatial-dim-multi, eval=FALSE}
+PlotSpatialDimPlots(brain,
+  group.by = c("seurat_clusters", "Condition"))
+```
+
+Two figures are generated: one showing spatial cluster distribution, one
+showing which spots are annotated WT vs KO.
+
+### 3. Uniform spot size
+
+By default Visium spot sizes are scaled by local spot density. Set
+`uniform_size = TRUE` to use a fixed, equal size for all spots — useful for
+comparing two sections where spot density differs.
+
+```{r spatial-dim-uniform, eval=FALSE}
+PlotSpatialDimPlots(brain,
+  group.by     = "seurat_clusters",
+  uniform_size = TRUE)
+```
+
+### 4. Metadata-driven layout with `layout_method`
+
+`layout_method = "metadata"` uses `row_var` to stack multiple spatial maps
+vertically, one row per level of `row_var`. Useful when you have multiple
+tissue sections or ROIs stored in the same object.
+
+```{r spatial-dim-metadata, eval=FALSE}
+PlotSpatialDimPlots(brain,
+  group.by      = "seurat_clusters",
+  layout_method = "metadata",
+  row_var       = "Condition")
+```
+
+Each row of the output corresponds to one condition level. Columns would
+correspond to levels of `split.by` if provided.
+
+### 5. Colors from `PrepObject` vs custom
+
+```{r spatial-dim-colors, eval=FALSE}
+# Colors from PrepObject (default)
+PlotSpatialDimPlots(brain,
+  group.by = "seurat_clusters")
+
+# Override with a custom palette
+my_cols <- GetColors(brain, "seurat_clusters")
+my_cols["0"] <- "#FF0000"  # re-color cluster 0
+
+PlotSpatialDimPlots(brain,
+  group.by = "seurat_clusters",
+  colors   = my_cols)
+```
+
+### 6. Saving to disk
+
+```{r spatial-dim-save, eval=FALSE}
+PlotSpatialDimPlots(brain,
+  group.by    = "seurat_clusters",
+  output_dir  = tempdir(),
+  object_name = "MouseBrain")
+```
+
+---
+
+## `PlotSpatialFeaturePlots`
+
+### 1. Basic spatial gene expression
+
+```{r spatial-feat-basic, eval=FALSE}
+PlotSpatialFeaturePlots(brain,
+  features = c("Hpca", "Ttr"))
+```
+
+Each gene generates one spatial map. Spot color encodes normalized expression
+from grey (zero) to the high-expression color (default: dark red). `Hpca`
+marks hippocampal neurons; `Ttr` marks the choroid plexus — both should appear
+in their expected anatomical locations.
+
+### 2. Metadata-driven layout
+
+```{r spatial-feat-metadata, eval=FALSE}
+PlotSpatialFeaturePlots(brain,
+  features      = c("Hpca", "Ttr"),
+  layout_method = "metadata",
+  row_var       = "Condition")
+```
+
+Rows correspond to the levels of `Condition`. Each gene's spatial pattern is
+shown once per condition. This layout is most useful for comparing expression
+between biological groups when each group occupies a distinct tissue section
+in the same object.
+
+### 3. Saving to disk
+
+```{r spatial-feat-save, eval=FALSE}
+PlotSpatialFeaturePlots(brain,
+  features    = c("Hpca", "Ttr"),
+  output_dir  = tempdir(),
+  object_name = "MouseBrain",
+  subset_name = "Anterior1")
+```
+
+Files are named by gene: e.g. `MouseBrain_Anterior1_spatial_Hpca.pdf`.
+
+---
+
+## `PlotMasterMaps`
+
+`PlotMasterMaps` is a composite figure function: for each gene it assembles a
+multi-panel page containing the tissue spatial map, a UMAP colored by the
+specified `group.by`, and a UMAP colored by gene expression — all on one
+page, ready for a supplementary figure or lab presentation.
+
+### 1. Basic master map
+
+```{r master-basic, eval=FALSE}
+PlotMasterMaps(brain,
+  features   = c("Hpca", "Ttr"),
+  group.by   = "seurat_clusters",
+  output_dir = tempdir())
+```
+
+Each gene produces a PDF page with three panels arranged horizontally:
+1. Spatial expression map (spot colors = expression level)
+2. UMAP colored by `group.by` (cluster) for orientation
+3. UMAP colored by gene expression
+
+This lets you simultaneously see where in the tissue the gene is expressed and
+which clusters drive that expression.
+
+### 2. Multiple `group.by`
+
+```{r master-multi-group, eval=FALSE}
+PlotMasterMaps(brain,
+  features   = c("Hpca", "Ttr"),
+  group.by   = c("seurat_clusters", "Condition"),
+  output_dir = tempdir())
+```
+
+Each combination of gene × `group.by` variable produces its own panel page.
+With 2 genes and 2 `group.by` variables, you get 4 pages.
+
+### 3. Custom gene expression color scale
+
+```{r master-gene-colors, eval=FALSE}
+PlotMasterMaps(brain,
+  features    = "Hpca",
+  group.by    = "seurat_clusters",
+  gene_colors = c("lightgrey", "#006837"),
+  output_dir  = tempdir(),
+  object_name = "MouseBrain")
+```
+
+`gene_colors` is a two-element vector: `[1]` is the zero-expression color,
+`[2]` is the high-expression color. The default is grey → dark red.
+
+---
+
+## Parameter reference — `PlotSpatialDimPlots`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `group.by` | character (vector) | from `PrepObject` | Variable(s) to color spots by |
+| `layout_method` | character | `"auto"` | `"auto"` or `"metadata"` |
+| `row_var` | character | `NULL` | Row-grouping variable (metadata layout) |
+| `colors` | named character | `NULL` | Override palette |
+| `uniform_size` | logical | `FALSE` | Use equal spot size |
+| `output_dir` | character | `NULL` | Directory for saving |
+| `object_name` | character | `""` | Label used in filenames |
+
+## Parameter reference — `PlotSpatialFeaturePlots`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character vector | required | Genes to plot |
+| `layout_method` | character | `"auto"` | `"auto"` or `"metadata"` |
+| `row_var` | character | `NULL` | Row-grouping variable |
+| `output_dir` | character | `NULL` | Directory for saving |
+| `object_name` | character | `""` | Label used in filenames |
+| `subset_name` | character | `""` | Sub-label used in filenames |
+
+## Parameter reference — `PlotMasterMaps`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character vector | required | Genes to visualize |
+| `group.by` | character (vector) | `"seurat_clusters"` | Variable(s) for the UMAP orientation panel |
+| `colors` | named character | `NULL` | Override UMAP cluster colors |
+| `gene_colors` | character (length 2) | `c("grey","darkred")` | Zero and max expression colors |
+| `output_dir` | character | required | Directory for saving |
+| `object_name` | character | `""` | Label used in filenames |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` — register spatial cluster colors
+- Vignette 03: `PlotDimPlots` — UMAP-only equivalent for scRNA-seq
+- Vignette 04: `PlotFeaturePlots` — scRNA-seq gene expression on UMAP
+
+---
+
+## Session Info
+
+```{r session-info, eval=FALSE}
+sessionInfo()
+```

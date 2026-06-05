@@ -1,0 +1,374 @@
+---
+title: "scSidekick — Getting Started: PrepObject, ShowColors, GetColors"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{scSidekick — Getting Started: PrepObject, ShowColors, GetColors}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 7,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+`PrepObject()` is the foundation of every scSidekick workflow. Call it once
+after clustering and it stores a color palette, factor-level ordering, and
+default plotting parameters directly inside the Seurat object at
+`seurat_object@misc$nk_settings`. Every downstream scSidekick function reads
+from that slot when its own arguments are left `NULL` — so you never repeat
+color or grouping choices across dozens of plots.
+
+**In short:** run `PrepObject()` once → get consistent, publication-ready
+colors and layouts everywhere automatically.
+
+---
+
+## Installation and demo data
+
+```{r install, eval=FALSE}
+if (!require("devtools", quietly = TRUE)) install.packages("devtools")
+devtools::install_github("nourabdelfattah/scSidekick")
+```
+
+```{r load, echo=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(dplyr)
+```
+
+We use `bmcite`, a bone marrow CITE-seq dataset from SeuratData. It is small
+(~30 k cells) and already comes with rich metadata — `lane`, `donor`,
+`celltype.l1`, and `celltype.l2` — so we can demonstrate multi-variable
+workflows without manufacturing fake columns.
+
+```{r demo-data, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+```
+
+---
+
+## 1. Basic `PrepObject` call
+
+`PrepObject()` registers one or more metadata variables and assigns each level
+a distinct color from scSidekick's built-in palette. Pass a character vector
+to handle all your grouping columns at once.
+
+```{r prep-show, eval=FALSE}
+bmcite <- PrepObject(bmcite,
+  variables = c("lane", "donor", "celltype.l1", "celltype.l2"))
+```
+
+```{r prep-run, include=FALSE}
+bmcite <- PrepObject(bmcite,
+  variables = c("lane", "donor", "celltype.l1", "celltype.l2"))
+```
+
+After this call `bmcite@misc$nk_settings` holds a color map for each
+variable. Each variable gets its own independent palette and levels are
+stored as ordered factors, so axes and legends always appear in a consistent
+order. Inspect them with `ShowColors()` or `GetColors()` (see below).
+
+---
+
+## 2. Setting default plotting parameters
+
+`group.by`, `split.by`, `output_dir`, `object_name`, and `subset_name` store
+package-wide defaults that every plotting function inherits when those
+arguments are left `NULL`.
+
+```{r prep-defaults, eval=FALSE}
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  output_dir  = "./bmcite_Analysis/Figures",
+  object_name = "bmcite",
+  subset_name = "AllCells")
+```
+
+With these stored, a bare `PlotDimPlots(bmcite)` will group by cell type,
+split by donor, and save to the specified folder — no repeated arguments.
+
+---
+
+## 3. Standard Seurat processing
+
+You can add new variables (like `seurat_clusters`) to `PrepObject` later,
+after running the clustering pipeline. Here we process the object and use
+`Determine_nDims()` to pick the number of dimensions automatically.
+
+```{r standard-setup, include=FALSE}
+bmcite <- bmcite %>%
+  NormalizeData() %>%
+  FindVariableFeatures() %>%
+  ScaleData() %>%
+  RunPCA()
+```
+
+`Determine_nDims()` applies two heuristics to the PCA variance explained and
+returns the more conservative (lower) of the two. Blue numbers are the
+selected dimensions; orange are discarded.
+
+```{r determine-ndims}
+result <- Determine_nDims(bmcite, reduction = "pca")
+result$plot
+```
+
+```{r cluster, include=FALSE}
+bmcite <- RunUMAP(bmcite, dims = 1:result$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:result$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+
+# Register the new clusters variable
+bmcite <- PrepObject(bmcite, variables = "seurat_clusters")
+```
+
+---
+
+## 4. Inspect registered colors with `ShowColors()`
+
+`ShowColors()` renders a swatch grid for every variable stored in
+`nk_settings` — one panel per variable, levels on the y-axis. This is the
+fastest sanity check before generating figures.
+
+```{r show-colors, fig.height=8}
+ShowColors(bmcite)
+```
+
+---
+
+## 5. Custom colors
+
+Override any variable's palette with a named vector. Any level you omit falls
+back to the auto-palette, so you only specify the colors you care about.
+
+```{r custom-colors, eval=FALSE}
+my_cols <- c("CD4 T" = "#E41A1C", "CD8 T" = "#377EB8", "NK" = "#4DAF4A",
+             "B"     = "#984EA3", "Mono"  = "#FF7F00")
+
+bmcite <- PrepObject(bmcite,
+  variables     = "celltype.l1",
+  custom_colors = list(celltype.l1 = my_cols))
+```
+
+---
+
+## 6. Controlling factor level order
+
+`var_levels` sets the display order for any variable, controlling legend
+entries, axis ticks, and split panels. Levels you don't list are appended at
+the end.
+
+```{r level-order, eval=FALSE}
+bmcite <- PrepObject(bmcite,
+  variables  = c("celltype.l1", "donor"),
+  var_levels = list(
+    celltype.l1 = c("CD4 T", "CD8 T", "NK", "B", "Mono", "DC", "other T"),
+    donor       = c("d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8")
+  ))
+```
+
+---
+
+## 7. Retrieving colors programmatically with `GetColors()`
+
+`GetColors()` returns the named color vector for a variable, ready to pass
+into `scale_color_manual()` or any scSidekick `colors` argument.
+
+```{r get-colors}
+# Single variable
+ct_cols <- GetColors(bmcite, "celltype.l1")
+ct_cols
+
+# All registered variables at once
+all_cols <- GetColors(bmcite)
+names(all_cols)
+```
+
+---
+
+## 8. Forcing a rebuild
+
+Once `PrepObject()` has run, subsequent calls skip re-computation unless you
+pass `force = TRUE`. Use this after adding new metadata or changing cluster
+assignments.
+
+```{r force-rebuild, eval=FALSE}
+bmcite$Assignment <- dplyr::case_when(
+  bmcite$celltype.l1 == "CD4 T" ~ "Helper T",
+  bmcite$celltype.l1 == "CD8 T" ~ "Cytotoxic T",
+  TRUE ~ bmcite$celltype.l1
+)
+
+bmcite <- PrepObject(bmcite,
+  variables = c("celltype.l1", "celltype.l2", "seurat_clusters", "Assignment"),
+  force     = TRUE)
+```
+
+---
+
+## 9. Recommended full pipeline
+
+This is a reference workflow for a real multi-sample project. Every step uses
+a scSidekick function; the Seurat processing steps in the middle are standard.
+Nothing here runs — it is a template you copy and adapt.
+
+```{r full-pipeline, eval=FALSE}
+library(scSidekick)
+library(Seurat)
+library(harmony)
+library(presto)
+
+# ── 1. Load raw 10x data ─────────────────────────────────────────────────────
+SeuratObj <- LoadSamplesRNA(
+  sample_dirs  = list.files("path/to/10x_dirs", full.names = TRUE),
+  sample_names = c("HC1", "HC2", "AD1", "AD2"),
+  metadata     = data.frame(
+    Sample = c("HC1", "HC2", "AD1", "AD2"),
+    Group  = c("HC",  "HC",  "AD",  "AD"),
+    Batch  = c(1, 1, 2, 2)
+  )
+)
+
+# ── 2. QC ─────────────────────────────────────────────────────────────────────
+PlotQCMetrics(SeuratObj, group.by = "Sample", output_dir = "./Figures/QC")
+# Inspect the QC plots, then filter:
+SeuratObj <- subset(SeuratObj, subset = DoubletStatus == "singlet" & miQC.keep == "keep")
+
+# ── 3. Normalize & reduce ─────────────────────────────────────────────────────
+SeuratObj <- NormalizeData(SeuratObj) %>%
+  FindVariableFeatures(nfeatures = 2000) %>%
+  ScaleData(vars.to.regress = c("S.Score", "G2M.Score", "percent.mt")) %>%
+  RunPCA(npcs = 50)
+
+# ── 4. (Optional) Harmony batch correction ────────────────────────────────────
+SeuratObj <- harmony::RunHarmony(SeuratObj, group.by.vars = c("Sample", "Batch"))
+
+# ── 5. Choose dimensions ──────────────────────────────────────────────────────
+dims <- Determine_nDims(SeuratObj, reduction = "harmony")  # or "pca"
+dims$plot   # inspect the elbow
+
+SeuratObj <- RunUMAP(SeuratObj,       dims = 1:dims$n_dims, reduction = "harmony")
+SeuratObj <- FindNeighbors(SeuratObj, dims = 1:dims$n_dims, reduction = "harmony")
+SeuratObj <- FindClusters(SeuratObj,  resolution = 0.5)
+
+# ── 6. Register colors & defaults ─────────────────────────────────────────────
+SeuratObj <- PrepObject(SeuratObj,
+  variables   = c("Sample", "Group", "seurat_clusters"),
+  group.by    = "seurat_clusters",
+  split.by    = "Sample",
+  output_dir  = "./Figures",
+  object_name = "MyProject")
+ShowColors(SeuratObj)
+
+# ── 7. Explore & visualize ────────────────────────────────────────────────────
+PlotDimPlots(SeuratObj,
+  group.by   = c("seurat_clusters", "Sample", "Group"),
+  show_trend = TRUE)
+
+# ── 8. Marker genes & annotation ──────────────────────────────────────────────
+GroupHeatmap(SeuratObj, group.by = "seurat_clusters")
+
+markers_df <- data.frame(
+  Genes    = c("CD3E", "CD4", "CD8A", "NKG7", "CD79A", "LYZ", "S100A8"),
+  CellType = c("T",    "T",   "T",    "NK",   "B",     "Mono","Mono")
+)
+SplitDotPlot(SeuratObj, markers_df = markers_df, group.by = "seurat_clusters")
+
+de <- wilcoxauc(SeuratObj, group_by = "seurat_clusters")
+SeuratObj <- CellTypeAssignmentHelper(SeuratObj,
+  markers        = de,
+  cluster_column = "seurat_clusters",
+  sctype_tissues = "Immune system",
+  output_dir     = "./Figures/Annotation")
+
+# ── 9. Finalize labels, update PrepObject ─────────────────────────────────────
+SeuratObj$CellType <- dplyr::recode(SeuratObj$seurat_clusters,
+  `0` = "CD4 T", `1` = "Monocyte", `2` = "NK", `3` = "B", ...)
+
+SeuratObj <- PrepObject(SeuratObj,
+  variables = c("seurat_clusters", "Sample", "Group", "CellType"),
+  group.by  = "CellType",
+  force     = TRUE)
+
+PlotDimPlots(SeuratObj, group.by = c("CellType", "Sample", "Group"), show_trend = TRUE)
+
+# ── 10. Feature maps ──────────────────────────────────────────────────────────
+PlotFeaturePlots(SeuratObj,
+  features = c("CD3E", "CD4", "CD8A", "NKG7", "CD79A", "LYZ"),
+  split.by = "Sample")
+
+# ── 11. Composition ───────────────────────────────────────────────────────────
+PlotTrendLabeled(SeuratObj,
+  stat.by  = "CellType",
+  group.by = "Group",
+  split.by = "Sample")
+
+# ── 12. Pathway analysis ──────────────────────────────────────────────────────
+RunGSEA(SeuratObj,
+  group.by   = "CellType",
+  split.by   = NULL,
+  output_dir = "./Figures/Pathways")
+
+# ── 13. Cell-cell communication ───────────────────────────────────────────────
+cc_results <- RunCellChat(SeuratObj,
+  cell.by    = "CellType",
+  group.by   = "Group",
+  groups     = c("HC", "AD"),
+  output_dir = "./Figures/CellChat")
+
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir    = "./Figures/CellChat/Comparison")
+
+# ── 14. Assemble slide deck ───────────────────────────────────────────────────
+create_analysis_pptx(output_dir = "./Figures", object_name = "MyProject")
+```
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `variables` | character vector | required | `meta.data` column names to register |
+| `palettes` | character | `"auto"` | Palette strategy; `"auto"` uses `Nour18` |
+| `reverse` | logical | `FALSE` | Reverse color order for auto-assigned palettes |
+| `custom_colors` | named list | `list()` | Named color vectors per variable |
+| `var_levels` | named list | `list()` | Level orderings per variable |
+| `group.by` | character | `NULL` | Default grouping variable |
+| `split.by` | character | `NULL` | Default split variable |
+| `output_dir` | character | `NULL` | Default output directory |
+| `object_name` | character | `NULL` | Label used in saved filenames |
+| `subset_name` | character | `NULL` | Sub-label used in saved filenames |
+| `force` | logical | `FALSE` | Re-run even if `nk_settings` already exists |
+
+---
+
+## See also
+
+- Vignette 02: `Determine_nDims()` in the context of dimensionality reduction
+- Vignette 03: `PlotDimPlots()` — UMAP visualization using colors from `PrepObject`
+- Vignette 10: `Nour_pal()` and `Nour_cols()` for palette utilities
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```
