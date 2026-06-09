@@ -23,7 +23,7 @@ create_analysis_pptx(
 
 \item{params_json}{Character or \code{NULL}. Path to \code{analysis_params.json}.
 When \code{NULL} (default) the function walks up the directory tree from
-\code{output_dir} until it finds the file — this lets you call
+\code{output_dir} until it finds the file - this lets you call
 \code{create_analysis_pptx} on a sub-folder (e.g., the CellChat or GSEA
 output directory) and still get the shared analysis parameters from the
 parent folder.}
@@ -42,28 +42,35 @@ inches. When provided these override \code{slide_format}.}
 \item{pdf_density}{Integer. DPI used when rasterising PDFs.  Increase
 (e.g. \code{200}) for sharper figures at the cost of speed. Default \code{150}.}
 
+\item{include_legends}{Logical. If \code{TRUE} (default), a legend sentence is
+placed below each figure slide, sourced from the \code{.legend} sidecar file
+beside the PDF or from auto-generated fallback templates.}
+
+\item{legend_font_size}{Numeric. Font size in points for the legend text
+box on each slide. Default \code{8}.}
+
 \item{include}{Character vector or \code{NULL}. Section names to include; all
 other sections are dropped. When \code{NULL} (default) all sections are
-included. PDFs are assigned to sections by filename pattern matching —
+included. PDFs are assigned to sections by filename pattern matching -
 see \code{.pptx_section_rules} for the rules. Valid section names:
 \itemize{
-\item \code{"Quality Control"} — QC density plots, doublet scores, filtration
+\item \code{"Quality Control"} - QC density plots, doublet scores, filtration
 barplots
-\item \code{"Dimensionality Reduction"} — PCA elbow, UMAP before/after
+\item \code{"Dimensionality Reduction"} - PCA elbow, UMAP before/after
 Harmony, RNA UMAPs
-\item \code{"Cluster Markers"} — ComplexHeatmap heatmaps, presto marker
+\item \code{"Cluster Markers"} - ComplexHeatmap heatmaps, presto marker
 tables
-\item \code{"Dotplots"} — any PDF with "dotplot" in the filename
-\item \code{"Cell Type Annotation"} — AutoAssignment UMAPs, SingleR, scType,
+\item \code{"Dotplots"} - any PDF with "dotplot" in the filename
+\item \code{"Cell Type Annotation"} - AutoAssignment UMAPs, SingleR, scType,
 featureheatmaps, assignment helper
-\item \code{"All UMAPs"} — the combined multi-panel UMAP PDF
-\item \code{"Composition"} — barplots, chord diagrams, rose/trend plots,
+\item \code{"All UMAPs"} - the combined multi-panel UMAP PDF
+\item \code{"Composition"} - barplots, chord diagrams, rose/trend plots,
 iteration-with-bar figures
-\item \code{"Feature Maps"} — GenerateFeatureMaps per-gene UMAPs
-\item \code{"Pathway Analysis"} — GSEA heatmaps and lollipop PDFs
-\item \code{"CellChat"} — RunCellChat, CompareCellChat, and
+\item \code{"Feature Maps"} - GenerateFeatureMaps per-gene UMAPs
+\item \code{"Pathway Analysis"} - GSEA heatmaps and lollipop PDFs
+\item \code{"CellChat"} - RunCellChat, CompareCellChat, and
 RankCellChatPathways output PDFs
-\item \code{"Other"} — anything not matched by the rules above
+\item \code{"Other"} - anything not matched by the rules above
 }}
 
 \item{exclude}{Character vector or \code{NULL}. Section names to drop (applied

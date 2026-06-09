@@ -13,14 +13,23 @@ PlotTrendLabeled(
   group.levels = NULL,
   label.side = "right",
   bar.width = 0.6,
-  label.size = 3.5,
-  label.nudge = 0.3,
-  label.margin = 80,
+  label.size = 3,
+  label.nudge = 0.1,
+  label.margin = 120,
   segment.size = 0.4,
   max.overlaps = 100,
+  hjust = 1,
   show.legend = FALSE,
   border.size = 0.5,
-  base_size = 12
+  base_size = 12,
+  nrow = NULL,
+  ncol = NULL,
+  output_dir = NULL,
+  file_name = NULL,
+  object_name = NULL,
+  subset_name = NULL,
+  width = NULL,
+  height = NULL
 )
 }
 \arguments{
@@ -56,15 +65,34 @@ Default \code{80}.}
 \item{max.overlaps}{Integer. Passed to \code{\link[ggrepel:geom_text_repel]{ggrepel::geom_text_repel()}}.
 Default \code{100}.}
 
+\item{hjust}{Numeric. Horizontal justification for ggrepel labels (0 =
+left-aligned, 1 = right-aligned). Default \code{1}.}
+
 \item{show.legend}{Logical. Show a fill legend? Default \code{FALSE} (labels
 replace the legend).}
 
 \item{border.size}{Numeric. Panel border line width. Default \code{0.5}.}
 
 \item{base_size}{Numeric. Base font size. Default \code{12}.}
+
+\item{nrow, ncol}{Integer or \code{NULL}. Number of rows/columns for the panel
+grid. \code{NULL} (default) auto-arranges into a single row.}
+
+\item{output_dir}{Character or \code{NULL}. Directory to save the PDF. Walks up
+from \code{PrepObject()} settings when \code{NULL}.}
+
+\item{file_name}{Character or \code{NULL}. Base filename (no extension). Auto-
+deduced from \code{object_name}, \code{subset_name}, and column names when \code{NULL}.}
+
+\item{object_name}{Character. Prefix for the auto-deduced filename.}
+
+\item{subset_name}{Character. Second prefix component.}
+
+\item{width, height}{Numeric. PDF dimensions in inches. Auto-sized when \code{NULL}.}
 }
 \value{
-A patchwork object (one panel per \code{split.by} level).
+A patchwork object (one panel per \code{split.by} level). Returns
+invisibly when saved to disk.
 }
 \description{
 Computes cell-type proportions across ordered levels of a grouping variable

@@ -1,11 +1,11 @@
 ---
-title: "scSidekick — Getting Started: PrepObject, ShowColors, GetColors"
+title: "scSidekick - Getting Started: PrepObject, ShowColors, GetColors"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{scSidekick — Getting Started: PrepObject, ShowColors, GetColors}
+  %\VignetteIndexEntry{scSidekick - Getting Started: PrepObject, ShowColors, GetColors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -23,15 +23,38 @@ options(cli.width = 80)
 
 ## Overview
 
-`PrepObject()` is the foundation of every scSidekick workflow. Call it once
-after clustering and it stores a color palette, factor-level ordering, and
-default plotting parameters directly inside the Seurat object at
-`seurat_object@misc$nk_settings`. Every downstream scSidekick function reads
-from that slot when its own arguments are left `NULL` — so you never repeat
-color or grouping choices across dozens of plots.
+scSidekick is built around one idea: **configure your project once, and every
+downstream step inherits that configuration automatically** - not just colors
+and layouts, but a full reproducibility trail.
 
-**In short:** run `PrepObject()` once → get consistent, publication-ready
-colors and layouts everywhere automatically.
+After a single setup call, the following come for free as byproducts of ordinary
+plotting and analysis:
+
+- **Consistent, publication-ready figures** - one palette and factor ordering
+  shared across every plot, single-cell and spatial alike, with no repeated
+  `scale_color_manual()` or `group.by` arguments.
+- **A plain-text `.legend` sidecar** written next to every saved figure,
+  describing exactly what was plotted - so you never reverse-engineer a figure
+  at paper time (see *Reporting & Utilities*).
+- **A draft methods paragraph** reconstructed from the Seurat command history
+  with `ExtractMethods()`.
+- **A recoverable session log** - `start_session_logger()` captures the commands
+  and figures of a session so an interrupted analysis can be rebuilt, and
+  `summarize_r_session()` turns it into a clean report and a runnable R script.
+- **A one-call slide deck** - `create_analysis_pptx()` assembles your saved
+  figures into a sectioned PowerPoint for the next lab meeting.
+
+`PrepObject()` is the engine that makes all of this possible. Call it once after
+clustering and it stores a color palette, factor-level ordering, an output
+directory, and default plotting parameters directly inside the Seurat object at
+`seurat_object@misc$nk_settings`. Every downstream scSidekick function reads from
+that slot when its own arguments are left `NULL` - so you set your project's look
+and behavior a single time, and never repeat it. Learn `PrepObject()` here; the
+rest of the package builds on it.
+
+**In short:** run `PrepObject()` once -> consistent figures, auto-written
+legends, a methods paragraph, a recoverable session log, and a slide deck all
+follow automatically.
 
 ---
 
@@ -50,8 +73,8 @@ library(dplyr)
 ```
 
 We use `bmcite`, a bone marrow CITE-seq dataset from SeuratData. It is small
-(~30 k cells) and already comes with rich metadata — `lane`, `donor`,
-`celltype.l1`, and `celltype.l2` — so we can demonstrate multi-variable
+(~30 k cells) and already comes with rich metadata - `lane`, `donor`,
+`celltype.l1`, and `celltype.l2` - so we can demonstrate multi-variable
 workflows without manufacturing fake columns.
 
 ```{r demo-data, include=FALSE}
@@ -101,7 +124,7 @@ bmcite <- PrepObject(bmcite,
 ```
 
 With these stored, a bare `PlotDimPlots(bmcite)` will group by cell type,
-split by donor, and save to the specified folder — no repeated arguments.
+split by donor, and save to the specified folder - no repeated arguments.
 
 ---
 
@@ -142,7 +165,7 @@ bmcite <- PrepObject(bmcite, variables = "seurat_clusters")
 ## 4. Inspect registered colors with `ShowColors()`
 
 `ShowColors()` renders a swatch grid for every variable stored in
-`nk_settings` — one panel per variable, levels on the y-axis. This is the
+`nk_settings` - one panel per variable, levels on the y-axis. This is the
 fastest sanity check before generating figures.
 
 ```{r show-colors, fig.height=8}
@@ -225,13 +248,12 @@ bmcite <- PrepObject(bmcite,
 
 This is a reference workflow for a real multi-sample project. Every step uses
 a scSidekick function; the Seurat processing steps in the middle are standard.
-Nothing here runs — it is a template you copy and adapt.
+Nothing here runs - it is a template you copy and adapt.
 
 ```{r full-pipeline, eval=FALSE}
 library(scSidekick)
 library(Seurat)
 library(harmony)
-library(presto)
 
 # ── 1. Load raw 10x data ─────────────────────────────────────────────────────
 SeuratObj <- LoadSamplesRNA(
@@ -289,7 +311,7 @@ markers_df <- data.frame(
 )
 SplitDotPlot(SeuratObj, markers_df = markers_df, group.by = "seurat_clusters")
 
-de <- wilcoxauc(SeuratObj, group_by = "seurat_clusters")
+de <- RunWilcoxAUC(SeuratObj, group.by = "seurat_clusters")
 SeuratObj <- CellTypeAssignmentHelper(SeuratObj,
   markers        = de,
   cluster_column = "seurat_clusters",
@@ -362,8 +384,12 @@ create_analysis_pptx(output_dir = "./Figures", object_name = "MyProject")
 ## See also
 
 - Vignette 02: `Determine_nDims()` in the context of dimensionality reduction
-- Vignette 03: `PlotDimPlots()` — UMAP visualization using colors from `PrepObject`
-- Vignette 10: `Nour_pal()` and `Nour_cols()` for palette utilities
+- Vignette 03: `PlotDimPlots()` - UMAP visualization using colors from `PrepObject`
+- Vignette 07: Spatial Transcriptomics - the same settings drive combined
+  single-cell and spatial figures (`PlotMasterMaps`, `GenerateMasterGeneMaps`)
+- Vignette 12: Reporting & Utilities - the reproducibility layer in full:
+  `ExtractMethods()`, the auto-written `.legend` sidecars, the session logger,
+  `create_analysis_pptx()`, and the `Nour_pal()` / `Nour_cols()` palette utilities
 
 ---
 

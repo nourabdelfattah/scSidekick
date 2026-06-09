@@ -1,13 +1,13 @@
 # =============================================================================
-# scSidekick — Leading-Edge Visualization  (pathway_leadingedge.R)
+# scSidekick - Leading-Edge Visualization  (pathway_leadingedge.R)
 #
 # Exported:
-#   StackedVlnPlot()        — stacked per-feature violin plots (patchwork)
-#   VisualizeLeadingEdge()  — loads GSEA CSVs, extracts leading-edge genes,
+#   StackedVlnPlot()        - stacked per-feature violin plots (patchwork)
+#   VisualizeLeadingEdge()  - loads GSEA CSVs, extracts leading-edge genes,
 #                             heatmap + optional DEG bonus plots
 #
 # Internal helpers:
-#   .parse_leading_edge()   — parse serialized leadingEdge column from fgsea CSV
+#   .parse_leading_edge()   - parse serialized leadingEdge column from fgsea CSV
 # =============================================================================
 
 
@@ -45,7 +45,7 @@
 #' @param seurat_object A Seurat object.
 #' @param features Character vector of features (genes) to plot. One panel per
 #'   feature.
-#' @param pt.size Jitter point size (default \code{0} — no points).
+#' @param pt.size Jitter point size (default \code{0} - no points).
 #' @param plot.margin Plot margin around each panel as a
 #'   \code{grid::unit} object (default \code{unit(c(-0.75, 0, -0.75, 0), "cm")}).
 #'   Negative top/bottom values collapse space between stacked panels.
@@ -71,17 +71,17 @@ StackedVlnPlot <- function(
     axis.title.x     = ggplot2::element_blank(),
     axis.title.y     = ggplot2::element_text(
       size   = ggplot2::rel(1), angle = 0,
-      face   = "bold", colour = "black",
+      face   = "bold", color = "black",
       vjust  = 0.5
     ),
     axis.text.y      = ggplot2::element_text(size = ggplot2::rel(0.85),
-                                              colour = "black"),
+                                              color = "black"),
     panel.grid.major = ggplot2::element_blank(),
     panel.grid.minor = ggplot2::element_blank(),
     panel.background = ggplot2::element_blank(),
-    axis.line        = ggplot2::element_line(colour = "black", linewidth = 0.4),
-    strip.background = ggplot2::element_rect(fill = NA, colour = NA),
-    strip.text       = ggplot2::element_text(colour = "black",
+    axis.line        = ggplot2::element_line(color = "black", linewidth = 0.4),
+    strip.background = ggplot2::element_rect(fill = NA, color = NA),
+    strip.text       = ggplot2::element_text(color = "black",
                                               size = ggplot2::rel(1.1)),
     plot.margin      = plot.margin
   )
@@ -106,7 +106,7 @@ StackedVlnPlot <- function(
   plot_list[[n]] <- plot_list[[n]] +
     ggplot2::theme(
       axis.text.x  = ggplot2::element_text(
-        colour = "black", angle = 25, hjust = 1,
+        color = "black", angle = 25, hjust = 1,
         size   = ggplot2::rel(0.9), face = "bold"
       ),
       axis.ticks.x = ggplot2::element_line()
@@ -140,7 +140,7 @@ StackedVlnPlot <- function(
 #'
 #' @section Pathway search:
 #' \describe{
-#'   \item{\code{search_terms} as a character vector}{OR logic — any term
+#'   \item{\code{search_terms} as a character vector}{OR logic - any term
 #'     matches, case-insensitive.}
 #'   \item{\code{search_terms} as a list of character vectors}{Each element is
 #'     an AND-group (all terms must appear in the same pathway name); results are
@@ -195,6 +195,18 @@ StackedVlnPlot <- function(
 #' @param add_feature_maps Logical; produce per-gene \code{FeaturePlot} PDFs
 #'   for the top DEG genes (default \code{FALSE}; can be slow for large gene
 #'   sets).
+#' @param heatmap_type Character. Either \code{"cell"} (default) for a
+#'   per-cell heatmap with cells ordered by \code{group.by} (then
+#'   \code{split.by}), or \code{"group"} for a compact group-mean heatmap
+#'   with one column per \code{group.by} x \code{split.by} combination.
+#' @param heatmap_column_split Character or \code{NULL}. Metadata column used
+#'   to split heatmap columns into labelled sections (e.g. a diagnosis or
+#'   timepoint variable). Only applies when \code{heatmap_type = "cell"}.
+#'   Default \code{NULL}.
+#' @param show_pathway_annotation Logical. When \code{TRUE} (default), a
+#'   colored annotation bar is drawn on the right of each heatmap showing
+#'   which source pathway each gene belongs to. Suppressed automatically when
+#'   only one pathway is matched.
 #' @param group_colors Named character vector of colors for \code{group.by}
 #'   levels. Auto-assigned from \code{Nour_pal("all")} if \code{NULL}.
 #' @param split_colors Named character vector of colors for \code{split.by}
@@ -246,6 +258,9 @@ VisualizeLeadingEdge <- function(
     add_boxplots    = TRUE,
     add_pvalues     = TRUE,
     add_feature_maps = FALSE,
+    heatmap_type           = c("cell", "group"),
+    heatmap_column_split   = NULL,
+    show_pathway_annotation = TRUE,
     group_colors    = NULL,
     split_colors    = NULL,
     heatmap_params  = list(
@@ -260,7 +275,22 @@ VisualizeLeadingEdge <- function(
 
   # ── 0. Validate inputs ─────────────────────────────────────────────────────
   if (missing(gsea_files) || length(gsea_files) == 0)
-    stop("Provide at least one CSV path in 'gsea_files'.")
+    stop("Provide at least one CSV path (or a directory containing GSEA CSVs) in 'gsea_files'.")
+
+  # Auto-expand: if any element is a directory, replace it with all CSVs inside
+  gsea_files <- unlist(lapply(gsea_files, function(p) {
+    p <- path.expand(p)
+    if (dir.exists(p)) {
+      found <- list.files(p, pattern = "\\.csv$", recursive = TRUE, full.names = TRUE)
+      if (length(found) == 0L)
+        stop("No .csv files found under directory: ", p)
+      message("scSidekick: Found ", length(found), " CSV(s) under ", p)
+      found
+    } else {
+      p
+    }
+  }))
+
   missing_files <- gsea_files[!file.exists(gsea_files)]
   if (length(missing_files) > 0)
     stop("File(s) not found:\n  ", paste(missing_files, collapse = "\n  "))
@@ -280,15 +310,30 @@ VisualizeLeadingEdge <- function(
   }
 
   # ── 2. Load CSVs ──────────────────────────────────────────────────────────
-  message("\nStep 1 | Loading ", length(gsea_files), " GSEA CSV(s)...")
-  all_rows <- lapply(seq_along(gsea_files), function(i) {
-    df <- utils::read.csv(gsea_files[i], stringsAsFactors = FALSE)
-    required_cols <- c("pathway", "leadingEdge")
-    missing_cols  <- setdiff(required_cols, names(df))
-    if (length(missing_cols) > 0)
-      stop("File '", basename(gsea_files[i]), "' is missing columns: ",
-           paste(missing_cols, collapse = ", "))
-    df$._src_file <- basename(gsea_files[i])
+  # Pre-filter: read only the header row of each CSV (fast) to silently skip
+  # non-GSEA files (leading_edge_genes.csv, DEG tables, etc.) that accumulate
+  # in the directory tree from previous VisualizeLeadingEdge runs.
+  required_cols <- c("pathway", "leadingEdge")
+  .has_gsea_cols <- function(path) {
+    hdr <- tryCatch(colnames(utils::read.csv(path, nrows = 0L)),
+                    error = function(e) character(0))
+    all(required_cols %in% hdr)
+  }
+  gsea_files_valid <- gsea_files[vapply(gsea_files, .has_gsea_cols, logical(1L))]
+  n_skip <- length(gsea_files) - length(gsea_files_valid)
+
+  if (n_skip > 0L)
+    message("  Skipped ", n_skip, " CSV(s) without 'pathway'/'leadingEdge' columns",
+            " (output files from earlier runs, DEG tables, etc.).")
+
+  if (length(gsea_files_valid) == 0L)
+    stop("No valid GSEA CSV files found. Files must contain 'pathway' and ",
+         "'leadingEdge' columns (as produced by RunGSEA / RunGSEA_pseudobulk).")
+
+  message("\nStep 1 | Loading ", length(gsea_files_valid), " GSEA CSV(s)...")
+  all_rows <- lapply(seq_along(gsea_files_valid), function(i) {
+    df <- utils::read.csv(gsea_files_valid[i], stringsAsFactors = FALSE)
+    df$._src_file <- basename(gsea_files_valid[i])
     df
   })
   all_df <- do.call(rbind, all_rows)
@@ -321,17 +366,34 @@ VisualizeLeadingEdge <- function(
   message("  Union of leading-edge genes across all rows: ", length(le_genes))
 
   # ── 5. Create output subfolder ────────────────────────────────────────────
-  lbl     <- gsub("[^A-Za-z0-9_-]", "_", term_label)
-  lbl     <- gsub("_+", "_", lbl)
+  heatmap_type <- match.arg(heatmap_type)
+
+  lbl      <- gsub("[^A-Za-z0-9_-]", "_", term_label)
+  lbl      <- gsub("_+", "_", lbl)
+  grp_safe <- gsub("[^A-Za-z0-9_-]", "_", group.by)
+  spl_safe <- if (!is.null(split.by)) gsub("[^A-Za-z0-9_-]", "_", split.by) else NULL
+
   pfx_parts <- c(object_name, subset_name)
-  pfx     <- paste(pfx_parts[nchar(pfx_parts) > 0], collapse = "_")
-  out_sub <- file.path(output_dir, paste0(pfx, "_LeadingEdge_", lbl))
+  pfx       <- paste(pfx_parts[nchar(pfx_parts) > 0], collapse = "_")
+
+  # Folder: {pfx}_LeadingEdge_{search}_{group}_{split}
+  folder_parts <- c(if (nchar(pfx) > 0) pfx, "LeadingEdge", lbl, grp_safe, spl_safe)
+  out_sub      <- file.path(output_dir,
+                             paste(folder_parts[!sapply(folder_parts, is.null)],
+                                   collapse = "_"))
   dir.create(out_sub, showWarnings = FALSE, recursive = TRUE)
+
+  # Base string reused in all output file names
+  fname_base <- paste(c(lbl, grp_safe, spl_safe)[!sapply(c(lbl, grp_safe, spl_safe), is.null)],
+                      collapse = "_")
 
   # ── 6. Pull expression matrix ─────────────────────────────────────────────
   message("\nStep 3 | Extracting expression matrix...")
-  # .get_layer_data() handles Seurat v3/v5/BPCells transparently
-  mat_full <- .get_layer_data(seurat_object, assay = assay, layer = layer)
+  # Pass features= so BPCells subsets rows LAZILY before materialising -
+  # avoids loading the full 30k-gene matrix into RAM (one sequential scan only).
+  # .get_layer_data() handles Seurat v3/v5/BPCells transparently.
+  mat_full <- .get_layer_data(seurat_object, assay = assay, layer = layer,
+                               features = le_genes)
 
   genes_present <- intersect(le_genes, rownames(mat_full))
   n_missing     <- length(le_genes) - length(genes_present)
@@ -340,12 +402,25 @@ VisualizeLeadingEdge <- function(
          assay, " assay, ", layer, " layer).")
   message("  ", length(genes_present), " / ", length(le_genes),
           " leading-edge genes found in the object",
-          if (n_missing > 0) paste0(" (", n_missing, " not found — check species/assay)") else ".")
+          if (n_missing > 0) paste0(" (", n_missing, " not found - check species/assay)") else ".")
 
-  # Save full gene list
+  # Save full gene list with all pathway memberships
+  # (annotation bar uses primary pathway only; full list preserved here)
+  all_pw_rows2 <- Filter(Negate(is.null), lapply(seq_len(nrow(all_df)), function(i) {
+    gns <- .parse_leading_edge(all_df$leadingEdge[i])
+    if (length(gns) == 0L) return(NULL)
+    data.frame(gene = gns, pathway = all_df$pathway[i], stringsAsFactors = FALSE)
+  }))
+  all_pw_df2 <- do.call(rbind, all_pw_rows2)
+  all_pw_map2 <- if (nrow(all_pw_df2) > 0)
+    tapply(all_pw_df2$pathway, all_pw_df2$gene,
+           function(pws) paste(unique(pws), collapse = " | "))
+  else setNames(rep(NA_character_, length(le_genes)), le_genes)
+
   utils::write.csv(
-    data.frame(gene       = le_genes,
-               in_object  = le_genes %in% rownames(mat_full),
+    data.frame(gene      = le_genes,
+               in_object = le_genes %in% rownames(mat_full),
+               pathways  = as.character(all_pw_map2[le_genes]),
                stringsAsFactors = FALSE),
     file.path(out_sub, "leading_edge_genes.csv"),
     row.names = FALSE
@@ -363,7 +438,75 @@ VisualizeLeadingEdge <- function(
 
   genes_all <- rownames(mat_sub)
 
-  # ── 7. Metadata — factor levels & column ordering ─────────────────────────
+  # ── 6b. Gene → pathway mapping (for row annotation / row split) ───────────
+  # Each gene can appear in multiple pathways; we record all of them.
+  pw_rows <- Filter(Negate(is.null), lapply(seq_len(nrow(all_df)), function(i) {
+    gns <- .parse_leading_edge(all_df$leadingEdge[i])
+    if (length(gns) == 0L) return(NULL)
+    data.frame(gene = gns, pathway = all_df$pathway[i], stringsAsFactors = FALSE)
+  }))
+  gene_pw_df  <- do.call(rbind, pw_rows)
+  gene_pw_df  <- gene_pw_df[gene_pw_df$gene %in% genes_all, , drop = FALSE]
+
+  # Primary pathway per gene = FIRST pathway it appears in (by pw_levels order).
+  # Genes can belong to multiple pathways; using a single label here ensures
+  # every gene maps to a defined color in pw_colors.  Full multi-pathway
+  # membership is preserved in leading_edge_genes.csv.
+  pw_levels  <- unique(all_df$pathway)         # ordered by first appearance
+  n_pathways <- length(pw_levels)
+  gene_pw_map <- if (nrow(gene_pw_df) > 0) {
+    # Order rows so earlier-appearing pathways come first, then take [1]
+    gene_pw_df_ord <- gene_pw_df[order(match(gene_pw_df$pathway, pw_levels)), ]
+    tapply(gene_pw_df_ord$pathway, gene_pw_df_ord$gene,
+           function(pws) pws[[1L]])
+  } else {
+    stats::setNames(rep("Unknown", length(genes_all)), genes_all)
+  }
+
+  # Pathway color palette
+  pw_colors <- stats::setNames(
+    Nour_pal(if (n_pathways <= 8) "all" else "spectrum")(n_pathways),
+    pw_levels)
+  pw_colors["Unknown"] <- "gray80"
+
+  # Pre-compute wrapped pathway name labels (used in row_split section titles).
+  # Replace underscores with spaces and word-wrap at ~22 chars so horizontal
+  # row titles (row_title_rot = 0) don't blow out the left margin.
+  .wrap_pw <- function(pw, width = 22L)
+    paste(strwrap(gsub("_", " ", pw), width = width), collapse = "\n")
+  pw_labels_wrapped <- stats::setNames(
+    vapply(c(pw_levels, "Unknown"), .wrap_pw, character(1L)),
+    c(pw_levels, "Unknown")
+  )
+
+  # Helper - row annotation (colored bar on the right, no legend - the row
+  # section titles already carry the pathway name, legend is redundant)
+  .make_row_anno <- function(genes_vec) {
+    if (!isTRUE(show_pathway_annotation) || n_pathways == 0L) return(NULL)
+    pw_vals <- as.character(gene_pw_map[genes_vec])
+    pw_vals[is.na(pw_vals)] <- "Unknown"
+    ComplexHeatmap::rowAnnotation(
+      Pathway              = pw_vals,
+      col                  = list(Pathway = pw_colors),
+      show_annotation_name = FALSE,   # name shown as row-section title already
+      simple_anno_size     = grid::unit(4, "mm"),
+      show_legend          = FALSE    # row-section titles make legend redundant
+    )
+  }
+
+  # Helper - row split factor using WRAPPED labels as levels so ComplexHeatmap
+  # displays them as horizontal section titles (only when >1 pathway)
+  .make_row_split <- function(genes_vec) {
+    if (n_pathways <= 1L) return(NULL)
+    pw_vals <- as.character(gene_pw_map[genes_vec])
+    pw_vals[is.na(pw_vals)] <- "Unknown"
+    # Map original names → wrapped names for display
+    wrapped_vals   <- pw_labels_wrapped[pw_vals]
+    wrapped_levels <- pw_labels_wrapped[c(pw_levels, "Unknown")]
+    factor(wrapped_vals, levels = wrapped_levels)
+  }
+
+  # ── 7. Metadata - factor levels & column ordering ─────────────────────────
   meta <- seurat_object@meta.data
 
   .get_levels <- function(col_name) {
@@ -390,7 +533,7 @@ VisualizeLeadingEdge <- function(
   mat_centered <- mat_ord - rowMeans(mat_ord)
   mat_centered  <- stats::na.omit(mat_centered)
 
-  # ── 8. Colors — priority: explicit arg > PrepObject stored > Nour_pal auto ──
+  # ── 8. Colors - priority: explicit arg > PrepObject stored > Nour_pal auto ──
   n_grp <- length(group_levels)
   n_spl <- length(split_levels)
   if (is.null(group_colors))
@@ -432,12 +575,23 @@ VisualizeLeadingEdge <- function(
     ))
   }
 
-  # ── 10. Shared heatmap arguments ──────────────────────────────────────────
+  # ── 10. Heatmap helpers ────────────────────────────────────────────────────
   col_fun <- circlize::colorRamp2(c(-2, 0, 2),
                                    c("#007dd1", "white", "#ab3000"))
 
+  # Validate heatmap_column_split
+  if (!is.null(heatmap_column_split) &&
+      !heatmap_column_split %in% colnames(seurat_object@meta.data)) {
+    warning("'heatmap_column_split' column '", heatmap_column_split,
+            "' not found in metadata - ignoring.")
+    heatmap_column_split <- NULL
+  }
+
+  # ── 10a. Per-cell heatmap ──────────────────────────────────────────────────
   .make_heatmap <- function(mat, title_str) {
-    n_g <- nrow(mat)
+    genes_vec <- rownames(mat)
+    n_g       <- length(genes_vec)
+
     default_args <- list(
       matrix            = as.matrix(mat),
       name              = "logcounts\n(centered)",
@@ -453,22 +607,142 @@ VisualizeLeadingEdge <- function(
       column_title      = title_str,
       row_names_side      = "left",
       show_row_dend       = FALSE,
-      row_names_max_width = grid::unit(15, "cm")
+      row_names_max_width = grid::unit(15, "cm"),
+      # Row section titles: horizontal so wrapped names fit without eating margins
+      row_title_rot     = 0,
+      row_title_gp      = grid::gpar(fontsize = 8, fontface = "bold")
     )
+
+    # Pathway row annotation + row split
+    row_anno  <- .make_row_anno(genes_vec)
+    row_split <- .make_row_split(genes_vec)
+    if (!is.null(row_anno))  default_args$right_annotation <- row_anno
+    if (!is.null(row_split)) default_args$row_split        <- row_split
+
+    # Optional column split by a metadata variable
+    if (!is.null(heatmap_column_split)) {
+      cs <- meta[colnames(mat), heatmap_column_split]
+      if (!is.factor(cs)) cs <- factor(cs, levels = unique(cs))
+      default_args$column_split <- cs
+    }
+
+    hm_args <- modifyList(default_args, heatmap_params)
+    do.call(ComplexHeatmap::Heatmap, hm_args)
+  }
+
+  # ── 10b. Group (mean-per-group) heatmap ────────────────────────────────────
+  # Compute mean expression per group × split combination (small matrix)
+  grp_combo_vec <- if (!is.null(split.by))
+    paste(meta[cell_ord, group.by], meta[cell_ord, split.by], sep = "-")
+  else
+    as.character(meta[cell_ord, group.by])
+
+  # Ordered combo levels: groups first, splits within
+  if (!is.null(split.by)) {
+    combo_levels <- unique(grp_combo_vec[order(
+      match(meta[cell_ord, group.by], group_levels),
+      match(meta[cell_ord, split.by], split_levels)
+    )])
+  } else {
+    combo_levels <- group_levels[group_levels %in% unique(grp_combo_vec)]
+  }
+
+  mat_group <- vapply(combo_levels, function(g) {
+    cols <- which(grp_combo_vec == g)
+    if (length(cols) == 0L) return(rep(NA_real_, nrow(mat_ord)))
+    if (length(cols) == 1L) return(as.numeric(mat_ord[, cols]))
+    rowMeans(mat_ord[, cols, drop = FALSE])
+  }, numeric(nrow(mat_ord)))
+  rownames(mat_group) <- rownames(mat_ord)
+
+  mat_group_centered <- mat_group - rowMeans(mat_group, na.rm = TRUE)
+
+  # Column annotation for the group heatmap
+  grp_for_cols <- if (!is.null(split.by))
+    sub("-.*", "", combo_levels) else combo_levels
+  spl_for_cols <- if (!is.null(split.by))
+    sub(".*-", "", combo_levels) else NULL
+
+  colanno_grp_df <- data.frame(row.names = combo_levels)
+  colanno_grp_df[[group.by]] <- factor(grp_for_cols, levels = group_levels)
+  colanno_grp_colors <- list(); colanno_grp_colors[[group.by]] <- group_colors
+  if (!is.null(split.by)) {
+    colanno_grp_df[[split.by]] <- factor(spl_for_cols, levels = split_levels)
+    colanno_grp_colors[[split.by]] <- split_colors
+  }
+  colanno_grp <- ComplexHeatmap::columnAnnotation(
+    df                   = colanno_grp_df,
+    col                  = colanno_grp_colors,
+    show_annotation_name = TRUE,
+    show_legend          = FALSE
+  )
+
+  .make_group_heatmap <- function(mat_c, title_str) {
+    genes_vec <- rownames(mat_c)
+    n_g       <- length(genes_vec)
+
+    # Column split by group.by when split.by is also present
+    col_split_grp <- if (!is.null(split.by))
+      factor(sub("-.*", "", colnames(mat_c)), levels = group_levels)
+    else NULL
+
+    default_args <- list(
+      matrix              = as.matrix(mat_c),
+      name                = "mean logcounts\n(centered)",
+      col                 = col_fun,
+      top_annotation      = colanno_grp,
+      cluster_rows        = TRUE,
+      cluster_columns     = FALSE,
+      show_column_names   = TRUE,
+      column_names_rot    = 45,
+      column_names_gp     = grid::gpar(fontsize = 9),
+      show_row_names      = TRUE,
+      row_names_gp        = grid::gpar(fontsize = max(5, 30 / sqrt(n_g))),
+      border              = TRUE,
+      use_raster          = FALSE,
+      column_title        = title_str,
+      row_names_side      = "left",
+      show_row_dend       = TRUE,
+      row_names_max_width = grid::unit(15, "cm"),
+      row_title_rot       = 0,
+      row_title_gp        = grid::gpar(fontsize = 8, fontface = "bold")
+    )
+
+    if (!is.null(col_split_grp))  default_args$column_split     <- col_split_grp
+    row_anno  <- .make_row_anno(genes_vec)
+    row_split <- .make_row_split(genes_vec)
+    if (!is.null(row_anno))  default_args$right_annotation <- row_anno
+    if (!is.null(row_split)) default_args$row_split        <- row_split
+
     hm_args <- modifyList(default_args, heatmap_params)
     do.call(ComplexHeatmap::Heatmap, hm_args)
   }
 
   # ── 11. Heatmap A: all leading-edge genes ─────────────────────────────────
-  message("\nStep 4 | Drawing heatmap — all leading-edge genes (",
-          nrow(mat_centered), " genes × ", ncol(mat_centered), " cells)...")
+  if (heatmap_type == "cell") {
+    message("\nStep 4 | Drawing per-cell heatmap - ", nrow(mat_centered),
+            " genes × ", ncol(mat_centered), " cells...")
+    HM_all  <- .make_heatmap(mat_centered, paste0("Leading Edge: ", term_label))
+    hm_w    <- 9
+    hm_h    <- max(6, nrow(mat_centered) * 0.18 + 3)
+    hm_desc <- paste0("Per-cell mean-centered log-normalized expression heatmap.",
+                      " Columns = individual cells ordered by ", group.by,
+                      if (!is.null(split.by)) paste0(" then ", split.by) else "", ".")
+  } else {
+    message("\nStep 4 | Drawing group heatmap - ", nrow(mat_group_centered),
+            " genes × ", ncol(mat_group_centered), " groups...")
+    HM_all  <- .make_group_heatmap(mat_group_centered,
+                                    paste0("Leading Edge: ", term_label))
+    hm_w    <- max(5, ncol(mat_group_centered) * 1.0 + 3)
+    hm_h    <- max(6, nrow(mat_group_centered) * 0.22 + 3)
+    hm_desc <- paste0("Group-mean heatmap: each column = mean log-normalized expression",
+                      " per ", group.by,
+                      if (!is.null(split.by)) paste0(" × ", split.by) else "",
+                      " group. Rows clustered.")
+  }
 
-  HM_all   <- .make_heatmap(mat_centered,
-                             paste0("Leading Edge: ", term_label))
-  pdf_all  <- file.path(out_sub, "heatmap_all_leadingedge.pdf")
-  pdf(pdf_all,
-      width  = 9,
-      height = max(6, nrow(mat_centered) * 0.18 + 3))
+  pdf_all <- file.path(out_sub, paste0(fname_base, "_heatmap_all.pdf"))
+  grDevices::pdf(pdf_all, width = hm_w, height = hm_h)
   ComplexHeatmap::draw(HM_all,
                        heatmap_legend_list = lgd_list,
                        heatmap_legend_side = "right")
@@ -476,13 +750,16 @@ VisualizeLeadingEdge <- function(
   message("  Saved: ", basename(pdf_all))
 
   .write_legend_sidecar(pdf_all, paste0(
-    "Heatmap: Mean-centered log-normalized expression of leading-edge genes ",
-    "from GSEA pathways matching [", term_label, "]. ",
-    "Genes: union across all provided CSVs. ",
-    "Color: blue = -2, white = 0, red = +2 (centered by row mean). ",
-    "Genes with row mean < ", min_expr, " excluded. ",
-    "Cells ordered by ", group.by,
-    if (!is.null(split.by)) paste0(" then ", split.by) else "", "."
+    hm_desc,
+    " Leading-edge genes from GSEA pathways matching [", term_label, "]. ",
+    "Expression pulled from '", assay, "' assay, '", layer, "' layer. ",
+    "Values are row-mean-centered (each gene shifted to mean 0 across cells/groups). ",
+    "Color scale: blue = -2, white = 0, red = +2. ",
+    "Genes with mean expression < ", min_expr, " across all cells excluded.",
+    if (isTRUE(show_pathway_annotation) && n_pathways > 0)
+      " Right annotation bar shows source pathway per gene." else "",
+    if (!is.null(heatmap_column_split))
+      paste0(" Columns split by ", heatmap_column_split, ".") else ""
   ))
 
   # ── 12. DEG-filtered bonus plots ──────────────────────────────────────────
@@ -522,22 +799,41 @@ VisualizeLeadingEdge <- function(
       # ── 12a. Heatmap B: top DEGs only ─────────────────────────────────
       genes_top_hm <- intersect(genes_top, rownames(mat_centered))
       if (length(genes_top_hm) > 0) {
-        mat_top  <- mat_centered[genes_top_hm, , drop = FALSE]
-        HM_top   <- .make_heatmap(mat_top,
-                                   paste0("Top DEGs in Leading Edge: ", term_label))
-        pdf_top  <- file.path(out_sub, "heatmap_top_degs.pdf")
-        pdf(pdf_top,
-            width  = 9,
-            height = max(5, nrow(mat_top) * 0.22 + 3))
+        if (heatmap_type == "cell") {
+          mat_top <- mat_centered[genes_top_hm, , drop = FALSE]
+          HM_top  <- .make_heatmap(mat_top,
+                                    paste0("Top DEGs in Leading Edge: ", term_label))
+          top_w   <- 9
+          top_h   <- max(5, nrow(mat_top) * 0.22 + 3)
+        } else {
+          mat_top_grp <- mat_group_centered[intersect(genes_top_hm, rownames(mat_group_centered)), , drop = FALSE]
+          HM_top  <- .make_group_heatmap(mat_top_grp,
+                                          paste0("Top DEGs in Leading Edge: ", term_label))
+          top_w   <- max(5, ncol(mat_top_grp) * 1.0 + 3)
+          top_h   <- max(5, nrow(mat_top_grp) * 0.25 + 3)
+        }
+        pdf_top <- file.path(out_sub, paste0(fname_base, "_heatmap_top_degs.pdf"))
+        grDevices::pdf(pdf_top, width = top_w, height = top_h)
         ComplexHeatmap::draw(HM_top,
                              heatmap_legend_list = lgd_list,
                              heatmap_legend_side = "right")
         grDevices::dev.off()
         message("  Saved: ", basename(pdf_top))
         .write_legend_sidecar(pdf_top, paste0(
-          "Heatmap: Top ", deg_top_n, " DEGs per group (padj < ",
-          deg_padj_cutoff, ") within leading-edge genes of [",
-          term_label, "]. Mean-centered log-normalized expression."
+          "Heatmap of top ", deg_top_n, " DEGs per ", group.by, " group ",
+          "(", deg_padj_column, " < ", deg_padj_cutoff, ") that are also ",
+          "leading-edge genes of GSEA pathways matching [", term_label, "]. ",
+          "Expression from '", assay, "' assay, '", layer, "' layer; ",
+          "values are row-mean-centered. ",
+          "Color scale: blue = -2, white = 0, red = +2. ",
+          if (heatmap_type == "group")
+            paste0("Each column = mean expression across all cells in a ",
+                   group.by,
+                   if (!is.null(split.by)) paste0(" x ", split.by) else "",
+                   " group. Rows hierarchically clustered.")
+          else
+            paste0("Cells ordered by ", group.by,
+                   if (!is.null(split.by)) paste0(" then ", split.by) else "", ".")
         ))
       }
 
@@ -633,15 +929,15 @@ VisualizeLeadingEdge <- function(
             panel.grid.major = ggplot2::element_blank(),
             panel.grid.minor = ggplot2::element_blank(),
             panel.background = ggplot2::element_blank(),
-            axis.line        = ggplot2::element_line(colour = "black", linewidth = 0.4),
-            strip.background = ggplot2::element_rect(fill = "white", colour = "black",
+            axis.line        = ggplot2::element_line(color = "black", linewidth = 0.4),
+            strip.background = ggplot2::element_rect(fill = "white", color = "black",
                                                       linewidth = 0.4),
-            strip.text       = ggplot2::element_text(face = "bold", colour = "black",
+            strip.text       = ggplot2::element_text(face = "bold", color = "black",
                                                       size = 8),
-            plot.title       = ggplot2::element_text(face = "bold", colour = "black",
+            plot.title       = ggplot2::element_text(face = "bold", color = "black",
                                                       hjust = 0.5, size = 9),
-            axis.text.y      = ggplot2::element_text(colour = "black", size = 6),
-            axis.text.x      = ggplot2::element_text(colour = "black", angle = 25,
+            axis.text.y      = ggplot2::element_text(color = "black", size = 6),
+            axis.text.x      = ggplot2::element_text(color = "black", angle = 25,
                                                       hjust = 1, size = 6.5,
                                                       face = "bold"),
             axis.title       = ggplot2::element_text(size = 8, face = "bold"),
@@ -733,8 +1029,9 @@ VisualizeLeadingEdge <- function(
 
   # ── 14. Methods JSON ──────────────────────────────────────────────────────
   .write_subdir_params(out_sub, list(
+    date                 = format(Sys.Date()),
     function_name        = "VisualizeLeadingEdge",
-    gsea_files           = basename(gsea_files),
+    gsea_files           = basename(gsea_files_valid),
     search_terms         = if (!is.null(search_terms)) search_terms else pathways,
     pathways_matched     = unique(all_df$pathway),
     n_leading_edge_genes = length(le_genes),
@@ -744,9 +1041,36 @@ VisualizeLeadingEdge <- function(
     assay                = assay,
     layer                = layer,
     min_expr             = min_expr,
+    heatmap_type         = heatmap_type,
+    subset_cells         = isTRUE(subset_cells),
+    subset_by            = if (isTRUE(subset_cells)) subset_by else NA,
+    subset_values        = if (isTRUE(subset_cells)) subset_values else NA,
+    add_dotplot          = isTRUE(add_dotplot),
+    add_violin           = isTRUE(add_violin),
+    add_boxplots         = isTRUE(add_boxplots),
+    add_pvalues          = isTRUE(add_pvalues),
+    add_feature_maps     = isTRUE(add_feature_maps),
     deg_padj_cutoff      = if (!is.null(deg_df)) deg_padj_cutoff else NA,
     deg_top_n            = if (!is.null(deg_df)) deg_top_n else NA,
-    date                 = as.character(Sys.time())
+    methods_text         = paste0(
+      "Leading-edge genes were extracted from ", length(gsea_files_valid),
+      " GSEA result CSV(s) for pathways matching [", term_label, "]. ",
+      length(le_genes), " unique leading-edge genes identified; ",
+      length(genes_all), " present in the Seurat object after min_expr >= ",
+      min_expr, " filter ('", assay, "' assay, '", layer, "' layer). ",
+      if (isTRUE(subset_cells))
+        paste0("Analysis restricted to cells where ", subset_by, " in {",
+               paste(subset_values, collapse = ", "), "}. ")
+      else "",
+      "A ", heatmap_type, " expression heatmap was produced showing ",
+      "row-mean-centered values. ",
+      if (!is.null(deg_df))
+        paste0("Top ", deg_top_n, " DEGs per ", group.by, " group ",
+               "(", deg_padj_column, " < ", deg_padj_cutoff, ") ",
+               "within the leading edge were identified for bonus plots.")
+      else
+        "No DEG table supplied; bonus plots not generated."
+    )
   ))
 
   message("\nVisualizeLeadingEdge complete.\nOutput: ", out_sub)

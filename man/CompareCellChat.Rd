@@ -11,7 +11,8 @@ CompareCellChat(
   group.merged = NULL,
   colors = NULL,
   species = "human",
-  thresh = 0.05
+  thresh = 0.05,
+  caffeinate = FALSE
 )
 }
 \arguments{
@@ -35,12 +36,15 @@ broader categories for chord group aggregation. Names must match
 interactions when drawing circle, chord, and heatmap plots. Default \code{0.05}
 (matches CellChat's standard significance filter). Set \code{thresh = 1} to
 display \strong{all} predicted interactions regardless of statistical
-significance — this is essential for comparing pathways that are active
+significance - this is essential for comparing pathways that are active
 in some conditions but did not reach pathway-level significance in others
 (i.e. the pathway is in \code{cc@net$prob} but not in \code{cc@netP$pathways}).
-Internally, all visualisations use the bundled \code{netVisual_aggregate2}-style
+Internally, all visualizations use the bundled \code{netVisual_aggregate2}-style
 functions which read \code{cc@net$prob} directly so the comparison is not
 limited to pathways that passed CellChat's aggregation threshold.}
+
+\item{caffeinate}{Logical. If \code{TRUE}, prevents the Mac from sleeping during
+the run using the \code{caffeinate} system command. Default \code{FALSE}.}
 }
 \value{
 A named list of the (possibly updated) CellChat objects.

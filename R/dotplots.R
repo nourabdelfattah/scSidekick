@@ -1,20 +1,20 @@
 # =============================================================================
 # scSidekick dot plot functions
 #
-# SplitDotPlot  — dot plot split by a metadata variable, with numbered labels
+# SplitDotPlot  - dot plot split by a metadata variable, with numbered labels
 #                 and optional hierarchical clustering of cell groups
-# SplitDotPlot2 — extends SplitDotPlot with gene-axis clustering and a
+# SplitDotPlot2 - extends SplitDotPlot with gene-axis clustering and a
 #                 minimum-expression filter
-# FastDotPlot   — like SplitDotPlot2 but accepts a gene name pattern (regex)
+# FastDotPlot   - like SplitDotPlot2 but accepts a gene name pattern (regex)
 #                 and can slice the gene dendrogram into k labelled groups
-# FastDotPlot2  — FastDotPlot + optional EnrichR enrichment header aligned
+# FastDotPlot2  - FastDotPlot + optional EnrichR enrichment header aligned
 #                 above each gene-cluster panel
 #
 # Shared internal helpers
-# .build_id_map()   — create zero-padded numeric labels for cell groups
-# .clamp()          — clamp a numeric vector to [lo, hi]
-# .dotplot_theme()  — shared ggplot2 theme for all dot plots
-# .cleanup_meta()   — on.exit handler to remove the temporary interaction col
+# .build_id_map()   - create zero-padded numeric labels for cell groups
+# .clamp()          - clamp a numeric vector to [lo, hi]
+# .dotplot_theme()  - shared ggplot2 theme for all dot plots
+# .cleanup_meta()   - on.exit handler to remove the temporary interaction col
 # =============================================================================
 
 # --------------------------------------------------------------------------- #
@@ -44,13 +44,13 @@
     panel.grid.major  = ggplot2::element_blank(),
     panel.grid.minor  = ggplot2::element_blank(),
     panel.background  = ggplot2::element_blank(),
-    panel.border      = ggplot2::element_rect(fill = NA, colour = "grey90",
+    panel.border      = ggplot2::element_rect(fill = NA, color = "gray90",
                                               linewidth = 1),
-    strip.background  = ggplot2::element_rect(fill = "grey95", colour = "grey90"),
+    strip.background  = ggplot2::element_rect(fill = "gray95", color = "gray90"),
     axis.text.x       = ggplot2::element_text(angle = 45, hjust = 1,
                                               vjust = 1, size = 10),
     axis.text.y       = ggplot2::element_text(size = 10),
-    axis.line         = ggplot2::element_line(colour = "grey90",
+    axis.line         = ggplot2::element_line(color = "gray90",
                                              linewidth = ggplot2::rel(1)),
     strip.text.y      = ggplot2::element_text(face = "bold", size = 10,
                                              margin = ggplot2::margin(l = 20)),
@@ -65,6 +65,36 @@
     if (col %in% colnames(seurat_object@meta.data))
       seurat_object@meta.data[[col]] <<- NULL
   }
+}
+
+# Helper: build a save path for a dot plot.
+#   file_name : explicit base name from the caller (highest priority; NULL = ignore)
+#   auto_base : a deduced base (e.g. the markers_df variable name or gene pattern)
+#   suffix    : function tag appended when no explicit file_name (e.g. "SplitDotPlot")
+# When file_name is given it is used verbatim (object/subset prefixes are skipped),
+# so the user gets exactly the name they asked for.
+.dotplot_path <- function(output_dir, seurat_object, file_name, auto_base, suffix) {
+  if (!is.null(file_name) && nzchar(file_name)) {
+    base <- file_name
+  } else {
+    obj   <- .nk_setting(seurat_object, "object_name") %||% ""
+    sub   <- .nk_setting(seurat_object, "subset_name") %||% ""
+    # auto_base is used as the descriptive middle (df name or pattern) when it is
+    # informative; otherwise fall back to the function suffix alone.
+    mid   <- if (!is.null(auto_base) && nzchar(auto_base)) auto_base else NULL
+    parts <- c(if (nchar(obj) > 0) obj, if (nchar(sub) > 0) sub, mid, suffix)
+    base  <- paste(parts, collapse = "_")
+  }
+  fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+  file.path(output_dir, paste0(fname, ".pdf"))
+}
+
+# Helper: is a deparsed argument a usable variable name (vs an inline expression)?
+# Rejects multi-line deparse, function calls, $ / [ indexing, and over-long names.
+.usable_obj_name <- function(x) {
+  length(x) == 1L && nzchar(x) && nchar(x) <= 60L &&
+    !grepl("[()$\\[\\]]|, |::", x) &&
+    grepl("^[A-Za-z.][A-Za-z0-9._]*$", x)
 }
 
 # --------------------------------------------------------------------------- #
@@ -101,8 +131,21 @@
 #' @param dot.scale Numeric. Maximum dot radius. Default `6`.
 #' @param cols Ignored (kept for API compatibility). Color palette is viridis
 #'   plasma.
+#' @param gene_col Deprecated alias for `gene_column`. Ignored when
+#'   `gene_column` is set explicitly.
+#' @param gene_group_col Deprecated alias for `gene_group_column`. Ignored when
+#'   `gene_group_column` is set explicitly.
 #'
-#' @return A ggplot2 object.
+#' @param output_dir Character or \code{NULL}. Directory to save a PDF.
+#'   \code{NULL} (default) returns the plot without saving.  When
+#'   \code{NULL}, the function walks up to the \code{output_dir} stored by
+#'   \code{\link{PrepObject}}, unless \code{AutoSavePlots = FALSE} was set
+#'   there.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for the
+#'   saved PDF. \code{NULL} (default) auto-deduces the name from the
+#'   \code{markers_df} variable name, falling back to
+#'   \code{object_name_group.by_SplitDotPlot}.
+#' @return A ggplot2 object (invisibly when saved to disk).
 #' @export
 SplitDotPlot <- function(seurat_object,
                           markers_df,
@@ -119,11 +162,22 @@ SplitDotPlot <- function(seurat_object,
                           scale.min      = 5,
                           scale.max      = 100,
                           dot.scale      = 6,
-                          cols           = "RdBu") {
+                          cols           = "RdBu",
+                          output_dir     = NULL,
+                          file_name      = NULL) {
+
+  # Deduce a base name from the markers_df variable (e.g. SplitDotPlot(o, my_markers)
+  # -> "my_markers"); only used when file_name is not supplied.
+  df_name <- deparse(substitute(markers_df))
+  if (!.usable_obj_name(df_name)) df_name <- NULL
 
   # Deprecated short aliases
   if (!is.null(gene_col)       && identical(gene_column,       "Genes"))    gene_column       <- gene_col
   if (!is.null(gene_group_col) && identical(gene_group_column, "CellType")) gene_group_column <- gene_group_col
+
+  # Walk up output_dir from PrepObject when not explicitly supplied
+  output_dir <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
 
   # 1. Filter to genes present in the object
   valid_genes <- markers_df[[gene_column]][markers_df[[gene_column]] %in%
@@ -232,6 +286,24 @@ SplitDotPlot <- function(seurat_object,
     ) +
     .dotplot_theme()
 
+  # ── Save or return ──────────────────────────────────────────────────────────
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+    fpath <- .dotplot_path(output_dir, seurat_object, file_name,
+                           auto_base = df_name %||% group.by,
+                           suffix    = "SplitDotPlot")
+    grDevices::pdf(fpath, width = sug_w, height = sug_h)
+    print(p)
+    grDevices::dev.off()
+    message("scSidekick: Saved to ", fpath)
+    .write_legend_sidecar(fpath, paste0(
+      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      if (!is.null(split.by)) paste0(", split by ", split.by) else "",
+      ". Dot size = percent expressed; dot color = scaled average expression."
+    ))
+    return(invisible(p))
+  }
+
   p
 }
 
@@ -256,7 +328,7 @@ SplitDotPlot <- function(seurat_object,
 #' @param min.pct.exp Numeric. Minimum percent expression a gene must reach
 #'   in at least one group to be kept. Default `15`.
 #'
-#' @return A ggplot2 object.
+#' @return A ggplot2 object (invisibly when saved to disk).
 #' @export
 SplitDotPlot2 <- function(seurat_object,
                            markers_df,
@@ -274,7 +346,17 @@ SplitDotPlot2 <- function(seurat_object,
                            scale.min       = 5,
                            scale.max       = 100,
                            dot.scale       = 6,
-                           cols            = "RdBu") {
+                           cols            = "RdBu",
+                           output_dir      = NULL,
+                           file_name       = NULL) {
+
+  # Deduce a base name from the markers_df variable when file_name is absent
+  df_name <- deparse(substitute(markers_df))
+  if (!.usable_obj_name(df_name)) df_name <- NULL
+
+  # Walk up output_dir from PrepObject when not explicitly supplied
+  output_dir <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
 
   valid_genes <- markers_df[[gene_column]][markers_df[[gene_column]] %in%
                                           rownames(seurat_object)]
@@ -300,7 +382,7 @@ SplitDotPlot2 <- function(seurat_object,
   if (min.pct.exp > 0) {
     keep <- plot_data |>
       dplyr::group_by(features.plot) |>
-      dplyr::summarise(max_pct = max(pct.exp), .groups = "drop") |>
+      dplyr::summarize(max_pct = max(pct.exp), .groups = "drop") |>
       dplyr::filter(max_pct >= min.pct.exp) |>
       dplyr::pull(features.plot) |>
       as.character()
@@ -402,6 +484,25 @@ SplitDotPlot2 <- function(seurat_object,
     ) +
     .dotplot_theme()
 
+  # ── Save or return ──────────────────────────────────────────────────────────
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+    fpath <- .dotplot_path(output_dir, seurat_object, file_name,
+                           auto_base = df_name %||% group.by,
+                           suffix    = "SplitDotPlot2")
+    grDevices::pdf(fpath, width = sug_w, height = sug_h)
+    print(p)
+    grDevices::dev.off()
+    message("scSidekick: Saved to ", fpath)
+    .write_legend_sidecar(fpath, paste0(
+      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      if (!is.null(split.by)) paste0(", split by ", split.by) else "",
+      ". Dot size = percent expressed; dot color = scaled average expression.",
+      " Genes are hierarchically clustered on the x-axis."
+    ))
+    return(invisible(p))
+  }
+
   p
 }
 
@@ -434,7 +535,12 @@ SplitDotPlot2 <- function(seurat_object,
 #' @param scale.min,scale.max Numeric. Size clamp limits. Defaults `5`, `100`.
 #' @param dot.scale Numeric. Max dot radius. Default `6`.
 #'
-#' @return A ggplot2 object.
+#' @inheritParams SplitDotPlot
+#' @param file_name Character or \code{NULL}. Base name (no extension) for the
+#'   saved PDF. \code{NULL} (default) auto-deduces a name that always includes
+#'   \code{group.by} and adds the \code{pattern} when one is used, e.g.
+#'   \code{object_name_group.by_pattern_<pattern>_FastDotPlot}.
+#' @return A ggplot2 object (invisibly when saved to disk).
 #' @export
 FastDotPlot <- function(seurat_object,
                          assay        = "RNA",
@@ -450,7 +556,18 @@ FastDotPlot <- function(seurat_object,
                          col.max       = 2.5,
                          scale.min     = 5,
                          scale.max     = 100,
-                         dot.scale     = 6) {
+                         dot.scale     = 6,
+                         output_dir    = NULL,
+                         file_name     = NULL) {
+
+  # Deduce a base name when file_name is absent. Always include group.by so
+  # plots of the same genes across different groupings do not overwrite each
+  # other; append the regex pattern when one was used.
+  auto_base <- if (!is.null(pattern)) paste0(group.by, "_pattern_", pattern) else group.by
+
+  # Walk up output_dir from PrepObject when not explicitly supplied
+  output_dir <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
 
   Seurat::DefaultAssay(seurat_object) <- assay
 
@@ -480,7 +597,7 @@ FastDotPlot <- function(seurat_object,
   if (min.pct.exp > 0) {
     keep <- plot_data |>
       dplyr::group_by(features.plot) |>
-      dplyr::summarise(max_pct = max(pct.exp), .groups = "drop") |>
+      dplyr::summarize(max_pct = max(pct.exp), .groups = "drop") |>
       dplyr::filter(max_pct >= min.pct.exp) |>
       dplyr::pull(features.plot) |>
       as.character()
@@ -600,6 +717,27 @@ FastDotPlot <- function(seurat_object,
                                  scales = "free_x", space = "free_x")
   }
 
+  # ── Save or return ──────────────────────────────────────────────────────────
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+    fpath <- .dotplot_path(output_dir, seurat_object, file_name,
+                           auto_base = auto_base,
+                           suffix    = "FastDotPlot")
+    grDevices::pdf(fpath, width = sug_w, height = sug_h)
+    print(p)
+    grDevices::dev.off()
+    message("scSidekick: Saved to ", fpath)
+    .write_legend_sidecar(fpath, paste0(
+      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      if (!is.null(split.by)) paste0(", split by ", split.by) else "",
+      if (!is.null(pattern)) paste0(" (genes matching pattern: '", pattern, "')") else "",
+      if (ClusterGenes && k_genes > 1)
+        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering") else "",
+      ". Dot size = percent expressed; dot color = scaled average expression."
+    ))
+    return(invisible(p))
+  }
+
   p
 }
 
@@ -657,7 +795,18 @@ FastDotPlot2 <- function(seurat_object,
                           dot.scale      = 6,
                           RunEnrichR     = TRUE,
                           EnrichR_DB     = "CellMarker_2024",
-                          TopN_Enrich    = 3) {
+                          TopN_Enrich    = 3,
+                          output_dir     = NULL,
+                          file_name      = NULL) {
+
+  # Deduce a base name when file_name is absent. Always include group.by so
+  # plots of the same genes across different groupings do not overwrite each
+  # other; append the regex pattern when one was used.
+  auto_base <- if (!is.null(pattern)) paste0(group.by, "_pattern_", pattern) else group.by
+
+  # Walk up output_dir from PrepObject when not explicitly supplied
+  output_dir <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
 
   Seurat::DefaultAssay(seurat_object) <- assay
 
@@ -687,7 +836,7 @@ FastDotPlot2 <- function(seurat_object,
   if (min.pct.exp > 0) {
     keep <- plot_data |>
       dplyr::group_by(features.plot) |>
-      dplyr::summarise(max_pct = max(pct.exp), .groups = "drop") |>
+      dplyr::summarize(max_pct = max(pct.exp), .groups = "drop") |>
       dplyr::filter(max_pct >= min.pct.exp) |>
       dplyr::pull(features.plot) |>
       as.character()
@@ -787,7 +936,7 @@ FastDotPlot2 <- function(seurat_object,
   text_data         <- unique(plot_data[, c("Y_Label_Full", "Y_Index", "Row_Split")])
   has_gene_clusters <- ClusterGenes && k_genes > 1
 
-  # Build dot plot — strip labels shown when no enrichment header is present;
+  # Build dot plot - strip labels shown when no enrichment header is present;
   # hidden only when the enrichment header will cover them.
   p <- ggplot2::ggplot(plot_data,
                        ggplot2::aes(x = features.plot, y = Y_Label_Full)) +
@@ -849,7 +998,7 @@ FastDotPlot2 <- function(seurat_object,
       # Midpoints for centering text within each facet panel
       pattern_widths <- plot_data |>
         dplyr::group_by(Gene_Cluster) |>
-        dplyr::summarise(n_genes = dplyr::n_distinct(features.plot),
+        dplyr::summarize(n_genes = dplyr::n_distinct(features.plot),
                          .groups = "drop") |>
         dplyr::mutate(mid_x = (n_genes + 1) / 2)
 
@@ -872,7 +1021,7 @@ FastDotPlot2 <- function(seurat_object,
 
       if (nrow(plot_df) > 0) {
         # When the enrichment header is drawn, hide the dotplot strip labels
-        # to avoid double-labelling the same column group
+        # to avoid double-labeling the same column group
         p <- p + ggplot2::theme(
           strip.background.x = ggplot2::element_blank(),
           strip.text.x       = ggplot2::element_blank()
@@ -901,12 +1050,12 @@ FastDotPlot2 <- function(seurat_object,
             plot.title   = ggplot2::element_text(face = "bold", size = 16,
                                                  hjust = 0.5,
                                                  margin = ggplot2::margin(b = 10)),
-            strip.background = ggplot2::element_rect(fill = "grey95",
-                                                     colour = "grey90",
+            strip.background = ggplot2::element_rect(fill = "gray95",
+                                                     color = "gray90",
                                                      linewidth = 1),
             strip.text   = ggplot2::element_text(face = "bold", size = 11,
                                                  margin = ggplot2::margin(t = 6, b = 6)),
-            panel.border = ggplot2::element_rect(fill = NA, colour = "grey90",
+            panel.border = ggplot2::element_rect(fill = NA, color = "gray90",
                                                  linewidth = 1),
             panel.spacing = ggplot2::unit(1, "lines"),
             plot.margin  = ggplot2::margin(b = 2)
@@ -918,13 +1067,36 @@ FastDotPlot2 <- function(seurat_object,
     }
   }
 
-  print(combined_plot)
-  list(
-    plot          = combined_plot,
-    dotplot       = p,
-    enrich_plot   = enrich_plot,
-    patterns      = pattern_list,
+  # ── Save or return ──────────────────────────────────────────────────────────
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+    fpath <- .dotplot_path(output_dir, seurat_object, file_name,
+                           auto_base = auto_base,
+                           suffix    = "FastDotPlot2")
+    grDevices::pdf(fpath, width = sug_w, height = sug_h)
+    print(combined_plot)
+    grDevices::dev.off()
+    message("scSidekick: Saved to ", fpath)
+    .write_legend_sidecar(fpath, paste0(
+      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      if (!is.null(split.by)) paste0(", split by ", split.by) else "",
+      if (!is.null(pattern)) paste0(" (genes matching pattern: '", pattern, "')") else "",
+      if (ClusterGenes && k_genes > 1)
+        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering") else "",
+      if (isTRUE(RunEnrichR))
+        paste0(". Top enrichment terms from ", EnrichR_DB, " shown above each gene cluster") else "",
+      ". Dot size = percent expressed; dot color = scaled average expression."
+    ))
+  } else {
+    print(combined_plot)
+  }
+
+  invisible(list(
+    plot           = combined_plot,
+    dotplot        = p,
+    enrich_plot    = enrich_plot,
+    patterns       = pattern_list,
     filtered_genes = filtered_genes,
-    enrich_table  = enrich_res_df
-  )
+    enrich_table   = enrich_res_df
+  ))
 }

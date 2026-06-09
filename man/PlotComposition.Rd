@@ -35,10 +35,10 @@ group→split panel.}
 \item{show_counts}{Logical.  Overlay cell-count labels on bars.  Default
 \code{FALSE}.}
 
-\item{group_colors}{Named character vector of colours for \code{group.by}
+\item{group_colors}{Named character vector of colors for \code{group.by}
 levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 
-\item{split_colors}{Named character vector of colours for \code{split.by}
+\item{split_colors}{Named character vector of colors for \code{split.by}
 levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 
 \item{output_dir}{Directory to save a PDF. \code{NULL} = no save.}
@@ -51,7 +51,7 @@ levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 A \code{ggplot2} or \code{patchwork} object.
 }
 \description{
-Visualises the composition between two metadata variables (e.g. cluster and
+Visualizes the composition between two metadata variables (e.g. cluster and
 sample) as stacked, 100\\%-stacked, or dodged bar charts.  By default two
 complementary panels are produced:
 \enumerate{

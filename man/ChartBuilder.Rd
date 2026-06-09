@@ -6,8 +6,8 @@
 \usage{
 ChartBuilder(
   data,
-  app_dir = getOption("nourkit.chart_builder_dir",
-    "~/Desktop/Claude Tools/Chart_Builder"),
+  app_dir = getOption("nourkit.chart_builder_dir", system.file("Chart_Builder", package =
+    "scSidekick")),
   filename = NULL,
   max_rows = NULL,
   launch = TRUE
@@ -15,12 +15,12 @@ ChartBuilder(
 }
 \arguments{
 \item{data}{A \code{data.frame} (or object coercible with \code{\link[=as.data.frame]{as.data.frame()}}),
-or a Seurat object — in which case its \code{meta.data} slot is used.}
+or a Seurat object - in which case its \code{meta.data} slot is used.}
 
 \item{app_dir}{Character. Path to the Chart Builder app directory (the folder
-containing \code{chart_builder.html}). Defaults to
-\code{getOption("nourkit.chart_builder_dir")}, falling back to
-\verb{~/Desktop/Claude Tools/Chart_Builder}.}
+containing \code{chart_builder.html}). Defaults to the bundled copy inside the
+scSidekick package (\code{inst/Chart_Builder}), or
+\code{getOption("nourkit.chart_builder_dir")} if set.}
 
 \item{filename}{Character. Name shown in the app for the loaded dataset.
 Defaults to the deparsed name of \code{data} with a \code{.csv} suffix.}
@@ -50,4 +50,3 @@ source app is never modified and concurrent sessions do not collide. The app
 loads its charting libraries (Plotly, PapaParse, SheetJS) from CDNs, so an
 internet connection is required for it to render.
 }
-\keyword{internal}

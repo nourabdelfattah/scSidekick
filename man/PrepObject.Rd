@@ -16,6 +16,7 @@ PrepObject(
   output_dir = NULL,
   object_name = NULL,
   subset_name = NULL,
+  AutoSavePlots = NULL,
   force = FALSE
 )
 }
@@ -26,14 +27,22 @@ PrepObject(
 prepare.  Can be a single name; re-run \code{PrepObject} at any time to
 add more.}
 
-\item{palettes}{Palette name(s).  Either a single string (\code{"auto"},
-\code{"all"}, or \code{"spectrum"}) applied to all variables, or a named
-character vector specifying a palette per variable (names must match
-\code{variables}).  Missing names fall back to \code{"auto"}.  Default
-\code{"auto"}.}
+\item{palettes}{Palette name(s).  One of:
+\itemize{
+\item A \strong{single string} (\code{"auto"}, \code{"all"},
+\code{"spectrum"}, \dots) applied to every variable.
+\item A \strong{named} character vector keyed by variable
+(\code{c(Cluster = "all", Sample = "spectrum")}); names not listed
+fall back to \code{"auto"}.
+\item An \strong{unnamed} character vector of the same length as
+\code{variables}, matched \emph{by position}
+(\code{c("spectrum", "all", "all")}).
+}
+Default \code{"auto"}.}
 
-\item{reverse}{Logical or named logical vector.  \code{TRUE} reverses the
-palette for all variables; supply a named vector to reverse selectively
+\item{reverse}{Logical, named logical vector, or an unnamed logical vector
+matched by position to \code{variables}.  \code{TRUE} reverses the palette
+for all variables; a named vector reverses selectively
 (e.g. \code{c(Cluster = TRUE, Sample = FALSE)}).  Default \code{FALSE}.}
 
 \item{custom_colors}{Named list of named character vectors that override
@@ -64,6 +73,18 @@ Pass \code{NA} to explicitly clear a stored value.}
 \item{subset_name}{Character.  Optional subset label appended to output
 file names (e.g. \code{"NoNeurons"}).}
 
+\item{AutoSavePlots}{Logical or \code{NULL}.  Controls whether plotting
+functions automatically save PDFs to the stored \code{output_dir} when no
+\code{output_dir} is passed explicitly in the function call.
+\itemize{
+\item \code{TRUE} (default when not set): plotting functions walk up and
+use the stored \code{output_dir} automatically — existing behavior.
+\item \code{FALSE}: the walk-up is suppressed; functions return the plot
+object without saving unless the caller explicitly passes
+\code{output_dir = "..."} in the plotting call.
+}
+Pass \code{NULL} to leave the current setting unchanged.}
+
 \item{force}{Logical.  If \code{FALSE} (default), variables that already
 have stored colors are left unchanged.  If \code{TRUE}, existing colors
 are regenerated for every variable listed in \code{variables}.}
@@ -81,7 +102,7 @@ variable is not stored.
 
 \strong{Additive by default.} Calling \code{PrepObject} again for a new
 variable (e.g. after cell-type assignment) does not overwrite existing
-settings — it only adds or updates the variables you name.  Set
+settings - it only adds or updates the variables you name.  Set
 \code{force = TRUE} to regenerate a variable that is already stored.
 
 \strong{Auto-palette selection:}
@@ -89,8 +110,10 @@ settings — it only adds or updates the variables you name.  Set
 \item \code{"auto"}: \code{Nour_pal("all")} for variables with \eqn{\leq 8}
 levels (warm, distinct), \code{Nour_pal("spectrum")} for \eqn{> 8} levels
 (broader color range).
-\item Specify per-variable with a named character vector:
-\code{palettes = c(Cluster = "all", Sample = "spectrum")}.
+\item Specify per-variable, either \strong{by name}
+\code{palettes = c(Cluster = "all", Sample = "spectrum")} or
+\strong{by position} (one entry per \code{variables}, same order)
+\code{palettes = c("spectrum", "all", "all")}.
 }
 }
 \seealso{

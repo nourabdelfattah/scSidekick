@@ -1,0 +1,309 @@
+---
+title: "scSidekick - Pathway Analysis: RunGSEA_pseudobulk"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Pathway Analysis: Pseudobulk GSEA}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+`RunGSEA_pseudobulk()` performs pseudobulk gene set enrichment analysis using
+sample-level limma-voom contrasts - a statistically rigorous alternative to the
+cell-level Wilcoxon approach in `RunGSEA()`.
+
+The key idea: cells from the same biological sample are aggregated into a
+pseudobulk profile before DE testing, so each biological replicate contributes
+one observation rather than thousands. This avoids pseudoreplication and produces
+calibrated p-values.
+
+**When to use each approach:**
+
+| | `RunGSEA` | `RunGSEA_pseudobulk` |
+|---|---|---|
+| Input | Any Seurat object | Seurat object with sample metadata |
+| DE method | Wilcoxon (cell-level) | limma-voom (sample-level) |
+| Replicates needed | No | Yes (>=3 per group) |
+| Controls confounders | No | Yes (covariates) |
+| Best for | Exploratory; no replicates | Multi-sample studies |
+
+In addition to GSEA, `RunGSEA_pseudobulk()` optionally runs per-patient ssGSEA
+(set `run.ssgsea = TRUE`, the default) to produce individual-level pathway
+heatmaps showing patient-by-patient variability.
+
+---
+
+## Standard setup
+
+```{r setup-seurat}
+library(scSidekick)
+library(Seurat)
+library(dplyr)
+
+# Assumes a multi-sample Seurat object with:
+#   celltype  - annotated cell types
+#   sample    - unique biological sample ID (one per donor/timepoint/condition)
+#   condition - the comparison variable (e.g. "Control" vs "Disease")
+```
+
+---
+
+## 1. Minimal call
+
+The three required metadata columns are `group.by` (cell type), `sample.by`
+(sample/donor ID), and `contrast.by` (the condition to compare).
+
+```{r pb-minimal}
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+This runs GSEA for each cell type in `group.by`, comparing all levels of
+`condition` against each other with default limma-voom contrasts.
+
+---
+
+## 2. Specifying contrasts
+
+By default, `RunGSEA_pseudobulk` tests all pairwise comparisons within
+`contrast.by`. Supply `contrasts` explicitly to control which comparisons are
+made, in which direction.
+
+```{r pb-contrasts}
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  contrasts     = list(
+    Disease_vs_Control = "Disease - Control",
+    Treatment_vs_Control = "Treatment - Control"
+  ),
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+Each name becomes the label for a set of output figures; each value is a
+standard limma contrast expression.
+
+---
+
+## 3. Adding covariates
+
+Correct for batch effects or other sample-level metadata by passing them to
+`covariates`. These are included as additional terms in the limma-voom model.
+
+```{r pb-covariates}
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  covariates    = c("batch", "sex"),
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 4. Splitting by broad cell type
+
+Use `split.by` to run the full pipeline independently within each major lineage.
+This is the pseudobulk equivalent of the `split.by` parameter in `RunGSEA`.
+
+```{r pb-split}
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype_fine",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  split.by      = "celltype_broad",
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 5. Custom pathway sets
+
+Same syntax as `RunGSEA`. Default: Hallmark, KEGG, Reactome, WikiPathways.
+
+```{r pb-custom-sets}
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  pathway_sets  = list(
+    Hallmark    = list(category = "H"),
+    ImmuneSigDB = list(category = "C7", subcategory = "IMMUNESIGDB")
+  ),
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 6. Using a precomputed pseudobulk
+
+If you have already aggregated pseudobulk counts (e.g. from `ComputePseudobulk`),
+pass them directly via `pseudobulk` to skip re-aggregation.
+
+```{r pb-precomputed}
+pb <- ComputePseudobulk(seu,
+  group.by  = "celltype",
+  sample.by = "sample")
+
+res <- RunGSEA_pseudobulk(
+  pseudobulk = pb,
+  group.by   = "celltype",
+  sample.by  = "sample",
+  contrast.by = "condition",
+  output_dir = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 7. Per-patient ssGSEA heatmaps
+
+`run.ssgsea = TRUE` (default) computes per-patient pathway activity via ssGSEA
+after the main GSEA, producing heatmaps where columns are individual samples.
+This makes patient-level variability visible alongside the group-level result.
+
+Use `ssgsea.use.padj = TRUE` (default) to filter ssGSEA rows by BH-adjusted
+p-value, or `ssgsea.use.padj = FALSE` to use raw p-values.
+
+```{r pb-ssgsea}
+res <- RunGSEA_pseudobulk(
+  seurat_object  = seu,
+  group.by       = "celltype",
+  sample.by      = "sample",
+  contrast.by    = "condition",
+  run.ssgsea     = TRUE,
+  ssgsea.use.padj = TRUE,
+  top_n_ssgsea   = 20L,
+  output_dir     = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 8. Customizing heatmap colors
+
+The same `heatmap_colors` parameter works here as in `RunGSEA`. Pass any
+`circlize::colorRamp2` object to override the default 5-stop blue-white-orange-red
+palette.
+
+```{r pb-colors}
+col_custom <- circlize::colorRamp2(
+  c(-3, -1.5, 0, 1.5, 3),
+  c("#762a83", "#c2a5cf", "white", "#7fbf7b", "#1b7837")
+)
+
+res <- RunGSEA_pseudobulk(
+  seurat_object  = seu,
+  group.by       = "celltype",
+  sample.by      = "sample",
+  contrast.by    = "condition",
+  heatmap_colors = col_custom,
+  output_dir     = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 9. Resuming an interrupted run
+
+`save.rds = TRUE` (default) saves intermediate RDS files after each cell type.
+If the run is interrupted, use `redo_plots = TRUE` to reload the saved RDS
+files and regenerate all PDFs without re-running the DE analysis.
+
+```{r pb-resume}
+# Regenerate all PDFs from saved RDS (no re-computation)
+res <- RunGSEA_pseudobulk(
+  seurat_object = seu,
+  group.by      = "celltype",
+  sample.by     = "sample",
+  contrast.by   = "condition",
+  redo_plots    = TRUE,
+  output_dir    = "./Figures/Pathways_PB"
+)
+```
+
+---
+
+## 10. Return value
+
+`RunGSEA_pseudobulk` returns a nested list, one element per cell type. Each
+element contains:
+
+```{r pb-return}
+# GSEA results table for one cell type
+res$`CD4 T`$gsea_results
+
+# NES heatmap ggplot object
+res$`CD4 T`$nes_heatmap
+
+# ssGSEA score matrix (pathways x samples)
+res$`CD4 T`$ssgsea_scores
+```
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat or `NULL` | `NULL` | Seurat object (use with `pseudobulk` to skip re-aggregation) |
+| `group.by` | character | `NULL` | Cell-type column; one GSEA run per level |
+| `sample.by` | character | `NULL` | Sample/donor ID column for pseudobulk aggregation |
+| `contrast.by` | character | `NULL` | Condition column for limma contrasts |
+| `split.by` | character or `NULL` | `NULL` | Run pipeline independently per level |
+| `subset.by` | character or `NULL` | `NULL` | Run pipeline on each subset separately |
+| `covariates` | character vector | `NULL` | Sample-level covariates added to limma model |
+| `contrasts` | named list | `NULL` | Named limma contrast expressions; `NULL` = all pairwise |
+| `pathway_sets` | named list | Hallmark + KEGG + Reactome + WP | MSigDB collections to test |
+| `species` | character | `"human"` | Species for `msigdbr` |
+| `assay` | character or `NULL` | `NULL` | Seurat assay containing raw counts |
+| `min.cells` | integer | `10` | Minimum cells a sample must contribute per cell type |
+| `min.samples.per.group` | integer | `3` | Minimum samples per condition level |
+| `run.ssgsea` | logical | `TRUE` | Also run per-patient ssGSEA |
+| `ssgsea.use.padj` | logical | `TRUE` | Use BH-adjusted p-value for ssGSEA row selection |
+| `nes.cutoff` | numeric | `1.0` | Minimum absolute NES for heatmap inclusion |
+| `top_n_heatmap` | integer | `30` | Max pathways shown in NES heatmaps |
+| `top_n_ssgsea` | integer | `30` | Max pathways shown in ssGSEA heatmaps |
+| `heatmap_colors` | `colorRamp2` or `NULL` | `NULL` | Custom heatmap color function |
+| `heatmap_params` | named list | `list(...)` | Extra args forwarded to `ComplexHeatmap::Heatmap()` |
+| `save.rds` | logical | `TRUE` | Save intermediate RDS after each cell type |
+| `redo_plots` | logical | `FALSE` | Reload saved RDS and regenerate PDFs only |
+| `caffeinate` | logical | `FALSE` | Prevent system sleep during the run |
+
+---
+
+## See also
+
+- Vignette 08: `RunGSEA` - cell-level Wilcoxon-based GSEA (no replicates needed)
+- Vignette 10: `RunSCssGSEA` - per-cell pathway scoring; `PlotPathwayButterfly` - 4-pathway state hierarchy
+- Vignette 11: `RunCellChat` - pathway-level cell-cell communication
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

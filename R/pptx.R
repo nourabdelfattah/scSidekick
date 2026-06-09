@@ -1,14 +1,14 @@
 # =============================================================================
 # scSidekick PPTX builder
 #
-# log_analysis_params()   — reads a Seurat object + writes analysis_params.json
-# create_analysis_pptx()  — converts all PDFs in an output folder to a PPTX
+# log_analysis_params()   - reads a Seurat object + writes analysis_params.json
+# create_analysis_pptx()  - converts all PDFs in an output folder to a PPTX
 #
 # Required (Suggests): officer, magick, jsonlite
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Section-grouping rules — first match wins, order matters
+# Section-grouping rules - first match wins, order matters
 # ---------------------------------------------------------------------------
 .pptx_section_rules <- list(
   # ── Quality Control ────────────────────────────────────────────────────────
@@ -19,12 +19,12 @@
   list(section = "Dimensionality Reduction",
        pattern = "harmony|umap before and after|elbow|PCA|RNA UMAPs"),
 
-  # ── Pathway Analysis (GSEA) — must come before Clustering so that GSEA
+  # ── Pathway Analysis (GSEA) - must come before Clustering so that GSEA
   #    heatmaps (which contain "heatmap") don't fall into the Clustering rule.
   list(section = "Pathway Analysis",
        pattern = "GSEA|\\bKEGG\\b|Reactome|WikiPathway|Hallmark"),
 
-  # ── CellChat — before Clustering for the same reason ("heatmap" in names).
+  # ── CellChat - before Clustering for the same reason ("heatmap" in names).
   #    Covers RunCellChat, CompareCellChat, and RankCellChatPathways outputs.
   list(section = "CellChat",
        pattern = paste0(
@@ -107,7 +107,7 @@
     img_path
   }, error = function(e) {
     message("  [skip] Could not convert: ", basename(pdf_path),
-            " — ", conditionMessage(e))
+            " - ", conditionMessage(e))
     NULL
   })
 }
@@ -130,7 +130,7 @@
 # .pptx_legend_templates
 # Named-pattern legend templates for external (non-scSidekick) figures.
 # Patterns are regex, tested against the PDF basename (case-insensitive).
-# First match wins — put more specific patterns before broader ones.
+# First match wins - put more specific patterns before broader ones.
 # Placeholders: {n_cells}, {n_samples}, {n_clusters}, {resolution}, {pcs},
 #               {harmony_vars}, {groups}, {dataset}, {subset}
 # ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@
     legend  = paste0(
       "Heatmap of the top 20 differentially expressed marker genes per cluster ",
       "({n_clusters} clusters; resolution {resolution}), identified by Wilcoxon rank-sum ",
-      "test (Presto). Gene expression is displayed as mean-centred log-normalized counts ",
+      "test (Presto). Gene expression is displayed as mean-centered log-normalized counts ",
       "(blue: below mean, red: above mean). Cells are ordered by cluster, then by sample ",
       "identity. Column annotations (top) indicate cluster and sample of origin. Row ",
       "annotations (right) label the highest-ranked marker gene for each cluster."
@@ -248,8 +248,8 @@
     legend  = paste0(
       "Dot plot showing expression of the top differentially expressed marker genes across ",
       "{n_clusters} clusters (resolution {resolution}). Dot size indicates the percentage ",
-      "of {cell_or_nucleus} expressing each gene within the cluster; dot colour reflects the mean ",
-      "scaled expression level (Viridis plasma colour scale). Genes are grouped and ",
+      "of {cell_or_nucleus} expressing each gene within the cluster; dot color reflects the mean ",
+      "scaled expression level (Viridis plasma color scale). Genes are grouped and ",
       "labelled by the cluster for which they were identified as top markers."
     )
   ),
@@ -258,7 +258,7 @@
     legend  = paste0(
       "Dot plot of canonical marker gene expression across {n_clusters} clusters ",
       "(resolution {resolution}). Dot size indicates the percentage of expressing cells; ",
-      "colour reflects mean scaled expression (Viridis plasma scale). Gene groups ",
+      "color reflects mean scaled expression (Viridis plasma scale). Gene groups ",
       "(x-axis panels) correspond to established cell-type marker sets."
     )
   ),
@@ -314,14 +314,14 @@
       "UMAP projections of manually assigned cell types faceted by sample ({n_samples} ",
       "samples). Each panel represents one donor, enabling assessment of inter-sample ",
       "heterogeneity in cell-type composition and reproducibility of cluster assignments ",
-      "across the cohort. Cell types are coloured consistently across panels. Cluster ",
+      "across the cohort. Cell types are colored consistently across panels. Cluster ",
       "labels are overlaid."
     )
   ),
   list(
     pattern = "Assignment umap",
     legend  = paste0(
-      "UMAP projection of {n_cells} {cell_or_nucleus} coloured by manually assigned cell-type ",
+      "UMAP projection of {n_cells} {cell_or_nucleus} colored by manually assigned cell-type ",
       "identity ({n_clusters} clusters; resolution {resolution}). Cell-type assignments ",
       "were determined by integration of automated annotation tools (scType, SingleR, ",
       "rcellmarker) with canonical marker gene expression."
@@ -365,7 +365,7 @@
     legend  = paste0(
       "UMAP feature plots showing log-normalized expression of individual marker genes ",
       "across {n_cells} {cell_or_nucleus}, split by experimental group ({groups}). Within each panel, ",
-      "cells are ordered by expression level to highlight positive populations. Colour ",
+      "cells are ordered by expression level to highlight positive populations. Color ",
       "scale indicates log-normalized expression (blue: low/absent, red: high)."
     )
   )
@@ -375,7 +375,7 @@
 # .pptx_assay_info()
 # Converts the assay_type string stored in analysis_params.json into a
 # human-readable long name and the correct word for individual observations.
-# Recognised values: "scRNAseq", "snRNAseq", "scATACseq", "scMultiome",
+# Recognized values: "scRNAseq", "snRNAseq", "scATACseq", "scMultiome",
 # "Spatial".  Unknown values are passed through as-is.
 # ---------------------------------------------------------------------------
 .pptx_assay_info <- function(params) {
@@ -435,9 +435,9 @@
 # ---------------------------------------------------------------------------
 # .generate_fallback_legend()
 # Two-tier legend generation for PDFs that have no .legend sidecar file:
-#   Tier 1 — try specific filename-pattern templates (.pptx_legend_templates)
+#   Tier 1 - try specific filename-pattern templates (.pptx_legend_templates)
 #             with {placeholder} substitution from the params JSON.
-#   Tier 2 — fall back to section-level generic prose if no pattern matches.
+#   Tier 2 - fall back to section-level generic prose if no pattern matches.
 # ---------------------------------------------------------------------------
 .generate_fallback_legend <- function(filename, params) {
 
@@ -490,13 +490,13 @@
         "Dimensionality reduction of ", ds, ". Principal component analysis (PCA) ",
         "was performed on highly variable genes. ", harm_sent,
         "UMAP embedding was computed on ", pc_str,
-        " to enable two-dimensional visualisation of the transcriptional landscape."
+        " to enable two-dimensional visualization of the transcriptional landscape."
       )
     },
 
     "Cluster Markers" = paste0(
       "Unsupervised clustering of ", ds, " at ", res_str, ", yielding ", ncl_str, ". ",
-      "A shared nearest-neighbour graph was constructed on ", pc_str,
+      "A shared nearest-neighbor graph was constructed on ", pc_str,
       " and cell communities were identified using the Louvain algorithm.",
       if (!is.null(nc)) paste0(" The dataset comprises ", nc_str, ".") else ""
     ),
@@ -504,7 +504,7 @@
     "Dotplots" = paste0(
       "Dot plot showing scaled gene expression and the proportion of expressing ",
       "cells across cell populations in ", ds, ". Dot size reflects the fraction ",
-      "of cells with detectable expression; dot colour reflects mean scaled expression ",
+      "of cells with detectable expression; dot color reflects mean scaled expression ",
       "within each group."
     ),
 
@@ -518,7 +518,7 @@
       "UMAP embeddings of ", ds, " showing the distribution of ", nc_str,
       " across ", ncl_str, ". Single cells are projected onto a two-dimensional ",
       "representation computed from ", pc_str,
-      ", coloured by the indicated metadata variable."
+      ", colored by the indicated metadata variable."
     ),
 
     "Composition" = paste0(
@@ -530,7 +530,7 @@
 
     "Feature Maps" = paste0(
       "UMAP feature plots showing gene expression across cell populations in ", ds, ". ",
-      "Log-normalised expression values are displayed on a continuous colour scale ",
+      "Log-normalized expression values are displayed on a continuous color scale ",
       "from low (dark blue) to high (dark red). Higher-expressing cells are plotted ",
       "on top to highlight positive populations."
     ),
@@ -567,7 +567,7 @@
         "Ligand-receptor interactions were inferred from CellChatDB using a ",
         "mass-action communication probability model. Circle and chord diagrams ",
         "show the number and weight of predicted interactions between cell populations; ",
-        "heatmaps show pairwise communication probability for individual signalling pathways."
+        "heatmaps show pairwise communication probability for individual signaling pathways."
       )
     },
 
@@ -598,7 +598,7 @@
 #' @param subset_name Character. Subset label (e.g. `"All_Clusters"`).
 #' @param assay_type Character. Sequencing modality. Controls the word used for
 #'   individual observations in auto-generated legends and methods text.
-#'   Recognised values (case-sensitive):
+#'   Recognized values (case-sensitive):
 #'   \itemize{
 #'     \item `"scRNAseq"` → "single-cell RNA-seq" / "cells" (default)
 #'     \item `"snRNAseq"` → "single-nucleus RNA-seq" / "nuclei"
@@ -633,7 +633,7 @@ log_analysis_params <- function(obj,
   em <- NULL
   if (exists("ExtractMethods", mode = "function")) {
     em <- tryCatch(
-      ExtractMethods(obj, cite_seurat = TRUE),
+      ExtractMethods(obj, cite_seurat = TRUE, modality = assay_type),
       error = function(e) {
         message("ExtractMethods() failed: ", conditionMessage(e),
                 "\nFalling back to inline extraction.")
@@ -753,7 +753,7 @@ log_figure_legend <- function(out_dir, filename, text) {
 #' @param output_dir Character. Folder containing PDF figures.
 #' @param params_json Character or `NULL`. Path to `analysis_params.json`.
 #'   When `NULL` (default) the function walks up the directory tree from
-#'   `output_dir` until it finds the file — this lets you call
+#'   `output_dir` until it finds the file - this lets you call
 #'   `create_analysis_pptx` on a sub-folder (e.g., the CellChat or GSEA
 #'   output directory) and still get the shared analysis parameters from the
 #'   parent folder.
@@ -769,32 +769,37 @@ log_figure_legend <- function(out_dir, filename, text) {
 #'   (e.g. `200`) for sharper figures at the cost of speed. Default `150`.
 #' @param include Character vector or `NULL`. Section names to include; all
 #'   other sections are dropped. When `NULL` (default) all sections are
-#'   included. PDFs are assigned to sections by filename pattern matching —
+#'   included. PDFs are assigned to sections by filename pattern matching -
 #'   see `.pptx_section_rules` for the rules. Valid section names:
 #'   \itemize{
-#'     \item `"Quality Control"` — QC density plots, doublet scores, filtration
+#'     \item `"Quality Control"` - QC density plots, doublet scores, filtration
 #'       barplots
-#'     \item `"Dimensionality Reduction"` — PCA elbow, UMAP before/after
+#'     \item `"Dimensionality Reduction"` - PCA elbow, UMAP before/after
 #'       Harmony, RNA UMAPs
-#'     \item `"Cluster Markers"` — ComplexHeatmap heatmaps, presto marker
+#'     \item `"Cluster Markers"` - ComplexHeatmap heatmaps, presto marker
 #'       tables
-#'     \item `"Dotplots"` — any PDF with "dotplot" in the filename
-#'     \item `"Cell Type Annotation"` — AutoAssignment UMAPs, SingleR, scType,
+#'     \item `"Dotplots"` - any PDF with "dotplot" in the filename
+#'     \item `"Cell Type Annotation"` - AutoAssignment UMAPs, SingleR, scType,
 #'       featureheatmaps, assignment helper
-#'     \item `"All UMAPs"` — the combined multi-panel UMAP PDF
-#'     \item `"Composition"` — barplots, chord diagrams, rose/trend plots,
+#'     \item `"All UMAPs"` - the combined multi-panel UMAP PDF
+#'     \item `"Composition"` - barplots, chord diagrams, rose/trend plots,
 #'       iteration-with-bar figures
-#'     \item `"Feature Maps"` — GenerateFeatureMaps per-gene UMAPs
-#'     \item `"Pathway Analysis"` — GSEA heatmaps and lollipop PDFs
-#'     \item `"CellChat"` — RunCellChat, CompareCellChat, and
+#'     \item `"Feature Maps"` - GenerateFeatureMaps per-gene UMAPs
+#'     \item `"Pathway Analysis"` - GSEA heatmaps and lollipop PDFs
+#'     \item `"CellChat"` - RunCellChat, CompareCellChat, and
 #'       RankCellChatPathways output PDFs
-#'     \item `"Other"` — anything not matched by the rules above
+#'     \item `"Other"` - anything not matched by the rules above
 #'   }
 #' @param exclude Character vector or `NULL`. Section names to drop (applied
 #'   after `include`). `NULL` excludes nothing. Same valid values as `include`.
 #'   Typical use: `exclude = c("Feature Maps", "CellChat")` to keep the main
 #'   analysis compact while running separate sub-folder PPTXs for those
 #'   heavy sections.
+#' @param include_legends Logical. If `TRUE` (default), a legend sentence is
+#'   placed below each figure slide, sourced from the `.legend` sidecar file
+#'   beside the PDF or from auto-generated fallback templates.
+#' @param legend_font_size Numeric. Font size in points for the legend text
+#'   box on each slide. Default `8`.
 #'
 #' @return Invisibly returns the path to the saved `.pptx` file.
 #' @export
@@ -838,7 +843,7 @@ create_analysis_pptx <- function(
   } else {
     params <- list(dataset = basename(output_dir), subset = "",
                    date = format(Sys.Date()))
-    warning("No analysis_params.json found — call log_analysis_params() ",
+    warning("No analysis_params.json found - call log_analysis_params() ",
             "before create_analysis_pptx().")
   }
 
@@ -1008,7 +1013,7 @@ create_analysis_pptx <- function(
     avail_w   <- slide_width  - 0.5          # horizontal space for figure
     avail_h   <- slide_height - 1.1 - (if (show_leg) LEG_H + LEG_GAP else 0)
 
-    # Preserve the image's natural aspect ratio — scale to fit within
+    # Preserve the image's natural aspect ratio - scale to fit within
     # avail_w × avail_h without stretching or squishing.
     img_info  <- tryCatch(
       magick::image_info(magick::image_read(img_path)),
@@ -1043,7 +1048,7 @@ create_analysis_pptx <- function(
       location = officer::ph_location(left = 0.25, top = 0.08,
                                       width = slide_width - 0.5, height = 0.48))
 
-    # Figure — placed at its natural aspect-ratio-correct size, centred
+    # Figure - placed at its natural aspect-ratio-correct size, centered
     prs <- officer::ph_with(prs,
       value    = officer::external_img(img_path,
                                        width  = render_w,

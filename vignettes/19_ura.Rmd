@@ -1,0 +1,223 @@
+---
+title: "scSidekick - Upstream Regulator Analysis"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Upstream Regulator Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  eval    = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Differential expression tells you *which genes* change; upstream regulator
+analysis (URA) asks *which transcription factors* drive those changes.
+`RunURA()` infers per-sample TF activity from gene expression using
+[decoupleR](https://saezlab.github.io/decoupleR/) and the
+[CollecTRI](https://github.com/saezlab/CollecTRI) TF-target network, then
+(optionally) tests for **differential TF activity** between conditions.
+
+The workflow:
+
+1. Collapse cells to **pseudobulk** profiles (per group, donor, and any
+   stratifier) - statistically sound replicates for downstream testing.
+2. Score TF activity per sample with decoupleR's univariate linear model
+   (`ulm`, the default; `viper` and `mlm` are also available) against CollecTRI.
+3. If a contrast is given, test for differential activity (limma when there are
+   at least 3 donors per side, t-test otherwise).
+4. Save a TF-activity heatmap and a differential bubble plot, each with a
+   `.legend` sidecar.
+
+`RunURA()` complements the pathway tools (Vignettes 08-10): GSEA finds enriched
+gene sets, URA finds the regulators upstream of them.
+
+> **decoupleR is an optional dependency.** Install it once (Section 1). The
+> CollecTRI network is fetched from OmniPath on first use and cached locally.
+
+---
+
+## 1. Installation
+
+```{r install}
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("decoupleR")
+# Optional but recommended for the differential heatmap and limma-based testing:
+BiocManager::install(c("limma", "ComplexHeatmap"))
+```
+
+```{r libs}
+library(scSidekick)
+library(Seurat)
+```
+
+The first `RunURA()` call downloads CollecTRI from OmniPath and caches it to
+`~/.scSidekick/collectri_<organism>.rds`, so subsequent runs are offline and
+instant. See the note on network access at the end if OmniPath is blocked on
+your network.
+
+---
+
+## 2. Basic TF activity (no contrast)
+
+With just `group.by`, `RunURA()` infers mean TF activity per group and saves a
+z-scored activity heatmap of the most variable TFs.
+
+```{r basic}
+ura <- RunURA(obj,
+  group.by   = "CellType",
+  organism   = "human",
+  output_dir = "./Figures/URA")
+```
+
+The return value is a list:
+
+| Element | Description |
+|---|---|
+| `activity` | TF x group mean-activity matrix |
+| `scores` | Long-format decoupleR output (all pseudobulk samples) |
+| `de` | Differential table (`NULL` when no contrast) |
+| `network` | The TF-target network actually used |
+
+```{r basic-inspect}
+ura$activity[1:5, 1:4]      # TFs x cell types
+```
+
+---
+
+## 3. Differential TF activity between conditions
+
+Supply `contrast.by` (the condition column) and `contrast` (a
+`c("test", "reference")` pair), plus `donor.by` to enable replicate-based
+testing. This produces a differential heatmap (activity difference, with dots
+marking `p.adj < 0.05`) and a bubble plot.
+
+```{r contrast}
+ura <- RunURA(obj,
+  group.by    = "CellType",
+  donor.by    = "Donor.ID",            # biological replicates -> limma
+  contrast.by = "Diagnosis",
+  contrast    = c("AD", "Control"),    # test vs reference
+  organism    = "human",
+  output_dir  = "./Figures/URA")
+
+head(ura$de)   # TF, cell_type, activity_diff, p.value, p.adj, contrast ...
+```
+
+### Multiple contrasts at once
+
+```{r contrast-multi}
+ura <- RunURA(obj,
+  group.by    = "CellType",
+  donor.by    = "Donor.ID",
+  contrast.by = "Diagnosis",
+  contrast    = list(c("AD", "Control"), c("MCI", "Control")),
+  output_dir  = "./Figures/URA")
+```
+
+### Stratify with `split.by`
+
+`split.by` (e.g. `"Sex"`) adds a second dimension: the contrast is computed
+within each level, columns of the heatmap are grouped by it, and the bubble
+plot is faceted.
+
+```{r split}
+ura <- RunURA(obj,
+  group.by    = "CellType",
+  donor.by    = "Donor.ID",
+  split.by    = "Sex",
+  contrast.by = "Diagnosis",
+  contrast    = c("AD", "Control"),
+  output_dir  = "./Figures/URA")
+```
+
+---
+
+## 4. Useful options
+
+```{r options}
+RunURA(obj,
+  group.by       = "CellType",
+  contrast.by    = "Diagnosis",
+  contrast       = c("AD", "Control"),
+  method         = "ulm",        # "ulm" (default), "viper", or "mlm"
+  n_top          = 30,           # TFs shown in plots
+  min_cells      = 10,           # minimum cells per pseudobulk group
+  group.levels   = c("Microglia", "Astrocyte"),  # restrict to some groups
+  use_pseudobulk = TRUE,         # FALSE = score per cell, then average
+  organism       = "human",      # or "mouse"
+  output_dir     = "./Figures/URA")
+```
+
+- **`use_pseudobulk = TRUE`** (default) is the rigorous route: TF activity is
+  inferred from per-sample pseudobulk averages. With `use_pseudobulk = FALSE`,
+  decoupleR scores every cell directly and activities are averaged per group
+  (simpler, no `donor.by` needed, but cells are pseudoreplicates so interpret DE
+  p-values with caution; use `max_cells` to subsample large objects).
+- **`force = TRUE`** recomputes pseudobulk even if a cached result is stored in
+  `obj@misc$pseudobulk`.
+- A custom `network` (a data frame with `source`, `target`, `mor`) can be passed
+  instead of CollecTRI.
+
+---
+
+## 5. Outputs
+
+When `output_dir` is set, `RunURA()` writes (file names encode `group.by`,
+`split.by`, and the contrast):
+
+- `<object>_URA_by_<group>..._heatmap.pdf` - one per contrast; rows are top TFs,
+  columns are cell types (grouped by `split.by`), color is activity difference,
+  black dots mark `p.adj < 0.05`.
+- `<object>_URA_by_<group>..._bubble.pdf` - matrix bubble plot (cell type x TF,
+  color = activity difference, size = -log10 p.adj), faceted by contrast and
+  `split.by`.
+- A `.legend` sidecar next to each PDF, so `create_analysis_pptx()` picks the
+  description up automatically.
+
+---
+
+## 6. Note on network access (OmniPath)
+
+CollecTRI is fetched from the OmniPath web service on first use. `RunURA()`
+tries several fallbacks (bundled copy, alternate OmniPathR options, disk cache,
+direct REST download) and caches a working network to
+`~/.scSidekick/collectri_<organism>.rds`. If your institution blocks OmniPath,
+fetch the network once from an unrestricted machine and drop it in the cache:
+
+```{r offline}
+net <- decoupleR::get_collectri(organism = "human")
+saveRDS(net, "~/.scSidekick/collectri_human.rds")
+```
+
+Then every `RunURA()` call uses the cached network offline. You can also pass it
+directly via the `network` argument.
+
+---
+
+## See also
+
+- Vignette 08-10: `RunGSEA()` and the pathway family - the enriched gene sets
+  that URA finds the regulators for
+- Vignette 14: `ComputePseudobulk()` - the donor-level aggregation URA builds on
+- Vignette 12: `create_analysis_pptx()` - assembles the URA figures (with their
+  `.legend` text) into a deck
+
+---
+
+## Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

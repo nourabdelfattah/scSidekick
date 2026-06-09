@@ -1,7 +1,7 @@
 # =============================================================================
 # scSidekick session logger
 #
-# start_session_logger() — opt-in passive logger.  Call once per session
+# start_session_logger() - opt-in passive logger.  Call once per session
 #   (or add to ~/.Rprofile) to silently record every top-level command,
 #   auto-save ggplot outputs, and capture base-R plots.
 #

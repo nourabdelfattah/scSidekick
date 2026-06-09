@@ -1,0 +1,253 @@
+---
+title: "scSidekick - Co-expression Analysis"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Co-expression Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 10,
+  fig.height = 6
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Three functions cover the co-expression workflow end-to-end:
+
+- **`CorrelateGene()`** - correlate one gene of interest against every other
+  gene, within each cell type, at single-cell, pseudobulk, or group-average
+  resolution.
+- **`PlotCorrelation()`** - visualize the results as per-cell-type
+  volcano-style plots (r vs. -log10 adjusted p-value).
+- **`SplitByGene()`** - label each cell as high / low (or expressed / zero)
+  based on a gene's expression, per cell type. Feeds directly into
+  `RunGSEA_pseudobulk()` or `FindMarkers()`.
+
+```{r pkgs, include=FALSE}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+```
+
+```{r data, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- NormalizeData(bmcite, verbose = FALSE)
+bmcite <- PrepObject(bmcite,
+  variables   = c("donor", "celltype.l1"),
+  group.by    = "celltype.l1",
+  object_name = "bmcite")
+```
+
+---
+
+## 1. `CorrelateGene()` - single-cell level
+
+The default `level = "sc"` computes Spearman correlation across individual
+cells within each cell type. Only genes expressed in at least `min_pct`% of
+cells in a given cell type are tested (`expressed_only = TRUE` by default).
+
+```{r correlate-sc, eval=FALSE}
+cor_sc <- CorrelateGene(bmcite,
+  gene     = "LYZ",
+  group.by = "celltype.l1",
+  level    = "sc")
+
+head(cor_sc)
+```
+
+Each row is one gene in one cell type. Key columns:
+
+| Column | Description |
+|--------|-------------|
+| `gene` | Correlated gene |
+| `cell_type` | Cell-type group |
+| `r` | Spearman (or Pearson) correlation with the gene of interest |
+| `p` | Raw p-value |
+| `padj` | BH-adjusted p-value |
+| `n` | Number of cells tested |
+| `goi` | Gene of interest |
+| `level` | Resolution used (`"sc"`, `"pseudobulk"`, or `"group"`) |
+
+---
+
+## 2. `PlotCorrelation()` - visualize results
+
+`PlotCorrelation()` draws one panel per cell type showing the top `n_pos`
+positively and top `n_neg` negatively correlated genes. Significant genes
+(`padj < padj_cutoff`) are colored; the top `label_n` in each direction are
+labeled. Panels are assembled with `patchwork::wrap_plots()`.
+
+```{r plot-cor, eval=FALSE, fig.width=12, fig.height=8}
+PlotCorrelation(cor_sc,
+  n_pos       = 20,
+  n_neg       = 20,
+  label_n     = 5,
+  padj_cutoff = 0.05,
+  r_cutoff    = 0.3,     # draws ±0.3 dotted reference lines
+  ncol        = 3)
+```
+
+Restrict to specific cell types with `cell_type`:
+
+```{r plot-cor-subset, eval=FALSE, fig.width=8, fig.height=4}
+PlotCorrelation(cor_sc,
+  cell_type = c("NK", "Mono"),
+  n_pos     = 15,
+  n_neg     = 15,
+  label_n   = 6)
+```
+
+Save to PDF (a `.legend` sidecar is written automatically):
+
+```{r plot-cor-save, eval=FALSE}
+PlotCorrelation(cor_sc,
+  n_pos      = 20,
+  n_neg      = 20,
+  output_dir = "./Figures",
+  file_name  = "LYZ_coexpression")
+```
+
+---
+
+## 3. `CorrelateGene()` - pseudobulk level
+
+For multi-donor datasets, pseudobulk correlation (`level = "pseudobulk"`)
+aggregates counts to the donor x cell-type level first. This removes
+within-donor cell-count inflation and is more appropriate for multi-sample
+comparisons. Requires `sample_column`.
+
+```{r correlate-pb, eval=FALSE}
+cor_pb <- CorrelateGene(bmcite,
+  gene          = "LYZ",
+  group.by      = "celltype.l1",
+  level         = "pseudobulk",
+  sample_column = "donor",
+  min_donors    = 3)
+```
+
+### Group-average level
+
+`level = "group"` averages expression within each combination of cell type and
+`group_column`, then correlates across those group-level averages. Useful when
+donors are few but groups are many (e.g. comparing many cell-type x timepoint
+combinations).
+
+```{r correlate-group, eval=FALSE}
+cor_grp <- CorrelateGene(bmcite,
+  gene         = "LYZ",
+  group.by     = "celltype.l1",
+  level        = "group",
+  group_column = "donor",
+  min_groups   = 3)
+```
+
+---
+
+## 4. Stratified analysis with `compare_by`
+
+Pass `compare_by` to run the correlation separately within each level of a
+grouping variable (e.g. sex, condition, batch). The result gains a
+`compare_group` column, and `PlotCorrelation()` automatically lays out one
+column per comparison group.
+
+```{r compare-by, eval=FALSE}
+cor_by_donor <- CorrelateGene(bmcite,
+  gene       = "LYZ",
+  group.by   = "celltype.l1",
+  level      = "sc",
+  compare_by = "donor")
+
+# ncol defaults to the number of comparison groups
+PlotCorrelation(cor_by_donor,
+  cell_type = "Mono",
+  n_pos     = 15,
+  n_neg     = 15)
+```
+
+---
+
+## 5. `SplitByGene()` - label cells for downstream analysis
+
+`SplitByGene()` adds a new metadata column splitting cells into expression
+groups within each cell type. The column plugs straight into
+`RunGSEA_pseudobulk()` (as `contrast.by`) or `Seurat::FindMarkers()`.
+
+### Default: zero vs. expressed
+
+```{r split-zero, eval=FALSE}
+bmcite <- SplitByGene(bmcite,
+  gene     = "LYZ",
+  group.by = "celltype.l1",
+  split    = "zero_vs_expressed")
+
+# New column "LYZ_split" is now in meta.data:
+table(bmcite$LYZ_split, bmcite$celltype.l1, useNA = "ifany")
+```
+
+### Quantile split
+
+```{r split-quantile, eval=FALSE}
+bmcite <- SplitByGene(bmcite,
+  gene           = "LYZ",
+  group.by       = "celltype.l1",
+  split          = "quantile",
+  quantile_range = c(0.25, 0.75))  # bottom 25% = "low", top 25% = "high"
+```
+
+Middle cells (between the two quantiles) receive `NA` and are excluded from
+downstream tests, keeping only the contrast extremes.
+
+### Feeding into `RunGSEA_pseudobulk()`
+
+```{r split-to-gsea, eval=FALSE}
+RunGSEA_pseudobulk(bmcite,
+  group.by    = "celltype.l1",
+  sample.by   = "donor",
+  contrast.by = "LYZ_split",
+  contrasts   = list(expressed_vs_zero = "expressed - zero"),
+  species     = "human",
+  output_dir  = "./Figures/LYZ_pseudobulk_GSEA")
+```
+
+### Feeding into `FindMarkers()`
+
+```{r split-to-markers, eval=FALSE}
+mono <- subset(bmcite, celltype.l1 == "Mono")
+
+markers <- Seurat::FindMarkers(mono,
+  group.by  = "LYZ_split",
+  ident.1   = "expressed",
+  ident.2   = "zero",
+  min.pct   = 0.1,
+  logfc.threshold = 0.25)
+
+head(markers)
+```
+
+---
+
+## See also
+
+- Vignette 05: `GroupHeatmap()`, `SplitDotPlot()` - expression summaries per cell type
+- Vignette 08: `RunGSEA()` - pathway analysis on a gene list
+- Vignette 09: `RunGSEA_pseudobulk()` - full pseudobulk GSEA pipeline (`contrast.by` accepts the column from `SplitByGene`)
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

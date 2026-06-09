@@ -1,10 +1,10 @@
 # =============================================================================
-# scSidekick — Differential Expression & Pathway Visualizations  (viz_de.R)
+# scSidekick - Differential Expression & Pathway Visualizations  (viz_de.R)
 #
 # Exported:
-#   PlotVolcano()          — volcano plot from presto / FindMarkers output
-#   PlotGSEAEnrichment()   — 3-panel running-score mountain plot from fgsea
-#   PlotEnrichment()       — ORA bar / dot / lollipop from enrichR / clusterProfiler
+#   PlotVolcano()          - volcano plot from presto / FindMarkers output
+#   PlotGSEAEnrichment()   - 3-panel running-score mountain plot from fgsea
+#   PlotEnrichment()       - ORA bar / dot / lollipop from enrichR / clusterProfiler
 # =============================================================================
 
 
@@ -22,12 +22,12 @@
     ggplot2::theme(
       panel.grid.major  = ggplot2::element_blank(),
       panel.grid.minor  = ggplot2::element_blank(),
-      panel.border      = ggplot2::element_rect(colour = "black", linewidth = 0.5),
-      axis.text         = ggplot2::element_text(colour = "black"),
-      axis.title        = ggplot2::element_text(face = "bold", colour = "black"),
-      strip.background  = ggplot2::element_rect(fill = "white", colour = "black",
+      panel.border      = ggplot2::element_rect(color = "black", linewidth = 0.5),
+      axis.text         = ggplot2::element_text(color = "black"),
+      axis.title        = ggplot2::element_text(face = "bold", color = "black"),
+      strip.background  = ggplot2::element_rect(fill = "white", color = "black",
                                                  linewidth = 0.5),
-      strip.text        = ggplot2::element_text(face = "bold", colour = "black"),
+      strip.text        = ggplot2::element_text(face = "bold", color = "black"),
       plot.title        = ggplot2::element_text(face = "bold", hjust = 0.5),
       legend.key        = ggplot2::element_rect(fill = NA),
       plot.margin       = ggplot2::unit(c(0.4, 0.5, 0.3, 0.4), "cm")
@@ -159,7 +159,7 @@
 #' Produces a publication-ready volcano plot from a DEG data frame (presto,
 #' \code{FindMarkers}, or any table with logFC and adjusted p-value columns).
 #' Automatically detects column names for common output formats.  Points are
-#' coloured by direction × significance; top genes per direction are labelled
+#' colored by direction × significance; top genes per direction are labelled
 #' with \code{ggrepel}.
 #'
 #' @param deg_df Data frame with differential expression results. Compatible
@@ -180,7 +180,7 @@
 #' @param highlight_genes Character vector of specific genes to always label
 #'   regardless of their ranking.
 #' @param colors Named character vector with elements \code{"up"}, \code{"down"},
-#'   and \code{"ns"} (not significant). Defaults to red/blue/grey.
+#'   and \code{"ns"} (not significant). Defaults to red/blue/gray.
 #' @param point_size Point size. Default \code{1}.
 #' @param point_alpha Point transparency. Default \code{0.6}.
 #' @param max_overlaps Maximum label overlaps passed to \code{ggrepel}.
@@ -203,7 +203,7 @@ PlotVolcano <- function(
     padj_cutoff     = 0.05,
     top_n_labels    = 10,
     highlight_genes = NULL,
-    colors          = c(up = "#B40426", down = "#3B4CC0", ns = "grey70"),
+    colors          = c(up = "#B40426", down = "#3B4CC0", ns = "gray70"),
     point_size      = 1,
     point_alpha     = 0.6,
     max_overlaps    = 20,
@@ -255,7 +255,7 @@ PlotVolcano <- function(
     top_n_labels
   )
 
-  # Simpler approach — top by score per direction
+  # Simpler approach - top by score per direction
   if (!is.null(group_column) && group_column %in% colnames(df)) {
     label_genes <- do.call(rbind, lapply(
       split(df, df[[group_column]]),
@@ -283,7 +283,7 @@ PlotVolcano <- function(
   max_nlp <- max(df$._neglog10padj, na.rm = TRUE) * 1.05
 
   # ── Colors ───────────────────────────────────────────────────────────────
-  cols <- c(up = "#B40426", down = "#3B4CC0", ns = "grey70")
+  cols <- c(up = "#B40426", down = "#3B4CC0", ns = "gray70")
   cols[names(colors)] <- colors
   df$._dir <- factor(df$._dir, levels = c("up", "down", "ns"))
 
@@ -305,9 +305,9 @@ PlotVolcano <- function(
       name   = NULL
     ) +
     ggplot2::geom_vline(xintercept = c(-fc_cutoff, fc_cutoff),
-                        linetype = "dashed", colour = "grey40", linewidth = 0.4) +
+                        linetype = "dashed", color = "gray40", linewidth = 0.4) +
     ggplot2::geom_hline(yintercept = -log10(padj_cutoff),
-                        linetype = "dashed", colour = "grey40", linewidth = 0.4) +
+                        linetype = "dashed", color = "gray40", linewidth = 0.4) +
     ggplot2::xlim(-max_fc, max_fc) +
     ggplot2::ylim(0, max_nlp) +
     ggplot2::labs(x = "log₂ Fold Change",
@@ -353,13 +353,13 @@ PlotVolcano <- function(
 
 
 # =============================================================================
-# PlotGSEAEnrichment — internal mountain-plot builder
+# PlotGSEAEnrichment - internal mountain-plot builder
 # =============================================================================
 
 # Build one 3-panel mountain-plot stack for a single pathway.
 # ranked_stats: named numeric vector sorted descending (gene → AUC/logFC)
 # fgsea_row:   one-row data frame from fgsea CSV (must have pathway, NES, leadingEdge, size)
-# col_pos/neg: colours for positive/negative NES
+# col_pos/neg: colors for positive/negative NES
 # title_extra: appended to the pathway title (e.g. " | NRF1_mRNA")
 .one_mountain <- function(ranked_stats, fgsea_row, col_pos, col_neg,
                            title_extra = "") {
@@ -389,16 +389,16 @@ PlotVolcano <- function(
   p1 <- ggplot2::ggplot(es_df, ggplot2::aes(x = rank, y = score)) +
     ggplot2::geom_area(fill = curve_col, alpha = 0.12) +
     ggplot2::geom_line(color = curve_col, linewidth = 0.8) +
-    ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, color = "grey40") +
+    ggplot2::geom_hline(yintercept = 0, linewidth = 0.3, color = "gray40") +
     ggplot2::geom_vline(xintercept = peak_i, linetype = "dotted",
-                        color = "grey40", linewidth = 0.4) +
+                        color = "gray40", linewidth = 0.4) +
     ggplot2::annotate("text",
                       x     = peak_i + nrow(es_df) * 0.02,
                       y     = es_df$score[peak_i],
                       label = paste0("NES = ", round(nes, 3),
                                      "\npadj = ", plab),
                       hjust = 0, vjust = 0.5,
-                      size  = 2.6, fontface = "bold", color = "grey20") +
+                      size  = 2.6, fontface = "bold", color = "gray20") +
     ggplot2::labs(title = pw_title, x = NULL, y = "ES") +
     .de_theme(base_size = 9) +
     ggplot2::theme(axis.text.x  = ggplot2::element_blank(),
@@ -423,7 +423,7 @@ PlotVolcano <- function(
                          ggplot2::aes(x = rank, y = 1, fill = stat)) +
     ggplot2::geom_tile() +
     ggplot2::scale_fill_gradientn(
-      colours = c(col_neg, "white", col_pos),
+      colors = c(col_neg, "white", col_pos),
       name    = "AUC",
       guide   = ggplot2::guide_colorbar(barwidth = 3, barheight = 0.35,
                                          title.position = "top",
@@ -449,24 +449,24 @@ PlotVolcano <- function(
 # PlotGSEAEnrichment
 # =============================================================================
 
-#' GSEA Running Score Mountain Plots — Direct or from RunGSEA Output Directory
+#' GSEA Running Score Mountain Plots - Direct or from RunGSEA Output Directory
 #'
 #' @description
 #' Two operating modes:
 #'
-#' \strong{Direct mode} — pass \code{fgsea_result} and \code{ranked_stats}
+#' \strong{Direct mode} - pass \code{fgsea_result} and \code{ranked_stats}
 #' directly (e.g. from an ad-hoc fgsea run or a single CSV).
 #'
-#' \strong{RunGSEA directory mode} — point to the \code{output_dir} of a
+#' \strong{RunGSEA directory mode} - point to the \code{output_dir} of a
 #' completed \code{\link{RunGSEA}} run via \code{gsea_dir}.  The function
 #' auto-discovers all CSV files, searches pathway names with keyword search
 #' (same AND/OR logic as \code{\link{RunSCssGSEA}}), loads the ranked AUC
 #' vectors from the cached DE RDS files, and produces a grid layout:
 #' \itemize{
-#'   \item \strong{One PDF per split.by level} (cell type) — each PDF may have
+#'   \item \strong{One PDF per split.by level} (cell type) - each PDF may have
 #'     multiple pages when there are more groups than \code{max_cols}
 #'   \item \strong{Columns} = group.by levels (comparison groups, e.g. Male / Female)
-#'     — up to \code{max_cols} per page; additional groups wrap to new pages
+#'     - up to \code{max_cols} per page; additional groups wrap to new pages
 #'   \item \strong{Rows} = matched pathways (one 3-panel mountain stack per pathway)
 #' }
 #'
@@ -479,7 +479,7 @@ PlotVolcano <- function(
 #'   used in \code{\link{RunGSEA}}.
 #' @param database Database subfolder name (e.g. \code{"Hallmark"},
 #'   \code{"C2"}). \code{NULL} uses the first database found.
-#' @param search_terms Keyword search for pathways — same AND/OR logic as
+#' @param search_terms Keyword search for pathways - same AND/OR logic as
 #'   \code{\link{RunSCssGSEA}}: a character vector applies OR; a list of
 #'   character vectors applies AND within each element, OR across elements.
 #'   Case-insensitive.
@@ -499,7 +499,7 @@ PlotVolcano <- function(
 #'   value the groups are chunked across multiple pages within the same PDF.
 #'   Default \code{6}.
 #' @param colors Named vector with \code{"pos"} (positive NES) and \code{"neg"}
-#'   (negative NES) colour entries. Default red / blue.
+#'   (negative NES) color entries. Default red / blue.
 #' @param ncol \emph{Direct mode only.} Number of columns in the output layout.
 #'   Default \code{1}.
 #' @param output_dir Directory to save PDFs. \code{NULL} = no save.
@@ -588,12 +588,12 @@ PlotGSEAEnrichment <- function(
             if (length(matched_pws) > 5) " ..." else "")
 
     # Layout:
-    #   Page    = split.by level (cell type)     — one PDF per cell type
-    #   Columns = group.by levels (Male/Female)  — up to max_cols per page
-    #   Rows    = matched pathways               — all on the same page
+    #   Page    = split.by level (cell type)     - one PDF per cell type
+    #   Columns = group.by levels (Male/Female)  - up to max_cols per page
+    #   Rows    = matched pathways               - all on the same page
     #
     # When n_groups > max_cols the groups are chunked: each chunk becomes a
-    # separate page in the PDF titled "CellType [Lab] — groups 1-6 of 32".
+    # separate page in the PDF titled "CellType [Lab] - groups 1-6 of 32".
 
     labs_found <- unique(sapply(file_map, `[[`, "lab"))
 
@@ -605,125 +605,143 @@ PlotGSEAEnrichment <- function(
 
     .safe_name <- function(x) gsub("[/\\\\:*?\"<>|]", "_", x)
 
+    # ── Pre-load all CSVs and de_caches once (avoid re-reading per pathway) ──
+    # Each de_cache_{sp}_{lab}.rds contains all groups for that (sp, lab) pair.
+    # Reading it once and slicing per group is much faster than N_group re-reads.
+    message("  Pre-loading ranked stats...")
+    de_store    <- list()   # de_cache path  → full DE data.frame
+    ranks_store <- list()   # "<de_cache>\x1f<cl>" -> named numeric vector
+    csv_store   <- list()   # csv_path → data.frame
+
+    for (entry in file_map) {
+      if (!entry$de_cache %in% names(de_store)) {
+        de_store[[entry$de_cache]] <- tryCatch(
+          readRDS(entry$de_cache),
+          error = function(e) {
+            message("  Cannot read de_cache: ", basename(entry$de_cache)); NULL
+          }
+        )
+      }
+      rkey <- paste0(entry$de_cache, "\x1f", entry$cl)
+      if (!rkey %in% names(ranks_store)) {
+        de <- de_store[[entry$de_cache]]
+        ranks_store[[rkey]] <- if (!is.null(de))
+          tryCatch(
+            de |> dplyr::filter(group == entry$cl) |>
+                  dplyr::arrange(dplyr::desc(auc)) |>
+                  dplyr::select(feature, auc) |>
+                  tibble::deframe(),
+            error = function(e) NULL
+          )
+        else NULL
+      }
+      if (!entry$csv_path %in% names(csv_store)) {
+        csv_store[[entry$csv_path]] <- tryCatch(
+          utils::read.csv(entry$csv_path, stringsAsFactors = FALSE),
+          error = function(e) {
+            message("  Cannot read: ", basename(entry$csv_path)); NULL
+          }
+        )
+      }
+    }
+    rm(de_store)   # free full DE tables now that ranks are extracted
+
+    # ── One PDF per pathway; rows = cell types, columns = comparison groups ──
     all_plots <- list()
 
-    for (lab in labs_found) {
-      lab_map <- Filter(function(x) x$lab == lab, file_map)
-      sps_lab <- unique(sapply(lab_map, `[[`, "sp"))   # cell types  → pages
-      cls_lab <- unique(sapply(lab_map, `[[`, "cl"))   # groups      → columns
+    for (pw in matched_pws) {
+      pw_safe <- .safe_name(pw)
 
-      # Open one PDF per cell type (lab × sp combination)
-      for (sp in sps_lab) {
-        sp_map  <- Filter(function(x) x$sp == sp, lab_map)
+      for (lab in labs_found) {
+        lab_map  <- Filter(function(x) x$lab == lab, file_map)
+        sps_lab  <- unique(sapply(lab_map, `[[`, "sp"))   # cell types → rows
+        cls_lab  <- unique(sapply(lab_map, `[[`, "cl"))   # groups     → columns
+        lab_safe <- .safe_name(lab)
 
-        # Chunk comparison groups into batches of max_cols
-        cl_batches <- split(cls_lab,
-                            ceiling(seq_along(cls_lab) / max_cols))
+        cl_batches <- split(cls_lab, ceiling(seq_along(cls_lab) / max_cols))
         n_batches  <- length(cl_batches)
 
-        sp_safe  <- .safe_name(sp)
-        lab_safe <- .safe_name(lab)
+        pdf_name <- paste0(
+          pfx, if (nchar(pfx)) " " else "",
+          pw_safe,
+          if (length(labs_found) > 1) paste0(" [", lab_safe, "]") else "",
+          " GSEA mountain.pdf"
+        )
         pdf_path <- if (!is.null(output_dir))
-          file.path(output_dir,
-                    paste0(pfx, if (nchar(pfx)) " " else "",
-                           lab_safe, " ", sp_safe,
-                           " GSEA mountain.pdf"))
-        else NULL
+          file.path(output_dir, pdf_name) else NULL
 
         if (!is.null(pdf_path)) {
-          # PDF dimensions: width = max_cols columns, height = n_pathways rows
           pdf(pdf_path,
               width  = min(length(cls_lab), max_cols) * 4.5,
-              height = length(matched_pws) * 5.5 + 0.8)
+              height = length(sps_lab) * 5.5 + 0.8)
+          on.exit(grDevices::dev.off(), add = TRUE)
         }
 
         for (b_idx in seq_along(cl_batches)) {
           cls_batch <- cl_batches[[b_idx]]
 
-          # One column per comparison group in this batch
+          # One column per comparison group; rows = cell types
           page_cols <- lapply(cls_batch, function(cl) {
-            entry <- Filter(function(x) x$cl == cl, sp_map)
-            if (length(entry) == 0) return(NULL)
-            entry <- entry[[1]]
+            sp_plots <- lapply(sps_lab, function(sp) {
+              entry <- Filter(function(x) x$sp == sp && x$cl == cl, lab_map)
+              if (length(entry) == 0) return(NULL)
+              entry <- entry[[1]]
 
-            # Load fgsea CSV for this (cl, sp, lab)
-            df <- tryCatch(
-              utils::read.csv(entry$csv_path, stringsAsFactors = FALSE),
-              error = function(e) {
-                message("  Cannot read: ", basename(entry$csv_path)); NULL
-              }
-            )
-            if (is.null(df)) return(NULL)
-            df_pw <- df[df$pathway %in% matched_pws, , drop = FALSE]
-            if (nrow(df_pw) == 0) return(NULL)
-
-            # Load ranked AUC for this comparison group from de_cache
-            ranks <- tryCatch({
-              de <- readRDS(entry$de_cache)
-              de |>
-                dplyr::filter(group == cl) |>
-                dplyr::arrange(dplyr::desc(auc)) |>
-                dplyr::select(feature, auc) |>
-                tibble::deframe()
-            }, error = function(e) {
-              message("  Cannot load de_cache for (", sp, " / ", cl, "): ",
-                      conditionMessage(e))
-              NULL
-            })
-            if (is.null(ranks) || length(ranks) == 0) return(NULL)
-
-            # Stack one mountain plot per pathway (rows)
-            pw_plots <- lapply(matched_pws, function(pw) {
-              rows <- df_pw[df_pw$pathway == pw, , drop = FALSE]
+              csv_df <- csv_store[[entry$csv_path]]
+              if (is.null(csv_df)) return(NULL)
+              rows <- csv_df[csv_df$pathway == pw, , drop = FALSE]
               if (nrow(rows) == 0) return(NULL)
+
+              rkey   <- paste0(entry$de_cache, "\x1f", cl)
+              ranks  <- ranks_store[[rkey]]
+              if (is.null(ranks) || length(ranks) == 0) return(NULL)
+
               .one_mountain(ranks, rows[1, ], col_pos, col_neg,
-                            title_extra = paste0("\n", cl))
+                            title_extra = paste0("\n", sp))
             })
-            pw_plots <- Filter(Negate(is.null), pw_plots)
-            if (length(pw_plots) == 0) return(NULL)
-            patchwork::wrap_plots(pw_plots, ncol = 1)
+            sp_plots <- Filter(Negate(is.null), sp_plots)
+            if (length(sp_plots) == 0) return(NULL)
+            patchwork::wrap_plots(sp_plots, ncol = 1)
           })
 
           page_cols <- Filter(Negate(is.null), page_cols)
           if (length(page_cols) == 0) next
 
           batch_lbl <- if (n_batches > 1)
-            paste0(" — groups ", min(which(cls_lab %in% cls_batch)),
-                   "–", max(which(cls_lab %in% cls_batch)),
+            paste0(" - groups ", min(which(cls_lab %in% cls_batch)),
+                   "-", max(which(cls_lab %in% cls_batch)),
                    " of ", length(cls_lab))
           else ""
 
           page <- patchwork::wrap_plots(page_cols, nrow = 1) +
             patchwork::plot_annotation(
-              title    = paste0(sp, "  [", lab, "]", batch_lbl),
-              subtitle = paste0("Pathways matching: ", term_label),
+              title    = paste0(pw, if (nchar(lab) && lab != "All")
+                                      paste0("  [", lab, "]") else "",
+                                batch_lbl),
+              subtitle = paste0("Rows: ", paste(sps_lab, collapse = " | ")),
               theme    = ggplot2::theme(
                 plot.title    = ggplot2::element_text(face = "bold", size = 11),
-                plot.subtitle = ggplot2::element_text(size = 8, color = "grey40")
+                plot.subtitle = ggplot2::element_text(size = 8, color = "gray40")
               )
             )
 
-          if (!is.null(pdf_path)) {
-            print(page)
-          } else {
-            print(page)
-          }
-
-          all_plots[[lab]][[sp]][[b_idx]] <- page
+          print(page)
+          all_plots[[pw]][[lab]][[b_idx]] <- page
         }  # end batch loop
 
         if (!is.null(pdf_path)) {
+          on.exit(NULL, add = FALSE)
           grDevices::dev.off()
           message("  Saved: ", basename(pdf_path))
         }
-      }  # end sp loop
-    }  # end lab loop
+      }  # end lab loop
+    }  # end pathway loop
 
     return(invisible(all_plots))
   }
 
   # ════════════════════════════════════════════════════════════════════════════
-  # MODE 2: Direct — fgsea_result + ranked_stats
+  # MODE 2: Direct - fgsea_result + ranked_stats
   # ════════════════════════════════════════════════════════════════════════════
   if (is.null(fgsea_result) || is.null(ranked_stats))
     stop("Provide either 'gsea_dir' (RunGSEA directory mode) or ",
@@ -807,8 +825,8 @@ PlotGSEAEnrichment <- function(
 #'   \code{"gene_ratio"} (default), \code{"gene_count"}, or \code{"-log10padj"}.
 #' @param color_by What drives fill/color. One of \code{"padj"} (default) or
 #'   \code{"gene_count"}.
-#' @param colors Character vector of 2–5 colours for the gradient (low padj →
-#'   high padj, i.e. significant → not). Default diverging red–blue.
+#' @param colors Character vector of 2-5 colors for the gradient (low padj →
+#'   high padj, i.e. significant → not). Default diverging red-blue.
 #' @param max_term_length Maximum characters for term label before wrapping.
 #'   Default \code{50}.
 #' @param output_dir Directory to save a PDF. \code{NULL} = no save.
@@ -903,12 +921,12 @@ PlotEnrichment <- function(
 
   # Reverse gradient direction for padj (low padj = significant = warmer)
   col_scale <- ggplot2::scale_color_gradientn(
-    colours  = if (color_by == "padj") colors else rev(colors),
+    colors  = if (color_by == "padj") colors else rev(colors),
     name     = color_label,
     trans    = if (color_by == "padj") "log10" else "identity"
   )
   fill_scale <- ggplot2::scale_fill_gradientn(
-    colours  = if (color_by == "padj") colors else rev(colors),
+    colors  = if (color_by == "padj") colors else rev(colors),
     name     = color_label,
     trans    = if (color_by == "padj") "log10" else "identity"
   )
@@ -933,14 +951,14 @@ PlotEnrichment <- function(
       size_aes <- if (!is.null(count_col))
         ggplot2::aes(size = .data[["._count"]]) else ggplot2::aes(size = 3)
       p <- p +
-        ggplot2::geom_point(size_aes, shape = 21, stroke = 0.4, color = "grey30") +
+        ggplot2::geom_point(size_aes, shape = 21, stroke = 0.4, color = "gray30") +
         ggplot2::scale_size_continuous(name = "Gene Count", range = c(2, 8)) +
         fill_scale
 
     } else if (plot_type == "bar") {
       p <- p +
         ggplot2::geom_bar(stat = "identity", width = 0.7,
-                           color = "grey30", linewidth = 0.3) +
+                           color = "gray30", linewidth = 0.3) +
         fill_scale
 
     } else {  # lollipop
@@ -948,9 +966,9 @@ PlotEnrichment <- function(
         ggplot2::geom_segment(
           ggplot2::aes(x = 0, xend = .data[["._x"]],
                        y = .data[["._term"]], yend = .data[["._term"]]),
-          color = "grey60", linewidth = 0.5
+          color = "gray60", linewidth = 0.5
         ) +
-        ggplot2::geom_point(size = 4, shape = 21, stroke = 0.4, color = "grey30") +
+        ggplot2::geom_point(size = 4, shape = 21, stroke = 0.4, color = "gray30") +
         fill_scale
     }
 
@@ -1007,7 +1025,7 @@ PlotEnrichment <- function(
 #' @description
 #' Runs over-representation analysis (ORA) using \pkg{enrichR} on a gene list
 #' or on significant DEGs from a data frame, then automatically calls
-#' \code{\link{PlotEnrichment}} to visualise the results.  When
+#' \code{\link{PlotEnrichment}} to visualize the results.  When
 #' \code{group_column} is supplied, analysis is run separately per group.
 #'
 #' @param features Character vector of gene symbols to test.  Provide either
@@ -1116,10 +1134,10 @@ RunEnrichment <- function(
 
   for (grp in names(gene_lists)) {
     genes <- gene_lists[[grp]]
-    message("\nGroup: ", grp, " — ", length(genes), " gene(s)")
+    message("\nGroup: ", grp, " - ", length(genes), " gene(s)")
 
     if (length(genes) == 0) {
-      message("  No genes after filtering — skipping.")
+      message("  No genes after filtering - skipping.")
       next
     }
 

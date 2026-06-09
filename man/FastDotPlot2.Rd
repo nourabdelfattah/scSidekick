@@ -22,7 +22,9 @@ FastDotPlot2(
   dot.scale = 6,
   RunEnrichR = TRUE,
   EnrichR_DB = "CellMarker_2024",
-  TopN_Enrich = 3
+  TopN_Enrich = 3,
+  output_dir = NULL,
+  file_name = NULL
 )
 }
 \arguments{
@@ -64,6 +66,17 @@ Default \code{15}.}
 
 \item{TopN_Enrich}{Integer. Number of top terms to show per pattern.
 Default \code{3}.}
+
+\item{output_dir}{Character or \code{NULL}. Directory to save a PDF.
+\code{NULL} (default) returns the plot without saving.  When
+\code{NULL}, the function walks up to the \code{output_dir} stored by
+\code{\link{PrepObject}}, unless \code{AutoSavePlots = FALSE} was set
+there.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces a name that always includes
+\code{group.by} and adds the \code{pattern} when one is used, e.g.
+\code{object_name_group.by_pattern_<pattern>_FastDotPlot}.}
 }
 \value{
 A named list:

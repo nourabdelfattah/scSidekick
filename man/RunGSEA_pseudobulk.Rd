@@ -2,16 +2,31 @@
 % Please edit documentation in R/pathway_pseudobulk.R
 \name{RunGSEA_pseudobulk}
 \alias{RunGSEA_pseudobulk}
-\title{Pseudobulk (per-sample) GSEA with limma contrasts + per-patient ssGSEA}
+\title{Pseudobulk GSEA with limma contrasts and per-patient ssGSEA}
 \usage{
 RunGSEA_pseudobulk(
   seurat_object = NULL,
-  identity_column = NULL,
-  sample_column = NULL,
-  group_column = NULL,
+  group.by = NULL,
+  sample.by = NULL,
+  contrast.by = NULL,
+  split.by = NULL,
+  subset.by = NULL,
+  run_label = NULL,
+  label.by = NULL,
   pseudobulk = NULL,
   covariates = NULL,
   contrasts = NULL,
+  gene_sets = NULL,
+  deg_df = NULL,
+  deg_gene_column = "feature",
+  deg_group_column = "group",
+  deg_fc_column = "logFC",
+  deg_padj_column = "padj",
+  deg_padj_cutoff = 0.05,
+  deg_top_n = 20L,
+  identity_column = NULL,
+  sample_column = NULL,
+  group_column = NULL,
   pathway_sets = list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
     subcategory = "CP:KEGG"), Reactome = list(category = "C2", subcategory =
     "CP:REACTOME"), WP = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")),
@@ -21,118 +36,270 @@ RunGSEA_pseudobulk(
   min.cells = 10L,
   min.samples.per.group = 3L,
   run.ssgsea = TRUE,
+  ssgsea.use.padj = TRUE,
   top_n_heatmap = 30L,
   top_n_ssgsea = 30L,
+  nes.cutoff = 1,
   group_colors = NULL,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
+  heatmap_colors = NULL,
   save.rds = TRUE,
-  redo_plots = FALSE
+  redo_plots = FALSE,
+  caffeinate = FALSE
 )
 }
 \arguments{
-\item{seurat_object}{A Seurat object with raw counts in \code{assay}. Either
-\code{seurat_object} or a precomputed \code{pseudobulk} object must be supplied.}
+\item{seurat_object}{A Seurat object. Either \code{seurat_object} or a
+precomputed \code{pseudobulk} list must be supplied.}
 
-\item{identity_column}{Character. Metadata column holding cell-type identities.
-One independent GSEA is run for each level (e.g. \code{"Assignment"}).}
+\item{group.by}{Character or \code{NULL}. Metadata column holding cell-type
+labels. One independent GSEA is run per level (e.g. \code{"Assignment"}).
+Pass \code{NULL} when the object already contains only one cell type (e.g. a
+Microglia-only object); all cells are treated as a single group called
+\code{"All"} and a single GSEA is run.}
 
-\item{sample_column}{Character. Metadata column identifying the biological
-replicate (donor / patient ID). This is the statistical unit — samples
-are the replicates in the limma-voom model. (e.g. \code{"Sample"}, \code{"Donor.ID"}).}
+\item{sample.by}{Character. Metadata column identifying the biological
+replicate (donor/patient ID). This is the statistical unit; each unique
+value becomes one pseudobulk sample in the limma-voom model
+(e.g. \code{"DonorID"}).}
 
-\item{group_column}{Character. Metadata column holding the comparison group
-label (e.g. \code{"Group"} where levels are \code{"Dementia.Female"},
-\code{"Dementia.Male"}, \code{"Reference.Female"}, …). Cells with \code{NA} in this
-column are dropped before aggregation — use \code{NA} to exclude groups you
-do not want to compare (e.g. a Reference group that is not part of any
-contrast).}
+\item{contrast.by}{Character. Metadata column holding the comparison group
+label (e.g. \code{"Disease"} with levels \code{"AD"} and \code{"Control"}). Cells with
+\code{NA} in this column are excluded before aggregation.}
 
-\item{pseudobulk}{Optional precomputed pseudobulk. A list with elements
-\code{counts} (genes × samples matrix) and \code{samples} (sample-level metadata
-data.frame). Supply this to skip the aggregation step on subsequent runs.
-Returned invisibly by the function itself.}
+\item{split.by}{Character or \code{NULL}. Optional metadata column used to
+create interaction groups before fitting the model. When supplied, the
+contrast groups become \verb{<contrast.by>.<split.by>} combinations
+(e.g. \code{split.by = "Sex"} turns \code{"AD"} and \code{"Control"} into
+\code{"AD.Female"}, \code{"AD.Male"}, \code{"Control.Female"}, \code{"Control.Male"}),
+allowing sex-stratified or condition-stratified contrasts. Default \code{NULL}.}
+
+\item{subset.by}{Character or \code{NULL}. Optional metadata column used to run
+the full pipeline separately for each level. Each level gets its own
+subdirectory under \code{output_dir}. Use this to produce independent analyses
+per broad cell class, brain region, or any other grouping variable without
+calling the function multiple times. Default \code{NULL}.}
+
+\item{run_label}{Character or \code{NULL}. Short label appended to output
+filenames and plot titles to distinguish this run from others saved to the
+same \code{output_dir}. Set automatically when \code{subset.by} is used; otherwise
+leave \code{NULL} unless you need a custom tag.}
+
+\item{pseudobulk}{Optional precomputed pseudobulk. A named list with
+elements \verb{$counts} (genes x samples matrix) and \verb{$samples} (sample-level
+metadata data frame). Supply the value returned by a previous
+\code{RunGSEA_pseudobulk()} call to skip the aggregation step on reruns.
+Default \code{NULL} (aggregation is performed from \code{seurat_object}).}
 
 \item{covariates}{Character vector of sample-level metadata columns to
 include as covariates in the limma-voom model (e.g. \code{c("Age", "PMI")}).
-Numeric covariates are median-imputed for missing values; factor/character
-covariates receive an \code{"unknown"} level.}
+Numeric covariates are median-imputed for \code{NA}; factor/character
+covariates receive an \code{"unknown"} level. Default \code{NULL}.}
 
-\item{contrasts}{Named list of limma contrast expressions written in terms
-of the group-means model coefficients \verb{group<level>} (e.g.
-\code{list(FvsM_Dem = "groupDementia.Female - groupDementia.Male")}).
-Positive NES in the output means enrichment in the \strong{first} term of the
-contrast. When \code{NULL} and \code{group_column} levels follow the \verb{<Disease>.<Sex>}
-convention (2 × 2 design), a standard set of contrasts is built
-automatically: Female-vs-Male within each disease, Disease-vs-control
-within each sex, and the Sex × Disease interaction term.}
+\item{contrasts}{Named list of limma contrast expressions. Every element
+must be a \strong{single string} built from model coefficient names of the form
+\code{make.names(paste0("group", level))}. A small helper makes this concise:
+\preformatted{
+  cf <- function(l) make.names(paste0("group", l))
+  contrasts <- list(
+    AD_vs_Ctrl   = paste(cf("AD"),     "-", cf("Control")),
+    Interaction  = paste0("(", cf("AD.F"), "-", cf("Ctrl.F"), ")",
+                          " - ",
+                          "(", cf("AD.M"), "-", cf("Ctrl.M"), ")")
+  )
+  }
+Positive NES = enrichment in the first term. When \code{NULL} a standard set
+is generated automatically from the levels of \code{contrast.by}. When
+\code{redo_plots = TRUE}, a user-supplied list takes priority over the list
+saved in the RDS. Default \code{NULL}.}
 
-\item{pathway_sets}{Named list of MSigDB databases. Same structure as in
-\code{\link[=RunGSEA]{RunGSEA()}} — see that function's documentation for a full list of valid
-collections. Default: Hallmark (\code{"H"}), KEGG, Reactome, WikiPathways.}
+\item{gene_sets}{Named list of character vectors. Each element is one gene
+set (e.g. \code{list(MySet = c("GENE1", "GENE2", ...))}). When supplied,
+\code{pathway_sets} and \code{deg_df} are ignored and \code{msigdbr} is not required.
+Default \code{NULL}.}
 
-\item{species}{Character. \code{"human"} (default) or \code{"mouse"}. Passed to
-\code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}. See \code{msigdbr::msigdbr_species()} for all options.}
+\item{deg_df}{Data frame of differential expression results. Top DEGs per
+group are extracted and used as gene sets. When supplied, \code{pathway_sets}
+is ignored and \code{msigdbr} is not required. Use the \verb{deg_*} parameters
+below to map your data frame's column names. Default \code{NULL}.}
 
-\item{output_dir}{Character. Root directory for CSV, PDF, and RDS output.
-Per-contrast and per-database sub-directories are created automatically.}
+\item{deg_gene_column}{Character. Column in \code{deg_df} containing gene names.
+Default \code{"feature"}.}
+
+\item{deg_group_column}{Character (length 1 or 2). Column(s) in \code{deg_df}
+defining the group each row belongs to. Two columns create a two-level
+label used for heatmap row splitting. Default \code{"group"}.}
+
+\item{deg_fc_column}{Character. Column in \code{deg_df} containing the fold
+change used to rank genes within each group. Default \code{"logFC"}.}
+
+\item{deg_padj_column}{Character or \code{NULL}. Column in \code{deg_df} containing
+adjusted p-values for pre-filtering. Set to \code{NULL} to skip filtering.
+Default \code{"padj"}.}
+
+\item{deg_padj_cutoff}{Numeric. Adjusted p-value threshold applied to
+\code{deg_df} before selecting top genes. Default \code{0.05}.}
+
+\item{deg_top_n}{Integer. Number of top genes per group (ranked by
+\code{deg_fc_column}, descending) to include in each gene set. Default \code{20}.}
+
+\item{pathway_sets}{Named list of MSigDB collections to test. Each element
+must have a \code{category} field and an optional \code{subcategory} field
+(see \code{\link[msigdbr:msigdbr_collections]{msigdbr::msigdbr_collections()}}). The element name becomes the
+label used in output filenames. Default: Hallmark, KEGG, Reactome,
+WikiPathways. Ignored when \code{gene_sets} or \code{deg_df} is supplied.}
+
+\item{species}{Character. Species name passed to \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}.
+Use \code{"human"} or \code{"mouse"} (shorthand accepted) or any full name returned
+by \code{msigdbr::msigdbr_species()}. Default \code{"human"}.}
+
+\item{output_dir}{Character. Root directory for all CSV, PDF, and RDS
+output. Per-contrast and per-database subdirectories are created
+automatically.}
 
 \item{assay}{Character or \code{NULL}. Seurat assay containing raw counts to
-aggregate. \code{NULL} uses \code{SeuratObject::DefaultAssay()}. For BPCells
-sketch workflows always specify \code{"RNA"} explicitly (do not use the sketch
-assay — pseudobulk aggregation requires raw counts for all cells).}
+aggregate. \code{NULL} uses the default assay. For BPCells sketch workflows,
+always pass \code{"RNA"} explicitly since pseudobulk aggregation requires
+raw counts from all cells. Default \code{NULL}.}
 
-\item{min.cells}{Integer. Minimum cells a sample must contribute to a given
-cell-type to be included in the pseudobulk for that cell type. Samples
-below this threshold are dropped to avoid noisy pseudo-replicates.
+\item{min.cells}{Integer. Minimum number of cells a sample must contribute
+to a given cell type to be included in the pseudobulk for that cell type.
+Samples below this threshold are excluded to avoid noisy pseudo-replicates.
 Default \code{10}.}
 
-\item{min.samples.per.group}{Integer. Minimum samples per group level
-required within a cell type for that cell type to be tested. Cell types
-with too few replicates in any group are skipped. Default \code{3}.}
+\item{min.samples.per.group}{Integer. Minimum number of samples required
+per group level within a cell type. Cell types where any group has fewer
+than this many samples are skipped entirely. Default \code{3}.}
 
-\item{run.ssgsea}{Logical. Also compute per-patient pathway activity
-scores using single-sample GSEA (ssGSEA via \code{GSVA::gsva()})?
-Produces one boxplot PDF per contrast per database showing group-level
-pathway activity. Requires the \code{GSVA} Bioconductor package. Default
-\code{TRUE}.}
+\item{run.ssgsea}{Logical. Also compute per-patient pathway activity via
+single-sample GSEA (ssGSEA, using \code{GSVA::gsva()})? Produces score
+heatmaps and contrast boxplots per cell type per database. Requires the
+\code{GSVA} Bioconductor package. Default \code{TRUE}.}
 
-\item{top_n_heatmap}{Integer. Number of top pathways (by maximum |NES|
-across cell types) to display in the NES heatmap per contrast × database
-combination. Default \code{30}.}
+\item{ssgsea.use.padj}{Logical. When \code{TRUE} (default), pathway significance
+in ssGSEA is judged by BH-adjusted p-value (\code{padj < 0.05}). Set to
+\code{FALSE} to use the raw p-value instead -- useful when many contrasts make
+BH correction too aggressive and real signals drop out. Affects pathway
+selection for heatmaps, boxplot panel selection, and significance bracket
+thresholds. Default \code{TRUE}.}
+
+\item{top_n_heatmap}{Integer. Number of pathways shown in the NES heatmap
+per contrast/database combination, selected by maximum |NES| across cell
+types. Default \code{30}.}
+
+\item{top_n_ssgsea}{Integer. Number of pathways shown in the ssGSEA score
+heatmap per cell type, selected by significance or variance. Default \code{30}.}
+
+\item{nes.cutoff}{Numeric. Minimum absolute NES required for a pathway to
+appear in the \strong{summary} NES heatmap (pathways x contrasts). The candidate
+row set is first built as the union of the top \code{top_n_heatmap} pathways
+from each individual per-contrast heatmap; \code{nes.cutoff} then removes rows
+whose maximum |NES| across all contrasts falls below this threshold.
+Default \code{1.0}. Set to \code{0} to skip the cutoff and show all union rows.}
+
+\item{group_colors}{Named character vector mapping \code{contrast.by} levels to
+colors. Used consistently across all boxplots and heatmap annotations.
+\code{NULL} auto-generates colors from the Nour palette. Default \code{NULL}.}
+
+\item{heatmap_params}{Named list of additional arguments forwarded to
+\code{\link[ComplexHeatmap:Heatmap]{ComplexHeatmap::Heatmap()}}. Any default set internally can be overridden
+here (e.g. \code{list(clustering_distance_rows = "pearson")}).}
+
+\item{heatmap_colors}{A \code{circlize::colorRamp2} color function for all NES
+and ssGSEA score heatmaps. \code{NULL} (default) uses a 5-stop blue-white-red
+diverging palette centered at 0. Breaks are fixed at \code{c(-2, -1, 0, 1, 2)}
+for ssGSEA row-z-score heatmaps and auto-scaled to the data for NES
+heatmaps. Supply any \code{colorRamp2} object to override all heatmaps at once.
+Examples:
+\itemize{
+\item \strong{Classic RdBu:}
+\code{circlize::colorRamp2(c(-3, 0, 3), c("#2166ac", "white", "#b2182b"))}
+\item \strong{Purple-green (PRGn):}
+\code{circlize::colorRamp2(c(-3, 0, 3), RColorBrewer::brewer.pal(3, "PRGn"))}
+\item \strong{Viridis plasma (for one-sided scores):}
+\code{circlize::colorRamp2(seq(0, 3, length.out = 9), viridis::plasma(9))}
+\item \strong{Tighter scale for subtle signals:}
+\code{circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
+}}
 
 \item{save.rds}{Logical. Save the pseudobulk counts, sample metadata, GSEA
-results, and ssGSEA results as a single RDS file
-(\code{RunGSEA_pseudobulk_results.rds}) in \code{output_dir}? Useful for
-resuming or re-plotting without re-running the full pipeline.
-Default \code{TRUE}.}
+results, and ssGSEA results as \code{RunGSEA_pseudobulk_results.rds} in
+\code{output_dir}. Required for \code{redo_plots = TRUE}. Default \code{TRUE}.}
 
-\item{redo_plots}{Logical. Re-generate all visualisations from previously
-saved results without re-running the pipeline. Default \code{FALSE}. When
+\item{redo_plots}{Logical. Reload a previously saved RDS and regenerate
+all plots without rerunning the full pipeline. Default \code{FALSE}. When
 \code{TRUE}:
 \itemize{
 \item \code{RunGSEA_pseudobulk_results.rds} is loaded from \code{output_dir}.
 \item NES heatmaps and lollipop plots are regenerated from the saved
-\code{gsea} data frame.
-\item ssGSEA score CSVs already on disk are read back and used to
-regenerate the score heatmaps and contrast boxplots.
-\item \code{seurat_object}, \code{identity_column}, \code{sample_column}, and \code{group_column} are
+GSEA data frame.
+\item ssGSEA score CSVs on disk are reread and used to regenerate score
+heatmaps and boxplots.
+\item \code{seurat_object}, \code{group.by}, \code{sample.by}, and \code{contrast.by} are
 not needed and can be omitted.
 }
-Useful after changing \code{group_colors}, \code{heatmap_params}, or any
-visualisation parameter without rerunning the hours-long pipeline.}
+Useful after changing \code{group_colors}, \code{heatmap_params}, or any plot
+parameter without rerunning the hours-long pipeline.}
+
+\item{caffeinate}{Logical. Prevent the system from sleeping during the run
+(macOS only, uses the built-in \code{caffeinate} utility). Recommended for
+overnight runs. Default \code{FALSE}.}
 }
 \value{
 Invisibly returns a named list:
 \describe{
-\item{\code{pseudobulk}}{Genes × samples aggregated count matrix.}
-\item{\code{samples}}{Sample-level metadata data.frame.}
-\item{\code{gsea}}{Long-format data.frame of all fgsea results (pathway, NES,
-padj, cell_type, contrast, db).}
-\item{\code{ssgsea}}{ssGSEA results list (one element per cell type), or
-\code{NULL} if \code{run.ssgsea = FALSE}.}
+\item{\code{pseudobulk}}{Genes x samples aggregated count matrix.}
+\item{\code{samples}}{Sample-level metadata data frame used in the model.}
+\item{\code{gsea}}{Long-format data frame of all fgsea results with columns
+\code{pathway}, \code{NES}, \code{padj}, \code{cell_type}, \code{contrast}, and \code{db}.}
+\item{\code{ssgsea}}{ssGSEA contrast results (one row per pathway/cell type/
+contrast), or \code{NULL} if \code{run.ssgsea = FALSE}.}
+\item{\code{contrasts}}{The named contrast list actually used in the model
+(useful when contrasts were auto-generated).}
 }
 }
 \description{
-Pseudobulk (per-sample) GSEA with limma contrasts + per-patient ssGSEA
+The statistically rigorous alternative to \code{\link[=RunGSEA]{RunGSEA()}}. Instead of treating
+individual cells as replicates, this function aggregates counts to the
+donor/sample level (pseudobulk), fits a limma-voom linear model, and ranks
+genes by the moderated t-statistic before running fgsea. This respects the
+true unit of replication and avoids the inflated degrees of freedom that
+arise from cell-level comparisons.
+
+Optionally also computes per-patient pathway activity scores (ssGSEA via
+GSVA) and tests them across groups, producing boxplots and heatmaps
+alongside the GSEA results.
+}
+\section{Three required columns}{
+
+Three metadata columns drive the analysis:
+\describe{
+\item{\code{group.by}}{Cell type column. GSEA is run independently for each
+level (e.g. \code{"Assignment"}). Cells are aggregated within each level.}
+\item{\code{sample.by}}{Donor/sample ID column. This is the statistical unit.
+Each unique value becomes one pseudobulk replicate in the limma model
+(e.g. \code{"DonorID"}, \code{"SampleID"}).}
+\item{\code{contrast.by}}{Comparison group column. Levels define the groups
+being contrasted (e.g. \code{"Disease"} with levels \code{"AD"} and \code{"Control"}).
+Cells with \code{NA} in this column are dropped before aggregation.}
+}
+}
+
+\section{Gene set input modes}{
+
+Supply gene sets using exactly one of the following (priority order):
+\enumerate{
+\item \code{gene_sets} - a named list of character vectors, one vector per gene set.
+\item \code{deg_df} - a differential expression data frame; top DEGs per group
+are extracted and used as gene sets (see \verb{deg_*} parameters).
+\item \code{pathway_sets} (default) - one or more MSigDB collections fetched via
+\code{msigdbr}. Does not require \code{gene_sets} or \code{deg_df}.
+}
+}
+
+\seealso{
+\code{\link[=RunGSEA]{RunGSEA()}} for cell-level GSEA, \code{\link[=RunSCssGSEA]{RunSCssGSEA()}} for single-cell
+ssGSEA scoring, \code{\link[=PlotGSEAEnrichment]{PlotGSEAEnrichment()}} to visualize enrichment plots from
+the output directory.
 }

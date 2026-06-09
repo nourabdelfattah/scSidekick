@@ -21,7 +21,9 @@ SplitDotPlot2(
   scale.min = 5,
   scale.max = 100,
   dot.scale = 6,
-  cols = "RdBu"
+  cols = "RdBu",
+  output_dir = NULL,
+  file_name = NULL
 )
 }
 \arguments{
@@ -42,6 +44,12 @@ Default \code{"GlobalAssignment"}.}
 \item{split.by}{Character or \code{NULL}. Metadata column to split rows by.
 \code{NULL} shows all groups together. Default \code{"CancerType"}.}
 
+\item{gene_col}{Deprecated alias for \code{gene_column}. Ignored when
+\code{gene_column} is set explicitly.}
+
+\item{gene_group_col}{Deprecated alias for \code{gene_group_column}. Ignored when
+\code{gene_group_column} is set explicitly.}
+
 \item{ClusterGroups}{Logical. Hierarchically cluster cell groups (y-axis)?
 Default \code{FALSE}.}
 
@@ -61,9 +69,20 @@ expressed. Defaults \code{5} and \code{100}.}
 
 \item{cols}{Ignored (kept for API compatibility). Color palette is viridis
 plasma.}
+
+\item{output_dir}{Character or \code{NULL}. Directory to save a PDF.
+\code{NULL} (default) returns the plot without saving.  When
+\code{NULL}, the function walks up to the \code{output_dir} stored by
+\code{\link{PrepObject}}, unless \code{AutoSavePlots = FALSE} was set
+there.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces the name from the
+\code{markers_df} variable name, falling back to
+\code{object_name_group.by_SplitDotPlot}.}
 }
 \value{
-A ggplot2 object.
+A ggplot2 object (invisibly when saved to disk).
 }
 \description{
 Extends \code{\link[=SplitDotPlot]{SplitDotPlot()}} with two additional features:

@@ -10,7 +10,7 @@ PlotPieUMAP(
   split.by,
   reduction = "umap",
   pie_scale = 1,
-  bg_color = "lightgrey",
+  bg_color = "lightgray",
   bg_alpha = 0.3,
   pt.size = 0.4,
   split_colors = NULL,
@@ -36,13 +36,13 @@ sample).}
 \item{pie_scale}{Scaling multiplier for pie radius (1 = auto-sized).
 Increase for larger pies, decrease if pies overlap. Default \code{1}.}
 
-\item{bg_color}{Background scatter point colour. Default \code{"lightgrey"}.}
+\item{bg_color}{Background scatter point color. Default \code{"lightgray"}.}
 
 \item{bg_alpha}{Background scatter point transparency. Default \code{0.3}.}
 
 \item{pt.size}{Background scatter point size. Default \code{0.4}.}
 
-\item{split_colors}{Named character vector of colours for \code{split.by}
+\item{split_colors}{Named character vector of colors for \code{split.by}
 levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 
 \item{label}{Logical. Add cluster labels at centroids. Default \code{TRUE}.}
@@ -59,8 +59,8 @@ levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 A \code{ggplot2} object.
 }
 \description{
-Overlays proportional pie charts on a UMAP (or any 2D reduction) — one pie
-per level of \code{group.by} — where each slice shows the fraction of cells
+Overlays proportional pie charts on a UMAP (or any 2D reduction) - one pie
+per level of \code{group.by} - where each slice shows the fraction of cells
 from each level of \code{split.by} (e.g. sample composition per cluster).
 
 Uses \code{ggforce::geom_arc_bar} for stable pie rendering that works

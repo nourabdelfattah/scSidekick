@@ -13,11 +13,11 @@ InspectPlot(p, title = NULL)
 in the legend text (e.g., \code{"Figure 2A"}).}
 }
 \value{
-A character string — a draft legend sentence.
+A character string - a draft legend sentence.
 }
 \description{
-Extracts metadata from a ggplot2 object — geom types, key aesthetic
-mappings, axis labels, faceting, and color/fill scale names — and returns
+Extracts metadata from a ggplot2 object - geom types, key aesthetic
+mappings, axis labels, faceting, and color/fill scale names - and returns
 a plain-text description suitable for use as a figure legend draft.
 }
 \details{

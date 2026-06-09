@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Cell Annotation: CellTypeAssignmentHelper"
+title: "scSidekick - Cell Annotation: CellTypeAssignmentHelper"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -60,13 +60,13 @@ bmcite <- PrepObject(bmcite,
 ## 1. Preparing differential expression markers
 
 `CellTypeAssignmentHelper` requires a pre-computed markers table. The fastest
-approach is `presto::wilcoxauc()`, which runs a Wilcoxon rank-sum test for all
+approach is scSidekick's `RunWilcoxAUC()`, a BPCells- and Seurat-v5-safe
+wrapper around `presto::wilcoxauc()` that runs a Wilcoxon rank-sum test for all
 clusters simultaneously.
 
 ```{r markers-presto, eval=FALSE}
-# Fast (recommended): presto
-library(presto)
-markers <- presto::wilcoxauc(bmcite, group_by = "seurat_clusters")
+# Fast (recommended): scSidekick's presto wrapper
+markers <- RunWilcoxAUC(bmcite, group.by = "seurat_clusters")
 
 # Check the structure
 head(markers)
@@ -83,8 +83,8 @@ markers_seurat <- Seurat::FindAllMarkers(bmcite,
 ```
 
 `CellTypeAssignmentHelper` accepts either format; it auto-detects column names.
-The `presto` output is strongly recommended for large datasets because it runs
-in seconds rather than minutes.
+`RunWilcoxAUC()` is strongly recommended for large datasets because it runs in
+seconds rather than minutes and works on BPCells-backed and Seurat v5 objects.
 
 ---
 
@@ -244,7 +244,7 @@ cluster_labels <- c(
 
 pbmc$Assignment <- cluster_labels[as.character(bmcite$seurat_clusters)]
 
-# Register the new column — use force = TRUE to update nk_settings
+# Register the new column - use force = TRUE to update nk_settings
 bmcite <- PrepObject(bmcite,
   variables = c("seurat_clusters", "Sample", "Condition", "Assignment"),
   force     = TRUE)
@@ -265,7 +265,7 @@ automatically.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `seurat_object` | Seurat | required | Clustered Seurat object |
-| `markers` | data.frame | required | DE markers (presto or FindAllMarkers output) |
+| `markers` | data.frame | required | DE markers (RunWilcoxAUC or FindAllMarkers output) |
 | `cluster_column` | character | `"Cluster"` | Column in `meta.data` holding cluster labels |
 | `output_dir` | character | `NULL` | Directory for saving PDF summaries |
 | `sctype_tissues` | character vector | `c("Immune system","Brain")` | Tissues to query in scType database |
@@ -278,9 +278,9 @@ automatically.
 
 ## See also
 
-- Vignette 01: `PrepObject` — register the `Assignment` column after annotation
-- Vignette 03: `PlotDimPlots` — visualize the final `Assignment` coloring on UMAP
-- Vignette 05: `GroupHeatmap` — confirm marker expression aligns with assignment
+- Vignette 01: `PrepObject` - register the `Assignment` column after annotation
+- Vignette 03: `PlotDimPlots` - visualize the final `Assignment` coloring on UMAP
+- Vignette 05: `GroupHeatmap` - confirm marker expression aligns with assignment
 
 ---
 

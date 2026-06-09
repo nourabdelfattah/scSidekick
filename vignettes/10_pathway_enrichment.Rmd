@@ -1,0 +1,614 @@
+---
+title: "scSidekick - Pathway Analysis: Single-Cell Scoring & Enrichment"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Pathway Analysis: Single-Cell Scoring and Enrichment}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+This vignette covers three complementary approaches to pathway analysis at the
+single-cell level:
+
+| Function | What it does |
+|---|---|
+| `RunSCssGSEA()` | Score every cell against gene sets; test for group differences |
+| `PlotPathwayButterfly()` | Map cells onto a 2-D axis defined by exactly 4 pathways |
+| `RunEnrichment()` | Over-representation analysis (ORA) on a gene list or DEG table |
+
+These tools answer different questions:
+
+- **RunSCssGSEA**: "Which pathways are differentially active between my cell
+  types, at the single-cell level?"
+- **PlotPathwayButterfly**: "Where does each cell sit in a 4-pathway state space?
+  Do my cell types polarize toward specific states?"
+- **RunEnrichment**: "Given my list of significant DEGs, which pathways are
+  over-represented?"
+
+---
+
+# Part 1: RunSCssGSEA
+
+## 1.1 Overview
+
+`RunSCssGSEA()` computes a pathway activity score for every cell using either
+GSVA's ssGSEA algorithm or UCell, then tests for significant differences
+between groups using ANOVA or Kruskal-Wallis. Results are visualized as a
+mean z-score heatmap (pathways x groups) and optional per-pathway boxplots.
+
+**Gene-set input modes (pick one):**
+
+| Mode | Parameter | Example |
+|---|---|---|
+| 1. Custom gene list | `gene_sets` | `list(MySet = c("GENE1","GENE2"))` |
+| 2. DEG data frame | `deg_df` | RunWilcoxAUC or FindMarkers output |
+| 3. MSigDB collection | `gene_set_library` | `"H"` (Hallmark) |
+| 4. MSigDB search | `search_terms` | `c("interferon","apoptosis")` |
+
+Modes 3 and 4 can be combined.
+
+---
+
+## 1.2 Setup
+
+```{r setup-seurat}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("celltype.l1", "celltype.l2", "donor"),
+  group.by    = "celltype.l1",
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+---
+
+## 1.3 Mode 1: Custom gene sets
+
+Pass a named list of gene vectors. Each element becomes one row in the heatmap.
+
+```{r sc-custom}
+RunSCssGSEA(bmcite,
+  group.by  = "celltype.l1",
+  gene_sets = list(
+    T_effector  = c("GZMB", "PRF1", "IFNG", "TNF"),
+    T_exhausted = c("PDCD1", "HAVCR2", "LAG3", "TIGIT"),
+    NK_cytotoxic = c("NCR1", "KLRB1", "GNLY", "NKG7")
+  ),
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+---
+
+## 1.4 Mode 2: DEG data frame
+
+Build gene sets automatically from a DEG table. Each group's top DEGs become
+one gene set. The `deg_group_column` can be a single column (groups are
+heatmap rows) or two columns (the first column is used to split rows on the
+heatmap).
+
+```{r sc-deg}
+# Get DEGs first
+markers <- RunWilcoxAUC(bmcite, group.by = "celltype.l1")
+
+RunSCssGSEA(bmcite,
+  group.by        = "celltype.l1",
+  deg_df          = markers,
+  deg_gene_column = "feature",
+  deg_group_column = "group",
+  deg_fc_column   = "logFC",
+  deg_padj_column = "padj",
+  deg_padj_cutoff = 0.05,
+  deg_top_n       = 30L,
+  output_dir      = tempdir(),
+  object_name     = "bmcite")
+```
+
+---
+
+## 1.5 Mode 3: MSigDB collection
+
+Fetch an entire MSigDB collection and score all cells against it.
+Large collections (e.g. GO:BP with thousands of sets) should be filtered with
+`search_terms` or `min.size` to keep the run tractable.
+
+```{r sc-msigdb}
+RunSCssGSEA(bmcite,
+  group.by         = "celltype.l1",
+  gene_set_library = "H",   # Hallmark
+  min.size         = 10L,
+  output_dir       = tempdir(),
+  object_name      = "bmcite")
+```
+
+---
+
+## 1.6 Mode 4: MSigDB keyword search
+
+Search gene-set names with case-insensitive regex. Pass a **character vector
+for OR** logic, or a **list of vectors for AND-groups**.
+
+```{r sc-search}
+# OR: any set mentioning "interferon" OR "apoptosis"
+RunSCssGSEA(bmcite,
+  group.by      = "celltype.l1",
+  search_terms  = c("interferon", "apoptosis"),
+  pathway_sets  = list(Hallmark = list(category = "H")),
+  output_dir    = tempdir(),
+  object_name   = "bmcite")
+
+# AND-group: sets mentioning BOTH "T_CELL" AND "ACTIVATION"
+RunSCssGSEA(bmcite,
+  group.by     = "celltype.l1",
+  search_terms = list(c("T_CELL", "ACTIVATION")),
+  pathway_sets = list(
+    C7 = list(category = "C7", subcategory = "IMMUNESIGDB")),
+  output_dir   = tempdir(),
+  object_name  = "bmcite")
+```
+
+---
+
+## 1.7 Switching to UCell backend
+
+The default scoring backend is GSVA's ssGSEA. Use `method = "ucell"` for
+the UCell rank-based algorithm, which scales better to large datasets and
+avoids the GSVA memory overhead.
+
+```{r sc-ucell}
+RunSCssGSEA(bmcite,
+  group.by         = "celltype.l1",
+  gene_set_library = "H",
+  method           = "ucell",
+  ucell_max_rank   = 1500L,
+  output_dir       = tempdir(),
+  object_name      = "bmcite")
+```
+
+---
+
+## 1.8 Downsampling large datasets
+
+For objects with >50,000 cells, pass `downsample` to cap the number of cells
+per group before scoring.
+
+```{r sc-downsample}
+RunSCssGSEA(large_obj,
+  group.by         = "celltype",
+  gene_set_library = "H",
+  downsample       = 5000L,
+  output_dir       = "./Figures/Pathways")
+```
+
+---
+
+## 1.9 Customizing heatmap colors
+
+The default is a 5-stop diverging palette centered at 0 (z = -2 to +2).
+Override with any `circlize::colorRamp2` object.
+
+```{r sc-colors}
+# Classic blue-white-red
+col_bwr <- circlize::colorRamp2(c(-2, -1, 0, 1, 2),
+                                 c("#2166ac", "#92c5de", "white",
+                                   "#f4a582", "#d6604d"))
+
+RunSCssGSEA(bmcite,
+  group.by         = "celltype.l1",
+  gene_set_library = "H",
+  heatmap_colors   = col_bwr,
+  output_dir       = tempdir(),
+  object_name      = "bmcite")
+```
+
+---
+
+## 1.10 Resuming a run
+
+`resume = TRUE` reloads a previously saved score CSV checkpoint, skipping
+re-scoring for the cells already processed.
+
+```{r sc-resume}
+RunSCssGSEA(bmcite,
+  group.by         = "celltype.l1",
+  gene_set_library = "H",
+  resume           = TRUE,
+  output_dir       = tempdir(),
+  object_name      = "bmcite")
+```
+
+---
+
+## RunSCssGSEA parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Annotated Seurat object |
+| `group.by` | character | required | Metadata column for grouping |
+| `split.by` | character or `NULL` | `NULL` | Run independently per level |
+| `gene_sets` | named list or `NULL` | `NULL` | Mode 1: custom gene lists |
+| `deg_df` | data frame or `NULL` | `NULL` | Mode 2: DEG table |
+| `gene_set_library` | character or `NULL` | `NULL` | Mode 3: MSigDB collection code |
+| `search_terms` | character/list or `NULL` | `NULL` | Mode 4: keyword filter |
+| `pathway_sets` | named list | Hallmark | MSigDB collections for Modes 3/4 |
+| `method` | character | `"gsva"` | Scoring backend: `"gsva"` or `"ucell"` |
+| `downsample` | integer or `NULL` | `NULL` | Max cells per group |
+| `min.size` | integer | `10` | Min gene-set size after intersection |
+| `ssgsea.norm` | logical | `FALSE` | Normalize ssGSEA scores to range |
+| `ucell_max_rank` | integer | `1500` | UCell only: top genes considered |
+| `p_cutoff` | numeric | `0.05` | Adjusted p-value threshold for heatmap rows |
+| `show_only_significant` | logical | `TRUE` | Show only significant pathways |
+| `heatmap_colors` | `colorRamp2` or `NULL` | `NULL` | Custom color function |
+| `heatmap_params` | named list | `list(...)` | Extra args to `ComplexHeatmap::Heatmap()` |
+| `add_boxplots` | logical | `TRUE` | Per-pathway boxplots |
+| `add_pvalues` | logical | `TRUE` | Add p-values to boxplots |
+| `resume` | logical | `FALSE` | Reload checkpoint CSV |
+| `caffeinate` | logical | `FALSE` | Prevent system sleep |
+
+---
+
+# Part 2: PlotPathwayButterfly
+
+## 2.1 Overview
+
+`PlotPathwayButterfly()` maps every cell onto a 2-D coordinate system defined
+by exactly **four** pathways arranged in quadrants. This makes cell state
+polarization visually immediate: cells that are high in the top-left pathway
+cluster in the upper-left of the plot; cells sitting at the center are in
+transition.
+
+**Quadrant layout:**
+
+```
+              top-left | top-right
+              ---------|----------
+           bottom-left | bottom-right
+```
+
+The Y-axis separates the dominant axis (top vs bottom pathways); the X-axis
+gives the left-right balance within whichever axis dominates for each cell.
+
+**Output layout:** one large overview panel (all cells colored by `group.by`)
+flanked by one small panel per group level (that group highlighted in color;
+remaining cells in gray).
+
+This visualization is adapted from the scrabble R package (Suva Lab).
+
+---
+
+## 2.2 Basic call with MSigDB Hallmark pathways
+
+Supply the four pathway names as they appear in the MSigDB collection. The
+`pathway_sets` argument specifies which collection to search.
+
+```{r butterfly-basic}
+PlotPathwayButterfly(
+  seurat_object = bmcite,
+  group.by      = "celltype.l1",
+  quadrant_order = c(
+    "HALLMARK_INTERFERON_GAMMA_RESPONSE",  # bottom-left
+    "HALLMARK_INFLAMMATORY_RESPONSE",      # bottom-right
+    "HALLMARK_G2M_CHECKPOINT",             # top-left
+    "HALLMARK_MYC_TARGETS_V1"             # top-right
+  ),
+  pathway_sets  = list(Hallmark = list(category = "H")),
+  output_dir    = tempdir()
+)
+```
+
+---
+
+## 2.3 Custom gene sets
+
+When you have your own gene sets (not from MSigDB), pass them directly via
+`gene_sets`. The names must match `quadrant_order`.
+
+```{r butterfly-custom}
+PlotPathwayButterfly(
+  seurat_object  = bmcite,
+  group.by       = "celltype.l1",
+  gene_sets      = list(
+    Cytotoxic    = c("GZMB", "PRF1", "IFNG"),
+    NaiveLike    = c("CCR7", "SELL", "TCF7"),
+    Exhausted    = c("PDCD1", "LAG3", "HAVCR2"),
+    Regulatory   = c("FOXP3", "IL2RA", "CTLA4")
+  ),
+  quadrant_order = c("NaiveLike", "Cytotoxic", "Regulatory", "Exhausted"),
+  output_dir     = tempdir()
+)
+```
+
+The names in `quadrant_order` map to the four quadrant positions:
+**bottom-left, bottom-right, top-left, top-right**.
+
+---
+
+## 2.4 Custom corner labels
+
+By default, corner labels are auto-shortened from the pathway name (prefix and
+underscores removed). Override with `quadrant_labels` for cleaner display.
+
+```{r butterfly-labels}
+PlotPathwayButterfly(
+  seurat_object  = bmcite,
+  group.by       = "celltype.l1",
+  gene_sets      = list(
+    Cytotoxic    = c("GZMB", "PRF1", "IFNG"),
+    NaiveLike    = c("CCR7", "SELL", "TCF7"),
+    Exhausted    = c("PDCD1", "LAG3", "HAVCR2"),
+    Regulatory   = c("FOXP3", "IL2RA", "CTLA4")
+  ),
+  quadrant_order  = c("NaiveLike", "Cytotoxic", "Regulatory", "Exhausted"),
+  quadrant_labels = c("Naive",  "Cytotoxic",    # bl, br
+                      "Treg",   "Exhausted"),    # tl, tr
+  output_dir      = tempdir()
+)
+```
+
+---
+
+## 2.5 Split by donor or condition
+
+`split.by` produces a separate figure per split level, each with its own axis
+limits. Use this to compare butterfly distributions across donors or conditions.
+
+```{r butterfly-split}
+PlotPathwayButterfly(
+  seurat_object  = bmcite,
+  group.by       = "celltype.l1",
+  split.by       = "donor",
+  gene_sets      = list(
+    Cytotoxic    = c("GZMB", "PRF1", "IFNG"),
+    NaiveLike    = c("CCR7", "SELL", "TCF7"),
+    Exhausted    = c("PDCD1", "LAG3", "HAVCR2"),
+    Regulatory   = c("FOXP3", "IL2RA", "CTLA4")
+  ),
+  quadrant_order = c("NaiveLike", "Cytotoxic", "Regulatory", "Exhausted"),
+  output_dir     = tempdir()
+)
+```
+
+---
+
+## 2.6 Handling large datasets
+
+For objects with >50,000 cells, enable subsampling to keep scoring fast:
+
+```{r butterfly-subsample}
+PlotPathwayButterfly(
+  seurat_object     = large_obj,
+  group.by          = "celltype",
+  quadrant_order    = c("HALLMARK_MYC_TARGETS_V1",
+                        "HALLMARK_E2F_TARGETS",
+                        "HALLMARK_INTERFERON_GAMMA_RESPONSE",
+                        "HALLMARK_INFLAMMATORY_RESPONSE"),
+  subsample         = TRUE,
+  n_cells           = 30000L,
+  output_dir        = "./Figures/Butterfly"
+)
+```
+
+Without subsampling, the function emits a warning at `subsample_warn_at = 50000`
+cells (adjustable).
+
+---
+
+## 2.7 Return value
+
+`PlotPathwayButterfly` invisibly returns a named list (one element per split
+level). Each element contains the raw coordinates and scores.
+
+```{r butterfly-return}
+res <- PlotPathwayButterfly(
+  seurat_object  = bmcite,
+  group.by       = "celltype.l1",
+  gene_sets      = list(
+    Cytotoxic    = c("GZMB", "PRF1", "IFNG"),
+    NaiveLike    = c("CCR7", "SELL", "TCF7"),
+    Exhausted    = c("PDCD1", "LAG3", "HAVCR2"),
+    Regulatory   = c("FOXP3", "IL2RA", "CTLA4")
+  ),
+  quadrant_order = c("NaiveLike", "Cytotoxic", "Regulatory", "Exhausted")
+)
+
+# Hierarchy coordinates (X, Y) for each cell
+head(res$All$hierarchy)
+
+# Raw pathway scores (cells x pathways)
+head(res$All$scores)
+```
+
+---
+
+## PlotPathwayButterfly parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Annotated Seurat object |
+| `group.by` | character | required | Metadata column for coloring |
+| `quadrant_order` | character(4) | required | Four pathway names: bottom-left, bottom-right, top-left, top-right |
+| `split.by` | character or `NULL` | `NULL` | One figure per level |
+| `gene_sets` | named list or `NULL` | `NULL` | Custom gene sets; `NULL` = fetch from MSigDB |
+| `pathway_sets` | named list | Hallmark | MSigDB collections when `gene_sets = NULL` |
+| `species` | character | `"Homo sapiens"` | Species for `msigdbr` |
+| `quadrant_labels` | character(4) or `NULL` | `NULL` | Corner display labels; `NULL` = auto-shortened pathway name |
+| `group_colors` | named character or `NULL` | `NULL` | Color map for `group.by` levels |
+| `assay` | character | `"RNA"` | Assay to extract counts from |
+| `layer` | character | `"counts"` | Layer/slot name |
+| `subsample` | logical | `FALSE` | Randomly sample cells before scoring |
+| `n_cells` | integer | `20000` | Cells to sample when `subsample = TRUE` |
+| `center` | logical | `TRUE` | Column-center scores before hierarchy transform |
+| `log_scale` | logical | `TRUE` | Apply log2 scaling to hierarchy coordinates |
+| `overview_size` | numeric | `2` | Width of overview panel relative to one small panel column |
+| `point_size` | numeric | `0.3` | Point size |
+| `point_alpha` | numeric | `0.6` | Point alpha |
+| `width` | numeric or `NULL` | `NULL` | PDF width (auto-sized when `NULL`) |
+| `height` | numeric or `NULL` | `NULL` | PDF height (auto-sized when `NULL`) |
+| `output_dir` | character or `NULL` | `NULL` | Save directory; `NULL` = print only |
+| `caffeinate` | logical | `FALSE` | Prevent system sleep |
+
+---
+
+# Part 3: RunEnrichment
+
+## 3.1 Overview
+
+`RunEnrichment()` runs over-representation analysis (ORA) via enrichR on a
+gene list or on significant DEGs from a data frame. It automatically calls
+`PlotEnrichment()` to save dot plots of enriched terms.
+
+ORA is simpler than GSEA but answers a different question: given this gene list,
+which pathways contain more of these genes than expected by chance? No ranking
+is used - just presence or absence.
+
+---
+
+## 3.2 From a gene list
+
+Pass a character vector of gene symbols directly.
+
+```{r ora-genes}
+RunEnrichment(
+  features   = c("GZMB", "PRF1", "IFNG", "TNF", "FASLG", "NKG7"),
+  databases  = c("MSigDB_Hallmark_2020",
+                 "GO_Biological_Process_2023",
+                 "KEGG_2021_Human"),
+  output_dir = tempdir()
+)
+```
+
+Run `enrichR::listEnrichrDbs()` for all available database names.
+
+---
+
+## 3.3 From a DEG table
+
+Pass a DEG data frame; `RunEnrichment` filters for significant DEGs before
+testing. Columns are auto-detected from common RunWilcoxAUC/FindMarkers naming.
+
+```{r ora-deg}
+markers <- RunWilcoxAUC(bmcite, group.by = "celltype.l1")
+
+RunEnrichment(
+  deg_df     = markers,
+  direction  = "up",         # "up", "down", or "both"
+  fc_cutoff  = 0.25,
+  padj_cutoff = 0.05,
+  databases  = c("MSigDB_Hallmark_2020", "GO_Biological_Process_2023"),
+  output_dir = tempdir(),
+  object_name = "bmcite"
+)
+```
+
+---
+
+## 3.4 Per-group enrichment
+
+When the DEG table has a `group_column`, `RunEnrichment` tests each group's
+DEGs separately and saves one plot per group.
+
+```{r ora-per-group}
+RunEnrichment(
+  deg_df       = markers,
+  group_column = "group",
+  direction    = "up",
+  databases    = c("MSigDB_Hallmark_2020"),
+  top_n_plot   = 15L,
+  output_dir   = tempdir(),
+  object_name  = "bmcite"
+)
+```
+
+---
+
+## 3.5 Choosing databases
+
+The default databases are `MSigDB_Hallmark_2020`, `GO_Biological_Process_2023`,
+and `KEGG_2021_Human`. You can test any databases available in enrichR.
+
+```{r ora-databases}
+# List all available enrichR databases
+enrichR::listEnrichrDbs()
+
+RunEnrichment(
+  features  = c("GZMB", "PRF1", "IFNG"),
+  databases = c("Reactome_2022",
+                "WikiPathway_2023_Human",
+                "CellMarker_Augmented_2021"),
+  output_dir = tempdir()
+)
+```
+
+---
+
+## 3.6 Return value
+
+`RunEnrichment` returns a nested list: `[[group]][[database]]` containing
+enrichR result data frames.
+
+```{r ora-return}
+res <- RunEnrichment(
+  deg_df       = markers,
+  group_column = "group",
+  direction    = "up",
+  databases    = c("MSigDB_Hallmark_2020"),
+  output_dir   = tempdir()
+)
+
+# Enrichment results for one group and database
+head(res$`CD4 T`$MSigDB_Hallmark_2020)
+```
+
+---
+
+## RunEnrichment parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `features` | character or `NULL` | `NULL` | Gene list for ORA; use with OR `deg_df` |
+| `deg_df` | data frame or `NULL` | `NULL` | DEG table; genes filtered before testing |
+| `gene_column` | character or `NULL` | `NULL` | Gene column in `deg_df`; auto-detected if `NULL` |
+| `fc_column` | character or `NULL` | `NULL` | logFC column; auto-detected if `NULL` |
+| `padj_column` | character or `NULL` | `NULL` | Adjusted p-value column; auto-detected if `NULL` |
+| `group_column` | character or `NULL` | `NULL` | Group column in `deg_df`; `NULL` = test all together |
+| `fc_cutoff` | numeric | `0.25` | Minimum absolute logFC |
+| `padj_cutoff` | numeric | `0.05` | Maximum adjusted p-value |
+| `direction` | character | `"up"` | Which DEGs: `"up"`, `"down"`, or `"both"` |
+| `databases` | character vector | Hallmark + GO:BP + KEGG | enrichR databases to query |
+| `top_n_plot` | integer | `20` | Maximum terms per database to plot |
+| `plot_type` | character | `"dot"` | Plot type passed to `PlotEnrichment` |
+| `padj_cutoff_plot` | numeric | `0.05` | Significance cutoff for plot filtering |
+| `output_dir` | character or `NULL` | `NULL` | Save directory; `NULL` = print only |
+| `object_name` | character | `""` | Prefix for output file names |
+| `subset_name` | character | `""` | Optional subset label for file names |
+
+---
+
+## See also
+
+- Vignette 08: `RunGSEA` - rank-based GSEA on the full Seurat object
+- Vignette 09: `RunGSEA_pseudobulk` - sample-level pseudobulk GSEA with limma-voom
+- Vignette 05: `GroupHeatmap` / `PlotDotPlot` - gene-level expression visualizations
+- Vignette 11: `RunCellChat` - pathway-level cell-cell communication
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

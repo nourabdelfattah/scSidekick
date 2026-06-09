@@ -29,6 +29,9 @@ VisualizeLeadingEdge(
   add_boxplots = TRUE,
   add_pvalues = TRUE,
   add_feature_maps = FALSE,
+  heatmap_type = c("cell", "group"),
+  heatmap_column_split = NULL,
+  show_pathway_annotation = TRUE,
   group_colors = NULL,
   split_colors = NULL,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
@@ -109,6 +112,21 @@ significant DEGs and additional plots are generated.}
 for the top DEG genes (default \code{FALSE}; can be slow for large gene
 sets).}
 
+\item{heatmap_type}{Character. Either \code{"cell"} (default) for a
+per-cell heatmap with cells ordered by \code{group.by} (then
+\code{split.by}), or \code{"group"} for a compact group-mean heatmap
+with one column per \code{group.by} x \code{split.by} combination.}
+
+\item{heatmap_column_split}{Character or \code{NULL}. Metadata column used
+to split heatmap columns into labelled sections (e.g. a diagnosis or
+timepoint variable). Only applies when \code{heatmap_type = "cell"}.
+Default \code{NULL}.}
+
+\item{show_pathway_annotation}{Logical. When \code{TRUE} (default), a
+colored annotation bar is drawn on the right of each heatmap showing
+which source pathway each gene belongs to. Suppressed automatically when
+only one pathway is matched.}
+
 \item{group_colors}{Named character vector of colors for \code{group.by}
 levels. Auto-assigned from \code{Nour_pal("all")} if \code{NULL}.}
 
@@ -149,7 +167,7 @@ and boxplots).
 \section{Pathway search}{
 
 \describe{
-\item{\code{search_terms} as a character vector}{OR logic — any term
+\item{\code{search_terms} as a character vector}{OR logic - any term
 matches, case-insensitive.}
 \item{\code{search_terms} as a list of character vectors}{Each element is
 an AND-group (all terms must appear in the same pathway name); results are

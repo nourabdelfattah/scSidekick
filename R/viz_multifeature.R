@@ -1,5 +1,5 @@
 # =============================================================================
-# scSidekick — PlotMultiFeature  (viz_multifeature.R)
+# scSidekick - PlotMultiFeature  (viz_multifeature.R)
 #
 # Modernised from the classic Seurat v2 MultiFeaturePlot helper.
 # Supports Seurat v3/v5 and BPCells via .get_layer_data().
@@ -23,12 +23,12 @@
 #' }
 #'
 #' @param seurat_object A Seurat object (v3 or v5).
-#' @param features Character vector of gene names to visualise.
+#' @param features Character vector of gene names to visualize.
 #' @param colors Named or unnamed character vector of colors (one per gene).
 #'   Auto-filled from \code{Nour_pal("all")} for missing entries. If
 #'   \code{NULL}, the full \code{Nour_pal("all")} palette is used.
 #' @param null_color Color for cells that express no gene above threshold.
-#'   Default \code{"grey70"}.
+#'   Default \code{"gray70"}.
 #' @param threshold Numeric scalar, or named numeric vector (names = gene
 #'   names), giving the minimum expression value for a cell to be considered
 #'   positive.  Default \code{0.0125}.
@@ -36,7 +36,7 @@
 #'   or \code{"scale"}.
 #' @param pct_cutoff For \code{plot_mode = "intersection"}: the fraction of
 #'   the gene list a cell must express to count as co-expressing.  Default
-#'   \code{0.3} (i.e. ≥30 \% of genes).
+#'   \code{0.3} (i.e. >= 30% of genes).
 #' @param intersection_label Label shown in the legend for co-expressing cells.
 #'   Default \code{"Co-expressing"}.
 #' @param assay Assay to pull expression from.  Default \code{"RNA"}.
@@ -64,7 +64,7 @@ PlotMultiFeature <- function(
     seurat_object,
     features,
     colors             = NULL,
-    null_color         = "grey70",
+    null_color         = "gray70",
     threshold          = 0.0125,
     plot_mode          = c("gene", "intersection", "scale"),
     pct_cutoff         = 0.3,
@@ -142,7 +142,7 @@ PlotMultiFeature <- function(
   common_cells <- intersect(rownames(frame), colnames(expr_mat))
   if (length(common_cells) == 0L) {
     message("scSidekick: Cell names don't overlap between the embedding and the ",
-            "expression matrix — aligning by position.")
+            "expression matrix - aligning by position.")
     n_use    <- min(nrow(frame), ncol(expr_mat))
     frame    <- frame[seq_len(n_use), , drop = FALSE]
     expr_mat <- expr_mat[, seq_len(n_use), drop = FALSE]
@@ -186,10 +186,10 @@ PlotMultiFeature <- function(
 
     p <- ggplot2::ggplot(mapping = ggplot2::aes(x = dim1, y = dim2)) +
       ggplot2::geom_point(data   = f_null,
-                          colour = null_color, size  = pt.size,
+                          color = null_color, size  = pt.size,
                           shape  = shape,      alpha = alpha) +
       ggplot2::geom_point(data        = f_expr,
-                          ggplot2::aes(colour = expr_val),
+                          ggplot2::aes(color = expr_val),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
       ggplot2::scale_colour_gradient(low  = null_color,
@@ -224,10 +224,10 @@ PlotMultiFeature <- function(
 
     p <- ggplot2::ggplot(mapping = ggplot2::aes(x = dim1, y = dim2)) +
       ggplot2::geom_point(data   = f_null,
-                          colour = null_color, size  = pt.size,
+                          color = null_color, size  = pt.size,
                           shape  = shape,      alpha = alpha) +
       ggplot2::geom_point(data        = f_pos,
-                          ggplot2::aes(colour = Plot.Status),
+                          ggplot2::aes(color = Plot.Status),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
       ggplot2::scale_colour_manual(values = int_colors) +
@@ -235,7 +235,7 @@ PlotMultiFeature <- function(
                     subtitle = subtitle,
                     x        = dim_labs[1],
                     y        = dim_labs[2]) +
-      ggplot2::guides(colour = ggplot2::guide_legend(
+      ggplot2::guides(color = ggplot2::guide_legend(
         override.aes = list(size = 4L),
         title        = legend_title)) +
       theme_NourMin()
@@ -243,7 +243,7 @@ PlotMultiFeature <- function(
   } else {
     # ---- "gene" mode: color by last expressed gene ------------------------
     # Iterating features in order means the last gene overwrites earlier
-    # assignments for multi-expressing cells — intentional "last wins" logic
+    # assignments for multi-expressing cells - intentional "last wins" logic
     # that makes cells unique to the rarest gene most visible.
     frame$Plot.Status <- "None"
     for (g in features) {
@@ -266,10 +266,10 @@ PlotMultiFeature <- function(
 
     p <- ggplot2::ggplot(mapping = ggplot2::aes(x = dim1, y = dim2)) +
       ggplot2::geom_point(data   = f_null,
-                          colour = null_color, size  = pt.size,
+                          color = null_color, size  = pt.size,
                           shape  = shape,      alpha = alpha) +
       ggplot2::geom_point(data        = f_pos,
-                          ggplot2::aes(colour = Plot.Status),
+                          ggplot2::aes(color = Plot.Status),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
       ggplot2::scale_colour_manual(values = gene_colors, drop = FALSE) +
@@ -277,7 +277,7 @@ PlotMultiFeature <- function(
                     subtitle = subtitle,
                     x        = dim_labs[1],
                     y        = dim_labs[2]) +
-      ggplot2::guides(colour = ggplot2::guide_legend(
+      ggplot2::guides(color = ggplot2::guide_legend(
         override.aes = list(size = 4L),
         title        = legend_title)) +
       theme_NourMin()

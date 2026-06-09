@@ -1,0 +1,393 @@
+---
+title: "scSidekick - Gene Expression Programs with cNMF"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Gene Expression Programs with cNMF}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  eval    = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Consensus non-negative matrix factorization (cNMF; Kotliar et al. 2019, eLife)
+discovers **gene expression programs (GEPs)**: recurrent modules of co-expressed
+genes that can correspond to cell-type identity or to shared activities such as
+cell cycle, stress, or interferon response. Unlike clustering, a cell can use
+several programs at once, which makes cNMF a natural complement to the
+annotation, pathway, and co-expression tools elsewhere in scSidekick.
+
+scSidekick wraps the Python [cNMF package](https://github.com/dylkot/cNMF)
+through `reticulate` with three functions:
+
+- **`RunCNMF()`** - prepares the data, runs the heavy factorization (optionally
+  across parallel workers and with Harmony batch correction), and writes the
+  K-selection diagnostic.
+- **`GetCNMFPrograms()`** - extracts the consensus result for a chosen K and
+  attaches per-cell **usages** as a dimensional reduction (and metadata) plus
+  gene **spectra** to the object.
+- **`GetCNMFTopGenes()`** - pulls the top genes per program for heatmaps and
+  downstream enrichment.
+
+cNMF is **interactive by design**: you run the factorization, inspect the
+K-selection plot, choose the number of programs, then extract. It cannot be a
+single one-shot call without compromising the science.
+
+> **cNMF is a Python tool.** It is not an R dependency. Section 1 walks through
+> a one-time environment setup that captures every compatibility fix needed to
+> drive it from R; this is the part most likely to trip you up, so do it
+> carefully once.
+
+---
+
+## 1. One-time environment setup
+
+cNMF and its dependencies are Python packages with compiled extensions. Driving
+them from R through `reticulate` (which runs Python *embedded* in the R process)
+exposes several version-compatibility issues. The recipe below is a known-good
+combination. Run it once.
+
+### 1.1 Create the conda environment
+
+```bash
+# Python 3.9 from conda-forge
+conda create -n cnmf_env python=3.9 -c conda-forge -y
+conda activate cnmf_env
+```
+
+### 1.2 Install cNMF and pin the compatible versions
+
+Each line addresses a specific failure mode (noted in the comment). Run them in
+this order.
+
+```bash
+# (a) Provide libc++ INSIDE the env. numba/llvmlite (pulled in by scanpy) load a
+#     compiled dylib that needs libc++.1.dylib; under R/reticulate the system
+#     copy is not on the loader path, so install it into the env.
+conda install -c conda-forge libcxx -y
+
+# (b) Install cNMF itself.
+pip install cnmf
+
+# (c) Pin NumPy < 2. Two things require this: (i) reticulate's R<->NumPy bridge
+#     (older reticulate cannot convert arrays from NumPy 2.0), and (ii) the
+#     scikit-misc binary used by scanpy's seurat_v3 highly-variable-gene step.
+pip install "numpy<2"
+
+# (d) ONLY needed for batch correction (Section 7): harmonypy with the API that
+#     cNMF's Preprocess expects. Newer harmonypy (0.0.10+) removed the internal
+#     attribute cNMF reads, so pin 0.0.9.
+pip install "harmonypy==0.0.9"
+```
+
+On the R side, make sure `reticulate` is installed (and reasonably current):
+
+```{r reticulate-install}
+install.packages("reticulate")
+```
+
+> **Alternative to pinning NumPy:** a current `reticulate` (>= ~1.39) can handle
+> NumPy 2.0, but scanpy's `seurat_v3` HVG step (used by batch correction) still
+> needs its compiled `scikit-misc` to match the installed NumPy. Pinning
+> `numpy<2` keeps the whole stack consistent and is the simplest reliable path.
+
+### 1.3 Point R at the environment
+
+`reticulate` can only initialize **one** Python interpreter per R session, and
+the binding must happen **before** any other Python-touching code runs. The most
+robust approach is to set `RETICULATE_PYTHON` at the very top of a fresh
+session:
+
+```{r bind-python}
+# FIRST line of a fresh R session, before library() calls:
+Sys.setenv(RETICULATE_PYTHON = "/path/to/anaconda3/envs/cnmf_env/bin/python")
+
+library(scSidekick)
+library(Seurat)
+```
+
+(Find the path with `conda run -n cnmf_env python -c "import sys; print(sys.executable)"`,
+or it is typically `~/anaconda3/envs/cnmf_env/bin/python` /
+`~/miniconda3/envs/cnmf_env/bin/python`.)
+
+### 1.4 Verify before a long run
+
+```{r verify-env}
+reticulate::py_config()                  # should show .../cnmf_env/bin/python, numpy 1.x
+reticulate::py_module_available("cnmf")  # must be TRUE
+```
+
+If `py_config()` shows the wrong interpreter, **restart R** and set
+`RETICULATE_PYTHON` before anything else. See the Troubleshooting table at the
+end for the specific errors you may hit and their fixes.
+
+---
+
+## 2. Running cNMF
+
+`RunCNMF()` writes a raw-counts AnnData, then runs cNMF `prepare` ->
+`factorize` -> `combine` -> `k_selection_plot`. Point it at your environment
+with `conda_env` (or rely on `RETICULATE_PYTHON` from Section 1.3).
+
+```{r run-basic}
+Immune <- RunCNMF(Immune,
+  output_dir = "./Figures/cNMF",
+  k_range    = 5:15,     # candidate numbers of programs
+  n_iter     = 100,      # NMF replicates per K (robustness)
+  conda_env  = "cnmf_env")
+```
+
+**Runtime scales with `n_iter * length(k_range)`, not object size** (the
+defaults are 100 x 11 = 1100 NMF fits). For a quick end-to-end test, shrink
+both:
+
+```{r run-quick}
+Immune <- RunCNMF(Immune, output_dir = "./Figures/cNMF",
+                  n_iter = 5, k_range = 5:8, conda_env = "cnmf_env")
+```
+
+### Parallel factorization
+
+The factorize step parallelizes across worker **processes**. Set `n_workers` to
+the number of cores you can spare:
+
+```{r run-parallel}
+Immune <- RunCNMF(Immune, output_dir = "./Figures/cNMF",
+                  k_range = 5:15, n_iter = 100,
+                  n_workers = 6,           # 6 parallel cNMF factorize workers
+                  conda_env = "cnmf_env")
+```
+
+Each worker logs to `<output_dir>/<name>.factorize.worker_<i>.log` - `tail -f`
+one of them to watch progress.
+
+### Key parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `k_range` | `5:15` | Candidate numbers of programs to factorize across |
+| `n_iter` | `100L` | NMF replicates per K |
+| `num_highvar_genes` | `2000L` | Overdispersed genes cNMF selects |
+| `n_workers` | `1L` | Parallel factorize worker processes |
+| `seed` | `14L` | Random seed for reproducibility |
+| `name` | `"cnmf"` | Run name; output goes under `output_dir/name/` |
+| `resume` | `FALSE` | Reuse a completed factorization on re-run |
+| `batch.by` | `NULL` | Harmony batch correction (Section 7) |
+| `caffeinate` | `FALSE` | Keep the machine awake during long runs |
+
+> Reusing the same `name` in the same `output_dir` makes cNMF treat existing
+> factorization files as done. For a clean run with different parameters, pass a
+> fresh `name` (e.g. `name = "Immune_k5to15"`).
+
+---
+
+## 3. Choosing the number of programs (K)
+
+`RunCNMF()` writes a **K-selection plot** (stability vs. reconstruction error)
+and, when `show_plot = TRUE` (default), renders it into the RStudio Plots pane.
+Pick the K at the stability peak / error elbow.
+
+```{r kselect}
+# The plot is at <output_dir>/cnmf/cnmf.k_selection.png and is shown
+# automatically. To view it again later:
+magick::image_read("./Figures/cNMF/cnmf/cnmf.k_selection.png")
+```
+
+There is no honest way to automate this choice; inspect the diagnostic and
+decide.
+
+---
+
+## 4. Extracting programs for a chosen K
+
+`GetCNMFPrograms()` runs the consensus step for your chosen `k` and a
+`density_threshold` (the outlier filter; lower is stricter, `2.0` keeps
+everything), then attaches the results to the object.
+
+```{r get-programs}
+Immune <- GetCNMFPrograms(Immune,
+  k                 = 10,      # chosen from the K-selection plot
+  density_threshold = 0.1,
+  conda_env         = "cnmf_env")
+```
+
+This adds:
+
+- A **dimensional reduction** `Immune[["cnmf"]]` with embeddings `cNMF_1 ...
+  cNMF_k` (per-cell program usages), so you can overlay programs on the UMAP.
+- **Metadata columns** `cNMF_1 ... cNMF_k` (when `add_metadata = TRUE`).
+- `Immune@misc$cnmf$results` holding `usage`, `spectra_scores` (gene loadings),
+  `spectra_tpm`, and `top_genes`.
+
+The consensus **clustergram** is written next to the other outputs and shown in
+the Plots pane.
+
+Both `RunCNMF()` and `GetCNMFPrograms()` also write an `analysis_params.json`
+into `output_dir` (the same provenance sidecar produced by `RunGSEA()`,
+`RunCellChat()`, etc.). It records the cNMF parameters and a draft methods
+paragraph, and is picked up automatically by `create_analysis_pptx()`:
+
+```{r methods-json}
+jsonlite::read_json(file.path("./Figures/cNMF", "analysis_params.json"))$methods_text
+```
+
+---
+
+## 5. Visualizing programs
+
+Because usages live as numeric metadata, the standard scSidekick plotting
+functions accept them as "features" directly.
+
+### Usages on the UMAP
+
+```{r plot-usages-umap}
+PlotFeaturePlots(Immune,
+  features   = paste0("cNMF_", 1:10),
+  output_dir = "./Figures/cNMF/usage_maps")
+```
+
+### Usage heatmap across conditions
+
+```{r plot-usages-heatmap}
+GroupHeatmap(Immune,
+  features         = paste0("cNMF_", 1:10),
+  group.by         = c("Group", "Sex"),
+  column_split_by  = "genotype")
+```
+
+### Top genes per program
+
+`GetCNMFTopGenes()` returns a tidy `program / gene / rank` table that feeds
+straight into a blocked `GroupHeatmap` (or `SplitDotPlot`, or `RunGSEA`):
+
+```{r top-genes}
+tg <- GetCNMFTopGenes(Immune, n = 15)        # top 15 genes per program
+head(tg)
+
+# Heatmap of program marker genes, blocked by program:
+GroupHeatmap(Immune,
+  features      = tg$gene,
+  group.by      = "CellType",
+  feature_split = stats::setNames(tg$program, tg$gene))
+```
+
+Restrict to specific programs with `programs`:
+
+```{r top-genes-subset}
+tg <- GetCNMFTopGenes(Immune, n = 20, programs = c(1, 3, 5))
+```
+
+(`n` is capped by `top_n_genes` set in `GetCNMFPrograms()`, default 50.)
+
+---
+
+## 6. A complete run
+
+```{r full-workflow}
+# 1. Factorize (parallel), then inspect the K-selection plot
+Immune <- RunCNMF(Immune, output_dir = "./Figures/cNMF",
+                  k_range = 5:15, n_iter = 100, n_workers = 6,
+                  conda_env = "cnmf_env", caffeinate = TRUE)
+
+# 2. Choose K from the plot, extract the consensus programs
+Immune <- GetCNMFPrograms(Immune, k = 10, density_threshold = 0.1,
+                          conda_env = "cnmf_env")
+
+# 3. Visualize
+PlotFeaturePlots(Immune, features = paste0("cNMF_", 1:10),
+                 output_dir = "./Figures/cNMF/usage_maps")
+tg <- GetCNMFTopGenes(Immune, n = 15)
+GroupHeatmap(Immune, features = tg$gene, group.by = "CellType",
+             feature_split = stats::setNames(tg$program, tg$gene))
+```
+
+---
+
+## 7. Batch correction (optional)
+
+By default cNMF can learn programs that reflect batch rather than biology. cNMF's
+recommended remedy (Kotliar et al., Figure 5) is to **Harmony-correct the counts
+before factorization**, learn usages on the corrected data, and re-fit the
+spectra on the uncorrected TP10K data. Supply one or more metadata columns to
+`batch.by` and `RunCNMF()` runs this workflow via cNMF's `Preprocess`:
+
+```{r batch}
+Immune <- RunCNMF(Immune,
+  output_dir = "./Figures/cNMF",
+  k_range    = 5:15,
+  n_iter     = 100,
+  batch.by   = "Sample",          # or c("Sex", "Sample")
+  conda_env  = "cnmf_env")
+```
+
+**Batch correction needs the extra dependencies from Section 1.2:** a
+`numpy<2`-consistent `scikit-misc` (for the seurat_v3 HVG step) and
+`harmonypy==0.0.9` (for the correction itself). If you skipped those, install
+them and restart R before using `batch.by`.
+
+When `batch.by` is set, `genes_use` is ignored (Preprocess selects
+high-variance genes on the corrected data), and cNMF writes
+`<name>.batchcorrect.Corrected.HVG.Varnorm.h5ad`, `*.TP10K.h5ad`, and
+`*.Corrected.HVGs.txt`, which `prepare` then consumes.
+
+Harmony correction is slow. If a run crashes after correction but before
+factorization, re-run with `resume = TRUE` to reuse the corrected files and skip
+straight to factorization:
+
+```{r batch-resume}
+Immune <- RunCNMF(Immune, output_dir = "./Figures/cNMF",
+                  batch.by = "Sample", k_range = 5:15,
+                  resume = TRUE, conda_env = "cnmf_env")
+```
+
+---
+
+## 8. Troubleshooting the Python environment
+
+Every error below is an environment / binary-compatibility issue, not a problem
+with the data or the wrapper. They are listed in the order you are likely to hit
+them.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `cnmf not available ... Active Python: unknown`, with a "use_python ... will be ignored" warning | Python already bound to the wrong interpreter this session | Restart R; set `RETICULATE_PYTHON` to the env's python **before** anything else |
+| `py_config()` shows `numpy: [NOT FOUND]` / wrong env | Bound to an env that lacks the packages | Point at the env that actually has cnmf (`conda list -n <env> \| grep cnmf`) |
+| `OSError ... libllvmlite.dylib ... Library not loaded: @rpath/libc++.1.dylib` | numba/llvmlite can't find libc++ under R's loader path | `conda install -n <env> -c conda-forge libcxx` |
+| `Required version of NumPy not available: incompatible NumPy binary version` | reticulate's R<->NumPy bridge too old for NumPy 2.0 | `install.packages("reticulate")`, or `pip install "numpy<2"` |
+| `ValueError: numpy.dtype size changed ... Expected 96 ... got 88` (only with `batch.by`) | `scikit-misc` binary built against a different NumPy than installed | `pip install "numpy<2"` (align the stack), then restart R |
+| `AttributeError: 'Harmony' object has no attribute 'Phi_moe'` (only with `batch.by`) | harmonypy version newer than cNMF's Preprocess expects | `pip install "harmonypy==0.0.9"` |
+| `cp: ... is not a directory` then `FileNotFoundError: ... .tpm.h5ad` | A **space in `output_dir`** (e.g. Box "Yun lab projects") breaks cNMF's unquoted internal `cp` | Handled automatically: scSidekick runs cNMF through a space-free symlink. If symlink creation fails, use an `output_dir` without spaces |
+
+General rule: bind the env **first** in a fresh R session, and keep the whole
+Python stack consistent at `numpy < 2`.
+
+---
+
+## See also
+
+- Vignette 06: `CellTypeAssignmentHelper()` - annotate the cell types you can
+  then relate programs to
+- Vignette 16: `CorrelateGene()` / `PlotCorrelation()` - gene co-expression, a
+  complementary view of program structure
+- Vignette 08: `RunGSEA()` - feed `GetCNMFTopGenes()` output in as a gene set to
+  characterize each program
+
+---
+
+## Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

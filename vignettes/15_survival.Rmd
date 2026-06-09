@@ -1,0 +1,561 @@
+---
+title: "scSidekick - Survival Analysis: TCGA & Custom Cohorts"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Survival Analysis: TCGA and Custom Cohorts}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+scSidekick provides a complete Kaplan-Meier survival analysis pipeline for bulk
+RNA-seq expression data. Four functions cover the full workflow:
+
+| Function | What it does |
+|---|---|
+| `LoadTCGA()` | Download and cache a TCGA or TARGET expression dataset |
+| `EnrichTCGAMeta()` | Add GDC clinical + molecular subtype columns to metadata |
+| `SurvMetaSummary()` | Explore available clinical columns before running survival analysis |
+| `SurvPlot()` | Kaplan-Meier plots for genes or gene-set signatures, with optional faceting and multivariate Cox |
+
+Two input modes:
+
+- **TCGA mode** - pass `tcga_project = "TCGA-GBM"` and data are downloaded,
+  processed, and cached automatically. Subsequent calls load instantly from cache.
+- **Custom matrix mode** - pass your own `expr_mat` (genes x samples) and `meta`
+  (samples x variables). Works for any bulk RNA-seq or microarray cohort.
+
+### Required packages
+
+```{r install}
+# Core survival packages
+install.packages(c("survival", "survminer"))
+
+# For TCGA downloads (recommended backend - single consolidated download)
+BiocManager::install("recount3")
+
+# For richer clinical metadata and molecular subtypes (optional but recommended)
+BiocManager::install("TCGAbiolinks")
+```
+
+---
+
+# Part 1: Loading TCGA Data
+
+## 1.1 Download a TCGA project
+
+`LoadTCGA()` fetches the full expression matrix and clinical metadata for any
+TCGA or TARGET project and caches the result locally. The default backend is
+`recount3`, which downloads a single consolidated file per project - much faster
+and more reliable than the per-patient GDC downloads.
+
+```{r load-tcga}
+library(scSidekick)
+
+# Download TCGA-GBM (glioblastoma) - ~173 patients
+# First call downloads; subsequent calls load from cache instantly
+gbm <- LoadTCGA("TCGA-GBM")
+
+# Access the expression matrix (genes x samples, log2 TPM+1)
+dim(gbm$expr_mat)
+
+# Access clinical metadata
+head(gbm$meta[, c("OS", "status", "gender")])
+```
+
+The returned list contains:
+- `$expr_mat` - numeric matrix, genes x samples, log2(TPM + 1)
+- `$meta` - data frame of clinical metadata, one row per sample
+- `$project`, `$data_type`, `$backend` - provenance fields
+
+---
+
+## 1.2 Available TCGA projects
+
+Pass any `"TCGA-<CODE>"` string to `tcga_project`. Common cancer types:
+
+| Code | Cancer type | n |
+|------|-------------|---|
+| `"TCGA-GBM"` | Glioblastoma | ~173 |
+| `"TCGA-LGG"` | Lower grade glioma | ~516 |
+| `"TCGA-BRCA"` | Breast invasive carcinoma | ~1,098 |
+| `"TCGA-LUAD"` | Lung adenocarcinoma | ~585 |
+| `"TCGA-LUSC"` | Lung squamous cell | ~504 |
+| `"TCGA-SKCM"` | Skin cutaneous melanoma | ~473 |
+| `"TCGA-PRAD"` | Prostate adenocarcinoma | ~551 |
+| `"TCGA-KIRC"` | Kidney clear cell | ~611 |
+| `"TCGA-OV"` | Ovarian carcinoma | ~608 |
+| `"TCGA-LAML"` | Acute myeloid leukemia | ~200 |
+
+Pediatric TARGET projects: `"TARGET-AML"`, `"TARGET-NBL"`, `"TARGET-OS"`,
+`"TARGET-WT"`, `"TARGET-RT"`, `"TARGET-CCSK"`.
+
+---
+
+## 1.3 Forcing a fresh download
+
+```{r load-force}
+# Re-download and update the cache
+gbm <- LoadTCGA("TCGA-GBM", force_reload = TRUE)
+```
+
+---
+
+## 1.4 Microarray data
+
+For older TCGA accessions or external microarray cohorts, set
+`data_type = "microarray"`. This automatically switches to the TCGAbiolinks
+backend (recount3 only carries RNA-seq).
+
+```{r load-microarray}
+gbm_array <- LoadTCGA("TCGA-GBM", data_type = "microarray")
+```
+
+---
+
+# Part 2: Enriching Metadata
+
+## 2.1 Add GDC clinical and molecular subtype columns
+
+The recount3 download includes basic clinical columns (OS, status, gender).
+`EnrichTCGAMeta()` adds the full GDC comprehensive clinical table and TCGA
+marker-paper molecular subtype columns (`paper_*`) without re-downloading the
+expression matrix.
+
+```{r enrich-meta}
+# Add IDH status, PAM50, CIMP, stage, age, treatment columns, etc.
+gbm <- EnrichTCGAMeta(gbm)
+
+# Now $meta contains paper_IDH.status, paper_Histology, etc.
+SurvMetaSummary(gbm$meta)
+```
+
+Available `paper_*` columns depend on the cancer type. For GBM/LGG these
+typically include `paper_IDH.status`, `paper_Histology`,
+`paper_Pan.Glioma.RNA.Expression.Cluster`, and `paper_CIMP.status`.
+
+---
+
+# Part 3: Exploring Metadata
+
+## 3.1 SurvMetaSummary
+
+Always run `SurvMetaSummary()` before `SurvPlot()` to see which metadata
+columns are available, which look like survival endpoints, and which are good
+candidates for faceting.
+
+```{r meta-summary}
+SurvMetaSummary(gbm$meta)
+```
+
+The output is organized into sections:
+
+- **Survival time columns** - candidates for `time_col`
+- **Survival event columns** - candidates for `status_col`
+- **Good facet columns** (2-10 unique values, < 50% NA) - candidates for
+  `facet_row` / `facet_col`
+- **Many-level columns** - consider binning before faceting
+- **High-missingness columns** - use with caution
+
+```{r meta-summary-all}
+# Also show all numeric columns
+SurvMetaSummary(gbm$meta, show_all = TRUE)
+```
+
+---
+
+# Part 4: SurvPlot
+
+## 4.1 Basic survival plot - single gene, TCGA mode
+
+The simplest call: one gene, no faceting, median split.
+
+```{r basic-gene}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = "YAP1",
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/YAP1_survival.pdf"
+)
+```
+
+Samples are split into **High** (>= median) and **Low** (< median) expression
+groups. The log-rank p-value is shown on the plot. A sidecar CSV recording the
+cutoff, group sizes, and p-value is written alongside the PDF.
+
+---
+
+## 4.2 Multiple genes
+
+Pass a character vector to `genes`. Each gene produces a separate PDF in the
+output directory.
+
+```{r multi-gene}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = c("YAP1", "CD276", "CD47", "S100A4", "CCL5"),
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/"   # directory -> one PDF per gene
+)
+```
+
+To put all genes in a single multi-page PDF, use a path ending in `.pdf`:
+
+```{r multi-gene-pdf}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = c("YAP1", "CD276", "CD47"),
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/combined.pdf"  # single file
+)
+```
+
+---
+
+## 4.3 Faceting by clinical variables
+
+`facet_row` and `facet_col` arrange panels into a grid. This is one of
+`SurvPlot`'s most powerful features: see whether the survival association holds
+within each molecular subtype or sex.
+
+```{r facet}
+# Sex (rows) x IDH status (columns)
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = c("YAP1", "S100A4"),
+  time_col     = "OS",
+  status_col   = "status",
+  facet_row    = "gender",
+  facet_col    = "paper_IDH.status",
+  output_file  = "~/Desktop/GBM_Survival/"
+)
+```
+
+One page is produced per gene. The grid is sized automatically
+(~4.5 in per panel). Facet cells with fewer than `2 * min_group_n` samples are
+left blank to preserve alignment.
+
+---
+
+## 4.4 Splitting strategies
+
+### Median split (default)
+
+```{r split-median}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = "YAP1",
+  split_method = "median",
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/"
+)
+```
+
+`split_per_group = TRUE` (default) computes the median independently within
+each facet cell - so a subgroup with uniformly low expression is still split
+50/50. This is the approach used in most published survival analyses. Set
+`split_per_group = FALSE` for a single global threshold.
+
+### Quartile split
+
+Produces four curves (Q1-Q4). Useful for detecting non-linear dose-response
+relationships.
+
+```{r split-quartile}
+SurvPlot(
+  tcga_project     = "TCGA-GBM",
+  genes            = c("YAP1", "CD276", "CD47"),
+  split_method     = "quartile",
+  quartile_palette = c("#2166AC", "#92C5DE", "#F4A582", "#D6604D"),
+  time_col         = "OS",
+  status_col       = "status",
+  output_file      = "~/Desktop/GBM_Survival/quartiles.pdf"
+)
+```
+
+### Fixed value split
+
+Split at a user-defined threshold. Use `split_value = 0` for gene-set
+enrichment scores where 0 means no enrichment.
+
+```{r split-value}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = "YAP1",
+  split_method = "value",
+  split_value  = 4.0,    # log2 TPM+1 threshold
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/"
+)
+```
+
+### Optimal split
+
+Finds the threshold that maximizes the log-rank statistic (survminer).
+Best used for validation cohorts; can overfit on small datasets.
+
+```{r split-optimal}
+SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = "YAP1",
+  split_method = "optimal",
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/GBM_Survival/"
+)
+```
+
+---
+
+## 4.5 Gene-set signatures
+
+Instead of individual genes, score each sample as the mean expression of a
+named gene set. Pass a named list to `gene_lists`. Each element becomes one
+survival panel.
+
+```{r gene-sets}
+SurvPlot(
+  tcga_project = "TCGA-LGG",
+  gene_lists   = list(
+    YAP_Activated = c("PRC1", "HPCA", "SRSF7", "TIMM17A", "PIM1"),
+    YAP_Repressed = c("ZIC1", "ZIC2", "CHD7", "KIF5C", "DPYSL2")
+  ),
+  split_method  = "median",
+  time_col      = "OS",
+  status_col    = "status",
+  facet_col     = "paper_Pan.Glioma.RNA.Expression.Cluster",
+  output_file   = "~/Desktop/LGG_Signatures/"
+)
+```
+
+For enrichment-style interpretation, use `split_value = 0` (score >= 0 means
+enriched):
+
+```{r gene-sets-value}
+SurvPlot(
+  tcga_project = "TCGA-LGG",
+  gene_lists   = list(
+    YAP_Activated = c("PRC1", "HPCA", "SRSF7"),
+    YAP_Repressed = c("ZIC1", "ZIC2", "CHD7")
+  ),
+  split_method = "value",
+  split_value  = 0,
+  time_col     = "OS",
+  status_col   = "status",
+  output_file  = "~/Desktop/LGG_Signatures/"
+)
+```
+
+---
+
+## 4.6 Custom cohort (non-TCGA)
+
+Pass your own expression matrix and metadata. Rownames of `meta` must match
+colnames of `expr_mat`.
+
+```{r custom-cohort}
+# Cavalli medulloblastoma dataset (example)
+Cav.EXP  <- t(read.table("Cavalli_expression.txt", header = TRUE, row.names = 1))
+Cav.meta <- read.table("Cavalli_pheno.txt", header = TRUE, row.names = 1)
+
+res <- SurvPlot(
+  expr_mat     = Cav.EXP,
+  meta         = Cav.meta,
+  genes        = c("YAP1", "CD276", "CD47", "CCL5"),
+  time_col     = "survival",   # column name in your metadata
+  status_col   = "status",
+  facet_row    = "Gender",
+  facet_col    = "Subgroup",
+  split_method = "median",
+  output_file  = "~/Desktop/Cavalli_Survival/"
+)
+```
+
+---
+
+## 4.7 Multivariate Cox regression
+
+Supply `multivariate_covariates` to run a multivariate Cox proportional hazards
+model alongside the KM analysis. A forest plot (hazard ratios + 95% CI) is
+saved as a companion `_cox.pdf` file. The Cox model uses continuous expression
+values, not the High/Low labels.
+
+```{r cox}
+SurvPlot(
+  tcga_project            = "TCGA-GBM",
+  genes                   = c("YAP1", "S100A4"),
+  time_col                = "OS",
+  status_col              = "status",
+  facet_col               = "paper_IDH.status",
+  multivariate_covariates = c("gender", "age_at_index", "paper_IDH.status"),
+  output_file             = "~/Desktop/GBM_Survival/"
+)
+```
+
+---
+
+## 4.8 TARGET (pediatric) datasets
+
+```{r target}
+SurvPlot(
+  tcga_project = "TARGET-NBL",
+  genes        = c("MYCN", "ALK"),
+  time_col     = "OS",
+  status_col   = "status",
+  split_method = "optimal",
+  output_file  = "~/Desktop/NBL_Survival/"
+)
+```
+
+---
+
+## 4.9 Return value and sidecar CSV
+
+`SurvPlot` returns a list with `$plots` and `$sidecar`. The sidecar records
+every panel's cutoff, group sizes, and log-rank p-value - the complete audit
+trail for the stratification used.
+
+```{r return}
+res <- SurvPlot(
+  tcga_project = "TCGA-GBM",
+  genes        = c("YAP1", "CD276"),
+  time_col     = "OS",
+  status_col   = "status"
+)
+
+# Inspect the sidecar
+head(res$sidecar)
+
+# Access a ggsurvplot object for further customization
+res$plots[["YAP1"]][[1]]$plot
+```
+
+The sidecar CSV columns:
+
+| Column | Description |
+|--------|-------------|
+| `feature` | Gene name or signature name |
+| `facet_row`, `facet_col` | Facet level values (`"all"` when not faceted) |
+| `split_method` | Method used (may differ if fallback occurred) |
+| `cutoff` | Threshold applied |
+| `n_total` | Samples in this panel |
+| `n_High`, `n_Low` | Samples per group (or `n_Q1`-`n_Q4` for quartile) |
+| `pval` | Log-rank p-value |
+
+---
+
+## 4.10 Typical full workflow
+
+```{r full-workflow}
+library(scSidekick)
+
+# Step 1: download and cache
+gbm <- LoadTCGA("TCGA-GBM")
+
+# Step 2: enrich with molecular subtypes and full clinical data
+gbm <- EnrichTCGAMeta(gbm)
+
+# Step 3: explore available metadata columns
+SurvMetaSummary(gbm$meta)
+
+# Step 4: run survival analysis
+SurvPlot(
+  expr_mat                = gbm$expr_mat,
+  meta                    = gbm$meta,
+  genes                   = c("YAP1", "S100A4", "CD276", "CD47"),
+  time_col                = "OS",
+  status_col              = "status",
+  facet_row               = "gender",
+  facet_col               = "paper_IDH.status",
+  split_method            = "median",
+  multivariate_covariates = c("gender", "age_at_index", "paper_IDH.status"),
+  output_file             = "~/Desktop/GBM_Survival/"
+)
+```
+
+---
+
+## Parameter reference - `LoadTCGA`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `project` | character | required | Project ID, e.g. `"TCGA-GBM"`, `"TARGET-NBL"` |
+| `data_type` | character | `"rnaseq"` | `"rnaseq"` or `"microarray"` |
+| `backend` | character | `"recount3"` | `"recount3"` (fast, single file) or `"TCGAbiolinks"` (per-patient) |
+| `cache_dir` | character or `NULL` | `NULL` | Cache directory; defaults to OS user cache |
+| `force_reload` | logical | `FALSE` | Delete cache and re-download |
+
+## Parameter reference - `EnrichTCGAMeta`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `tcga_data` | list or data frame | required | List from `LoadTCGA()`, or a bare metadata data frame |
+| `project` | character or `NULL` | `NULL` | Required only when passing a bare data frame |
+
+## Parameter reference - `SurvMetaSummary`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `meta` | data frame | required | Clinical metadata |
+| `max_levels` | integer | `10` | Max unique values for a column to be flagged as "good facet" |
+| `na_threshold` | numeric | `0.5` | Fraction of NAs above which a column is flagged "high missingness" |
+| `show_all` | logical | `FALSE` | Also show numeric columns |
+
+## Parameter reference - `SurvPlot`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `expr_mat` | matrix or `NULL` | `NULL` | Genes x samples expression matrix (log scale) |
+| `meta` | data frame or `NULL` | `NULL` | Sample-level clinical metadata |
+| `tcga_project` | character or `NULL` | `NULL` | TCGA/TARGET project ID (alternative to `expr_mat` + `meta`) |
+| `tcga_data_type` | character | `"rnaseq"` | `"rnaseq"` or `"microarray"` |
+| `tcga_backend` | character | `"recount3"` | Download engine |
+| `tcga_cache_dir` | character or `NULL` | `NULL` | Cache directory |
+| `genes` | character vector or `NULL` | `NULL` | Gene symbols for single-gene mode |
+| `gene_lists` | named list or `NULL` | `NULL` | Named gene sets for signature-score mode |
+| `time_col` | character | `"OS"` | Survival time column in `meta` |
+| `status_col` | character | `"status"` | Event indicator column (1 = event, 0 = censored) |
+| `split_method` | character | `"median"` | `"median"`, `"quartile"`, `"value"`, or `"optimal"` |
+| `split_value` | numeric or `NULL` | `NULL` | Fixed threshold for `split_method = "value"` |
+| `split_per_group` | logical | `TRUE` | Compute threshold independently within each facet group |
+| `facet_row` | character or `NULL` | `NULL` | Column defining panel rows |
+| `facet_col` | character or `NULL` | `NULL` | Column defining panel columns |
+| `output_file` | character or `NULL` | `NULL` | Path ending in `.pdf` (single file) or directory (one PDF per gene) |
+| `pdf_width` | numeric or `NULL` | `NULL` | PDF width in inches (auto-sized when `NULL`) |
+| `pdf_height` | numeric or `NULL` | `NULL` | PDF height in inches (auto-sized when `NULL`) |
+| `palette` | character(2) | `c("Red","Blue")` | Colors for High and Low groups |
+| `quartile_palette` | character(4) | blue-to-red | Colors for Q1-Q4 |
+| `show_pval` | logical | `TRUE` | Show log-rank p-value on each panel |
+| `show_n` | logical | `TRUE` | Append group n to legend labels |
+| `write_sidecar` | logical | `TRUE` | Write companion sidecar CSV |
+| `min_group_n` | integer | `5` | Minimum samples per group; panels below threshold are skipped |
+| `multivariate_covariates` | character vector or `NULL` | `NULL` | Covariates for multivariate Cox; forest plot saved as `_cox.pdf` |
+
+---
+
+## See also
+
+- Vignette 08: `RunGSEA` - pathway enrichment analysis from single-cell data
+- Vignette 09: `RunGSEA_pseudobulk` - sample-level pseudobulk GSEA
+- Vignette 10: `PlotPathwayButterfly` - uses the same mean-expression scorer for single-cell pathway state mapping
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

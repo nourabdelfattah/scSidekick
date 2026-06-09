@@ -12,7 +12,9 @@ articles:
   08_pathway_analysis: 08_pathway_analysis.html
   09_cellchat: 09_cellchat.html
   10_reporting_utilities: 10_reporting_utilities.html
-last_built: 2026-06-05T07:48Z
+  11_metadata_composition: 11_metadata_composition.html
+  12_large_data: 12_large_data.html
+last_built: 2026-06-10T18:06Z
 urls:
   reference: https://nourabdelfattah.github.io/scSidekick/reference
   article: https://nourabdelfattah.github.io/scSidekick/articles

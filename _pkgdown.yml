@@ -6,7 +6,7 @@ template:
     primary: '#2f4b7c'
     link-color: '#227ed4'
 home:
-  title: scSidekick — Single-Cell & Spatial Transcriptomics Toolkit
+  title: scSidekick - Single-Cell & Spatial Transcriptomics Toolkit
   description: |
     A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
   links:
@@ -28,32 +28,54 @@ navbar:
       text: Vignettes
       menu:
       - text: Setup
-      - text: 01 — Getting Started
+      - text: 01 - Getting Started
         href: articles/01_getting_started.html
-      - text: 02 — Dimensionality Reduction
+      - text: 02 - Dimensionality Reduction
         href: articles/02_dim_reduction.html
       - text: ─────────────────
       - text: Visualization
-      - text: 03 — UMAP Visualization
+      - text: 03 - UMAP Visualization
         href: articles/03_umap_visualization.html
-      - text: 04 — Feature Expression
+      - text: 04 - Feature Expression
         href: articles/04_feature_expression.html
-      - text: 05 — Heatmaps & Dot Plots
+      - text: 05 - Heatmaps & Dot Plots
         href: articles/05_heatmaps_dotplots.html
+      - text: 13 - Metadata & Composition
+        href: articles/13_metadata_composition.html
+      - text: 16 - Co-expression Analysis
+        href: articles/16_coexpression.html
       - text: ─────────────────
       - text: Analysis
-      - text: 06 — Cell Annotation
+      - text: 06 - Cell Annotation
         href: articles/06_cell_annotation.html
-      - text: 07 — Spatial Transcriptomics
+      - text: 07 - Spatial Transcriptomics
         href: articles/07_spatial.html
-      - text: 08 — Pathway Analysis
-        href: articles/08_pathway_analysis.html
-      - text: 09 — Cell-Cell Communication
-        href: articles/09_cellchat.html
+      - text: "08 - Pathway: RunGSEA"
+        href: articles/08_pathway_gsea.html
+      - text: "09 - Pathway: Pseudobulk GSEA"
+        href: articles/09_pathway_pseudobulk.html
+      - text: "10 - Pathway: Single-Cell & Enrichment"
+        href: articles/10_pathway_enrichment.html
+      - text: 11 - Cell-Cell Communication
+        href: articles/11_cellchat.html
+      - text: 14 - Large Datasets
+        href: articles/14_large_data.html
+      - text: 15 - Survival Analysis
+        href: articles/15_survival.html
+      - text: 17 - Copy Number Variation
+        href: articles/17_cnv.html
+      - text: 18 - Gene Expression Programs (cNMF)
+        href: articles/18_cnmf.html
+      - text: 19 - Upstream Regulator Analysis
+        href: articles/19_ura.html
       - text: ─────────────────
       - text: Reporting
-      - text: 10 — Reporting & Utilities
-        href: articles/10_reporting_utilities.html
+      - text: 12 - Reporting & Utilities
+        href: articles/12_reporting_utilities.html
+      - text: ─────────────────
+      - text: Examples
+      - text: Full scRNA-seq Workflow
+        href: articles/example_workflow.html
     github:
       icon: fab fa-github
       href: https://github.com/nourabdelfattah/scSidekick
@@ -62,9 +84,16 @@ reference:
 - title: Setup & Colors
   desc: Prepare objects and manage color palettes
   contents:
+  - GenerateDirectories
   - PrepObject
   - ShowColors
   - GetColors
+  - SelectColors
+  - SetLevels
+  - RenameClusters
+  - NumberLabels
+  - SummarizeMetadata
+  - PlotMetaSummary
   - Nour_pal
   - Nour_cols
   - Nour_cols20
@@ -85,9 +114,16 @@ reference:
   - PlotTrendLabeled
   - PlotComposition
   - PlotPieUMAP
+  - PlotAlluvial
+  - PlotRose
+  - PlotChord
+  - PlotAtlasWheel
 - title: Feature Expression
   desc: Gene expression overlay on embeddings
   contents:
+  - PlotFeature
+  - PlotPseudoBulk
+  - ComputePseudobulk
   - PlotFeaturePlots
   - GenerateFeatureMaps
   - PlotMultiFeature
@@ -100,6 +136,25 @@ reference:
   - FastDotPlot
   - FastDotPlot2
   - StackedVlnPlot
+  - CorrelateGene
+  - SplitByGene
+  - PlotCorrelation
+- title: Copy Number Variation
+  desc: inferCNV and CopyKAT wrappers for CNV inference from scRNA-seq
+  contents:
+  - RunInferCNV
+  - RunCopyKAT
+- title: Feature Annotation
+  desc: Annotate genes with genomic coordinates, biotype, and Ensembl IDs; filter by chromosome, biotype, or pattern
+  contents:
+  - AnnotateFeatures
+  - GetFeatures
+  - GetGeneOrder
+  - ClearAnnotationCache
+- title: Marker Discovery
+  desc: Fast per-cluster Wilcoxon rank-sum tests compatible with BPCells and Seurat v5
+  contents:
+  - RunWilcoxAUC
 - title: Differential Expression
   desc: Volcano plots, enrichment visualization, leading edge
   contents:
@@ -109,7 +164,9 @@ reference:
   - VisualizeLeadingEdge
 - title: Cell Annotation
   desc: Automated cell-type assignment
-  contents: CellTypeAssignmentHelper
+  contents:
+  - AssignCellTypes
+  - CellTypeAssignmentHelper
 - title: Spatial Transcriptomics
   desc: Visualize spatial gene expression and cell-type distributions
   contents:
@@ -119,6 +176,10 @@ reference:
   - GenerateSpatialFeatureMaps
   - PlotMasterMaps
   - GenerateMasterGeneMaps
+- title: Upstream Regulator Analysis
+  desc: TF activity inference via decoupleR + CollecTRI
+  contents:
+  - RunURA
 - title: Pathway Analysis
   desc: GSEA and gene set enrichment
   contents:
@@ -126,6 +187,13 @@ reference:
   - RunGSEA_pseudobulk
   - RunSCssGSEA
   - RunEnrichment
+  - PlotPathwayButterfly
+- title: Gene Expression Programs
+  desc: Consensus NMF (cNMF) program discovery via reticulate
+  contents:
+  - RunCNMF
+  - GetCNMFPrograms
+  - GetCNMFTopGenes
 - title: Cell-Cell Communication
   desc: CellChat pipeline wrappers
   contents:
@@ -133,14 +201,25 @@ reference:
   - CompareCellChat
   - RankCellChatPathways
   - RenameCellTypeInCC
+- title: Survival Analysis
+  desc: Kaplan-Meier survival analysis for TCGA and custom bulk expression cohorts
+  contents:
+  - LoadTCGA
+  - EnrichTCGAMeta
+  - SurvMetaSummary
+  - SurvPlot
 - title: Quality Control
-  desc: QC metrics and data loading
+  desc: QC metrics, data loading, and sample validation
   contents:
   - PlotQCMetrics
   - LoadSamplesRNA
+  - CheckSex
+  - FilterGenesByPct
+  - PlotPctHeatmap
 - title: Reporting & Utilities
   desc: Methods text, PPTX builder, theme, and session tools
   contents:
+  - ChartBuilder
   - ExtractMethods
   - InspectPlot
   - create_analysis_pptx
@@ -167,14 +246,27 @@ articles:
   - 03_umap_visualization
   - 04_feature_expression
   - 05_heatmaps_dotplots
+  - 13_metadata_composition
+  - 16_coexpression
 - title: Analysis
   navbar: Analysis
   contents:
   - 06_cell_annotation
   - 07_spatial
-  - 08_pathway_analysis
-  - 09_cellchat
+  - 08_pathway_gsea
+  - 09_pathway_pseudobulk
+  - 10_pathway_enrichment
+  - 11_cellchat
+  - 14_large_data
+  - 15_survival
+  - 17_cnv
+  - 18_cnmf
+  - 19_ura
 - title: Reporting
   navbar: Reporting
-  contents: 10_reporting_utilities
+  contents: 12_reporting_utilities
+- title: Examples
+  navbar: Examples
+  contents:
+  - example_workflow
 

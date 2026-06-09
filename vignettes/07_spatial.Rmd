@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Spatial Transcriptomics: PlotSpatialDimPlots, PlotSpatialFeaturePlots, PlotMasterMaps"
+title: "scSidekick - Spatial Transcriptomics: PlotSpatialDimPlots, PlotSpatialFeaturePlots, PlotMasterMaps"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,12 +19,12 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 scSidekick's three spatial plotting functions mirror their scRNA-seq counterparts
 but render expression and metadata directly on the tissue image:
 
-- **`PlotSpatialDimPlots()`** — color spots by a metadata variable (e.g.
+- **`PlotSpatialDimPlots()`** - color spots by a metadata variable (e.g.
   cluster, condition, spatial domain). Long-form alias:
   `GenerateSpatialDimMaps()`.
-- **`PlotSpatialFeaturePlots()`** — color spots by gene expression. Long-form
+- **`PlotSpatialFeaturePlots()`** - color spots by gene expression. Long-form
   alias: `GenerateSpatialFeatureMaps()`.
-- **`PlotMasterMaps()`** — combined figure: tissue image + gene expression
+- **`PlotMasterMaps()`** - combined figure: tissue image + gene expression
   panels + cluster-colored UMAP side by side. Long-form alias:
   `GenerateMasterGeneMaps()`.
 
@@ -33,7 +33,7 @@ All three functions accept `group.by`, `split.by`, `layout_method`, and
 
 ---
 
-## Demo dataset — mouse brain (Visium)
+## Demo dataset - mouse brain (Visium)
 
 ```{r spatial-setup, eval=FALSE}
 library(scSidekick)
@@ -82,7 +82,7 @@ Each spot on the tissue section is colored by its cluster assignment. The
 tissue H&E image is shown as a grey-scale background. A legend maps colors
 to cluster numbers. The palette comes from `PrepObject`.
 
-### 2. Multiple variables — iterate
+### 2. Multiple variables - iterate
 
 Passing a vector to `group.by` produces one spatial map per variable.
 
@@ -97,7 +97,7 @@ showing which spots are annotated WT vs KO.
 ### 3. Uniform spot size
 
 By default Visium spot sizes are scaled by local spot density. Set
-`uniform_size = TRUE` to use a fixed, equal size for all spots — useful for
+`uniform_size = TRUE` to use a fixed, equal size for all spots - useful for
 comparing two sections where spot density differs.
 
 ```{r spatial-dim-uniform, eval=FALSE}
@@ -116,7 +116,7 @@ tissue sections or ROIs stored in the same object.
 PlotSpatialDimPlots(brain,
   group.by      = "seurat_clusters",
   layout_method = "metadata",
-  row_var       = "Condition")
+  row.by = "Condition")
 ```
 
 Each row of the output corresponds to one condition level. Columns would
@@ -160,7 +160,7 @@ PlotSpatialFeaturePlots(brain,
 
 Each gene generates one spatial map. Spot color encodes normalized expression
 from grey (zero) to the high-expression color (default: dark red). `Hpca`
-marks hippocampal neurons; `Ttr` marks the choroid plexus — both should appear
+marks hippocampal neurons; `Ttr` marks the choroid plexus - both should appear
 in their expected anatomical locations.
 
 ### 2. Metadata-driven layout
@@ -169,7 +169,7 @@ in their expected anatomical locations.
 PlotSpatialFeaturePlots(brain,
   features      = c("Hpca", "Ttr"),
   layout_method = "metadata",
-  row_var       = "Condition")
+  row.by = "Condition")
 ```
 
 Rows correspond to the levels of `Condition`. Each gene's spatial pattern is
@@ -195,7 +195,7 @@ Files are named by gene: e.g. `MouseBrain_Anterior1_spatial_Hpca.pdf`.
 
 `PlotMasterMaps` is a composite figure function: for each gene it assembles a
 multi-panel page containing the tissue spatial map, a UMAP colored by the
-specified `group.by`, and a UMAP colored by gene expression — all on one
+specified `group.by`, and a UMAP colored by gene expression - all on one
 page, ready for a supplementary figure or lab presentation.
 
 ### 1. Basic master map
@@ -239,11 +239,11 @@ PlotMasterMaps(brain,
 ```
 
 `gene_colors` is a two-element vector: `[1]` is the zero-expression color,
-`[2]` is the high-expression color. The default is grey → dark red.
+`[2]` is the high-expression color. The default is grey -> dark red.
 
 ---
 
-## Parameter reference — `PlotSpatialDimPlots`
+## Parameter reference - `PlotSpatialDimPlots`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -255,7 +255,7 @@ PlotMasterMaps(brain,
 | `output_dir` | character | `NULL` | Directory for saving |
 | `object_name` | character | `""` | Label used in filenames |
 
-## Parameter reference — `PlotSpatialFeaturePlots`
+## Parameter reference - `PlotSpatialFeaturePlots`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -266,7 +266,7 @@ PlotMasterMaps(brain,
 | `object_name` | character | `""` | Label used in filenames |
 | `subset_name` | character | `""` | Sub-label used in filenames |
 
-## Parameter reference — `PlotMasterMaps`
+## Parameter reference - `PlotMasterMaps`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -281,9 +281,9 @@ PlotMasterMaps(brain,
 
 ## See also
 
-- Vignette 01: `PrepObject` — register spatial cluster colors
-- Vignette 03: `PlotDimPlots` — UMAP-only equivalent for scRNA-seq
-- Vignette 04: `PlotFeaturePlots` — scRNA-seq gene expression on UMAP
+- Vignette 01: `PrepObject` - register spatial cluster colors
+- Vignette 03: `PlotDimPlots` - UMAP-only equivalent for scRNA-seq
+- Vignette 04: `PlotFeaturePlots` - scRNA-seq gene expression on UMAP
 
 ---
 

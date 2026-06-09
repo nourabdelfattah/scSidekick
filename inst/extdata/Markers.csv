@@ -115,8 +115,6 @@ Dendritic cells,cDC_LAMP3,,Marcksl1,MARCKSL1,cDC_LAMP3
 Dendritic cells,cDC3_CD1C,,Crip1,CD1C,cDC3_CD1C
 Dendritic cells,cDC3_CD1C,,Clec10a,CLEC10A,cDC3_CD1C
 Dendritic cells,cDC3_CD1C,,Fcer1a,FCER1A,cDC3_CD1C
-Dendritic cells,cDC_All,,Ppan,PPA1,cDC_All
-Dendritic cells,cDC_All,,Cd74,CD74,DCs
 Dendritic cells,pDCs,,Gzmb,GZMB,pDCs
 Dendritic cells,pDCs,,Ly6d,LILRA4,pDCs
 Dendritic cells,pDCs,,Dntt,JCHAIN,pDCs
@@ -133,36 +131,9 @@ Monocytes,CD16_Mono,,Lyn,LYN,CD16_Mono
 Monocytes,CD16_Mono,,Lst1,LST1,CD16_Mono
 Monocytes,CD16_Mono,,Lilrb2,LILRB2,CD16_Mono
 Monocytes,CD16_Mono,,Hk3,HK3,CD16_Mono
-Monocytes,MDSCs,,Plin2,PLIN2,MDSCs
-Monocytes,MDSCs,,Mt1x,MT1X,MDSCs
-Monocytes,MDSCs,,Hk2,HK2,MDSCs
-Monocytes,MDSCs,,Adm,ADM,MDSCs
-Monocytes,MDSCs,,Bnip3,BNIP3,MDSCs
-Monocytes,MDSCs,,Tmem45a,TMEM45A,MDSCs
-Monocytes,MDSCs,,Slamf9,SLAMF9,MDSCs
-Monocytes,MDSCs,,Angptl4,ANGPTL4,MDSCs
-Monocytes,MDSCs2,,Ereg,EREG,MDSCs2
-Monocytes,MDSCs2,,Anpep,ANPEP,MDSCs2
-Monocytes,MDSCs2,,Clec5a,CLEC5A,MDSCs2
-Monocytes,MDSCs2,,Thbd,THBD,MDSCs2
-Monocytes,MDSCs2,,Cxcl3,CXCL3,MDSCs2
-Monocytes,MDSCs2,,EhD1,EHD1,MDSCs2
-Monocytes,MDSCs2,,Thbs1,THBS1,MDSCs2
-Monocytes,MDSCs2,,Cd300e,CD300E,MDSCs2
-Monocytes,MDSCs_MME,,Mme,MME,MDSCs_MME
-Monocytes,MDSCs_MME,,Camp,CAMP,MDSCs_MME
-Monocytes,MDSCs_MME,,Mmp8,MMP8,MDSCs_MME
 Monocytes,Mono,Also immature Neut,Plac8,PLAC8,Mono
 Monocytes,Mono,,Nr4a1,NR4A1,Mono
 Monocytes,Neutrophils_Mono,Also immature Neut,Elane,ELANE,Mono
-Granulocytes,Neutrophils_Mono,,Apobec3a,APOBEC3A,Neutrophils/Mono
-Granulocytes,Neutrophils_Mono,,Ly6e,LY6E,Neutrophils/Mono
-Granulocytes,Neutrophils,,Cxcl9,CXCL9,Neutrophils
-Granulocytes,Neutrophils,,Cxcl10,CXCL10,Neutrophils
-Granulocytes,Neutrophils,,Cxcl11,CXCL11,Neutrophils
-Granulocytes,Neutrophils_IFNG,,Ifit2,IFIT1,Neutrophils/IFNG res
-Granulocytes,Neutrophils_IFNG,,Rsad2,RSAD2,Neutrophils/IFNG res
-Granulocytes,Neutrophils_IFNG,,Stat1,STAT1,Neutrophils/IFNG res
 Granulocytes,Neutrophils_Mono,Mature,S100a8,S100A8,Neut
 Granulocytes,Neutrophils_Mono,Mature,S100a9,S100A9,Neut
 Granulocytes,Neutrophils,Mature,Fgl2,FGL2,Neut
