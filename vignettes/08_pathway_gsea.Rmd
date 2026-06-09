@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Pathway Analysis: RunGSEA"
+title: "scSidekick - Pathway Analysis: RunGSEA"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -16,21 +16,24 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALS
 
 ## Overview
 
-`RunGSEA()` performs gene set enrichment analysis on a Seurat object.
+`RunGSEA()` performs gene set enrichment analysis (GSEA) on a Seurat object.
 It handles the full pipeline internally:
 
 1. Subset by `split.by` (e.g. one GSEA per broad cell type)
-2. Run Wilcoxon DE with `presto::wilcoxauc()`, grouped by `group.by`
+2. Run Wilcoxon DE with `RunWilcoxAUC()`, grouped by `group.by`
 3. Run `fgsea` against one or more MSigDB collections
-4. Save lollipop plots (top/bottom 10 pathways per group) and NES heatmaps
+4. Save lollipop plots (top/bottom pathways per group) and NES heatmaps as PDFs
 
-No pre-computed DE table is needed — just pass the Seurat object.
+No pre-computed DE table is needed - just pass the Seurat object.
+
+For sample-level pseudobulk GSEA with limma-voom contrasts, see
+**Vignette 09: `RunGSEA_pseudobulk`**.
 
 ---
 
 ## Standard setup
 
-```{r standard-setup, eval=FALSE}
+```{r standard-setup}
 library(scSidekick)
 library(Seurat)
 library(SeuratData)
@@ -56,7 +59,7 @@ bmcite <- PrepObject(bmcite,
 
 ## 1. Basic call
 
-```{r gsea-basic, eval=FALSE}
+```{r gsea-basic}
 res <- RunGSEA(bmcite,
   group.by   = "celltype.l1",
   split.by   = NULL,
@@ -78,7 +81,7 @@ and WikiPathways.
 The most common use: compare detailed subtypes (`celltype.l2`) within each
 major lineage (`celltype.l1`).
 
-```{r gsea-split, eval=FALSE}
+```{r gsea-split}
 res <- RunGSEA(bmcite,
   group.by   = "celltype.l2",
   split.by   = "celltype.l1",
@@ -95,7 +98,7 @@ DE is computed between `celltype.l2` groups and pathways are ranked by NES.
 Supply any combination of MSigDB collections via `pathway_sets`. Each element
 needs a `category` and an optional `subcategory`.
 
-```{r gsea-custom-sets, eval=FALSE}
+```{r gsea-custom-sets}
 res <- RunGSEA(bmcite,
   group.by     = "celltype.l1",
   split.by     = NULL,
@@ -113,7 +116,7 @@ Run `msigdbr::msigdbr_collections()` to see all available collections.
 
 ## 4. Mouse datasets
 
-```{r gsea-mouse, eval=FALSE}
+```{r gsea-mouse}
 res <- RunGSEA(brain,
   group.by   = "seurat_clusters",
   split.by   = NULL,
@@ -128,7 +131,7 @@ res <- RunGSEA(brain,
 `padj_thresh` and `logfc_thresh` filter DE results before ranking.
 `top_n` controls how many pathways appear per group in summary heatmaps.
 
-```{r gsea-thresholds, eval=FALSE}
+```{r gsea-thresholds}
 res <- RunGSEA(bmcite,
   group.by      = "celltype.l1",
   split.by      = NULL,
@@ -145,7 +148,7 @@ res <- RunGSEA(bmcite,
 `resume = TRUE` skips subsets for which output files already exist in
 `output_dir`. Essential when restarting a run that was interrupted.
 
-```{r gsea-resume, eval=FALSE}
+```{r gsea-resume}
 res <- RunGSEA(bmcite,
   group.by   = "celltype.l2",
   split.by   = "celltype.l1",
@@ -155,12 +158,40 @@ res <- RunGSEA(bmcite,
 
 ---
 
-## 7. Return value
+## 7. Customizing heatmap colors
+
+By default NES heatmaps use a 5-stop diverging palette centered at 0
+(blue - light blue - white - light orange - orange-red). Override with any
+`circlize::colorRamp2` object via `heatmap_colors`.
+
+```{r gsea-colors}
+# Classic blue-white-red (3-stop)
+col_bwr <- circlize::colorRamp2(c(-3, 0, 3), c("#2166ac", "white", "#d6604d"))
+
+# Purple-green (PRGn)
+col_prg <- circlize::colorRamp2(
+  c(-3, -1.5, 0, 1.5, 3),
+  c("#762a83", "#c2a5cf", "white", "#7fbf7b", "#1b7837"))
+
+# Tighter scale for subtle signals
+col_tight <- circlize::colorRamp2(c(-1.5, 0, 1.5),
+                                   c("#007dd1", "white", "#ab3000"))
+
+res <- RunGSEA(bmcite,
+  group.by       = "celltype.l1",
+  split.by       = NULL,
+  output_dir     = tempdir(),
+  heatmap_colors = col_bwr)
+```
+
+---
+
+## 8. Return value
 
 `RunGSEA` returns a nested list. The top level is split by `split.by` level
 (or `"all"` when `split.by = NULL`), then by `pathway_sets` name.
 
-```{r gsea-return, eval=FALSE}
+```{r gsea-return}
 # NES heatmap for the Hallmark collection, whole object
 res$all$Hallmark$heatmap
 
@@ -170,6 +201,61 @@ head(res$all$Hallmark$results)
 # Top pathways per group
 res$all$Hallmark$top_pathways
 ```
+
+---
+
+## 9. Finding pathways by keyword - `PlotGSEAEnrichment()`
+
+A GSEA run returns hundreds of pathways with long, exact MSigDB names. You
+should not have to know that the apoptosis pathway is called
+`HALLMARK_APOPTOSIS`. `PlotGSEAEnrichment()` auto-discovers the result CSVs and
+selects pathways by **keyword search** instead.
+
+> **Pain point fixed.** Describe the biology, not the exact string. Pass a
+> **character vector for OR** logic, or a **list of vectors for AND-groups**
+> (which are then OR'd) - all case-insensitive regex.
+
+```{r gsea-keyword}
+# OR: any pathway mentioning "apoptosis" OR "cell_death"
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = c("apoptosis", "cell_death"))
+
+# AND-group: pathways mentioning BOTH "interferon" AND "response"
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = list(c("interferon", "response")))
+
+# Mixed: (T_cell AND activation) OR inflammation
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = list(c("t_cell", "activation"), "inflammation"))
+```
+
+---
+
+## 10. Which genes drive a pathway? - `VisualizeLeadingEdge()`
+
+A significant NES tells you a pathway is enriched, but not *which genes* are
+responsible. `VisualizeLeadingEdge()` pulls the **leading-edge genes** for the
+pathways you select (by the same keyword search), then draws a per-cell
+expression heatmap - and, optionally, a dotplot, stacked violins, and boxplots,
+intersected with your DEGs.
+
+> **Pain point fixed.** Go from "this pathway is up" to "these specific genes
+> are driving it, in these cells" - visually, in one call.
+
+```{r leading-edge}
+VisualizeLeadingEdge(bmcite,
+  gsea_files   = "./Figures/Pathways",     # a dir of GSEA CSVs, or file paths
+  search_terms = c("interferon"),
+  group.by     = "celltype.l1",
+  split.by     = "donor",
+  output_dir   = "./Figures/LeadingEdge")
+```
+
+Supply a DEG table via `deg_df` to intersect leading-edge genes with your
+significant differentially expressed genes for a focused, defensible gene set.
 
 ---
 
@@ -188,20 +274,23 @@ res$all$Hallmark$top_pathways
 | `top_n` | integer | `5` | Top/bottom pathways per group in summary heatmaps |
 | `output_dir` | character or `NULL` | `NULL` | Directory for PDFs and CSVs (`NULL` = return only) |
 | `resume` | logical | `FALSE` | Skip already-completed subsets |
+| `heatmap_colors` | `colorRamp2` or `NULL` | `NULL` | Custom color function for NES heatmaps; `NULL` uses the 5-stop blue-white-orange-red default |
 | `heatmap_params` | named list | `list(...)` | Extra arguments forwarded to `ComplexHeatmap::Heatmap()` |
 
 ---
 
 ## See also
 
-- Vignette 05: `GroupHeatmap` — gene-level expression heatmap
-- Vignette 06: `CellTypeAssignmentHelper` — annotate clusters before pathway analysis
-- Vignette 09: `RunCellChat` — pathway-level cell-cell communication
+- Vignette 05: `GroupHeatmap` - gene-level expression heatmap
+- Vignette 06: `CellTypeAssignmentHelper` - annotate clusters before pathway analysis
+- Vignette 09: `RunGSEA_pseudobulk` - sample-level pseudobulk GSEA with limma-voom
+- Vignette 10: `RunSCssGSEA` - per-cell pathway scoring; `PlotPathwayButterfly` - 4-pathway state hierarchy; `RunEnrichment` - ORA
+- Vignette 11: `RunCellChat` - pathway-level cell-cell communication
 
 ---
 
 ## Session info
 
-```{r session-info, eval=FALSE}
+```{r session-info}
 sessionInfo()
 ```

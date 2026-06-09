@@ -35,9 +35,9 @@ plain \code{.Rhistory} file) and writes two files into \code{output_dir}:
 }
 \details{
 \itemize{
-\item \code{session_YYYYMMDD_summary.md} — a markdown report with phase-by-phase
+\item \code{session_YYYYMMDD_summary.md} - a markdown report with phase-by-phase
 summaries, error counts, and a plot inventory.
-\item \code{session_YYYYMMDD_clean.R}   — a deduplicated, phase-annotated R script
+\item \code{session_YYYYMMDD_clean.R}   - a deduplicated, phase-annotated R script
 containing only the successful commands.
 }
 }

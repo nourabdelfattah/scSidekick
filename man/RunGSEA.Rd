@@ -9,6 +9,14 @@ RunGSEA(
   group.by = "Assignment",
   split.by = "GlobalAssignment",
   label.by = NULL,
+  gene_sets = NULL,
+  deg_df = NULL,
+  deg_gene_column = "feature",
+  deg_group_column = "group",
+  deg_fc_column = "logFC",
+  deg_padj_column = "padj",
+  deg_padj_cutoff = 0.05,
+  deg_top_n = 20L,
   pathway_sets = list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
     subcategory = "CP:KEGG"), Reactome = list(category = "C2", subcategory =
     "CP:REACTOME"), WP = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")),
@@ -18,10 +26,13 @@ RunGSEA(
   padj_thresh = 0.05,
   logfc_thresh = 0.1,
   top_n = 5L,
+  nes.cutoff = 1,
   output_dir = NULL,
   resume = FALSE,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
-    row_names_max_width = grid::unit(15, "cm"))
+    row_names_max_width = grid::unit(15, "cm")),
+  heatmap_colors = NULL,
+  caffeinate = FALSE
 )
 }
 \arguments{
@@ -39,6 +50,35 @@ without any further cell-type subsetting. Default \code{"GlobalAssignment"}.}
 \item{label.by}{Character or \code{NULL}. Outer metadata column for further
 subsetting (e.g., condition). \code{NULL} treats the whole object as one group.}
 
+\item{gene_sets}{Named list of character vectors, where each name is a gene
+set label and each vector contains gene symbols. When supplied, MSigDB is
+not queried and \code{pathway_sets} is ignored. Takes priority over \code{deg_df}.
+Default \code{NULL}.}
+
+\item{deg_df}{Data frame of differential expression results. When supplied
+(and \code{gene_sets} is \code{NULL}), gene sets are built by taking the top
+\code{deg_top_n} up- and down-regulated genes per group from this table. Columns
+are identified by \code{deg_gene_column}, \code{deg_group_column}, \code{deg_fc_column},
+and \code{deg_padj_column}. Default \code{NULL}.}
+
+\item{deg_gene_column}{Character. Column in \code{deg_df} containing gene symbols.
+Default \code{"feature"}.}
+
+\item{deg_group_column}{Character. Column in \code{deg_df} containing the group
+label used to split genes into per-group sets. Default \code{"group"}.}
+
+\item{deg_fc_column}{Character. Column in \code{deg_df} containing log-fold
+change values used to rank genes within each group. Default \code{"logFC"}.}
+
+\item{deg_padj_column}{Character. Column in \code{deg_df} containing adjusted
+p-values used to filter genes before ranking. Default \code{"padj"}.}
+
+\item{deg_padj_cutoff}{Numeric. Adjusted p-value threshold applied to
+\code{deg_df} rows before building gene sets. Default \code{0.05}.}
+
+\item{deg_top_n}{Integer. Maximum number of genes per group taken from
+\code{deg_df} after filtering and ranking. Default \code{20}.}
+
 \item{pathway_sets}{Named list of MSigDB gene-set databases to test. Each
 element is a list with a \code{category} field and an optional \code{subcategory}
 field; the element name becomes the short label used in output filenames
@@ -54,28 +94,28 @@ and the return list. The default covers four curated collections:
 
 Other useful collections (pass as additional list elements):
 \itemize{
-\item \code{list(category = "C2", subcategory = "CP:BIOCARTA")} — BioCarta
-\item \code{list(category = "C2", subcategory = "CP:PID")} — NCI Pathway
+\item \code{list(category = "C2", subcategory = "CP:BIOCARTA")} - BioCarta
+\item \code{list(category = "C2", subcategory = "CP:PID")} - NCI Pathway
 Interaction Database
-\item \code{list(category = "C5", subcategory = "GO:BP")} — Gene Ontology
+\item \code{list(category = "C5", subcategory = "GO:BP")} - Gene Ontology
 Biological Process
-\item \code{list(category = "C5", subcategory = "GO:MF")} — GO Molecular
+\item \code{list(category = "C5", subcategory = "GO:MF")} - GO Molecular
 Function
-\item \code{list(category = "C5", subcategory = "GO:CC")} — GO Cellular
+\item \code{list(category = "C5", subcategory = "GO:CC")} - GO Cellular
 Component
-\item \code{list(category = "C7", subcategory = "IMMUNESIGDB")} — ImmuneSigDB
+\item \code{list(category = "C7", subcategory = "IMMUNESIGDB")} - ImmuneSigDB
 (immune gene sets; recommended for immune datasets)
-\item \code{list(category = "C8")} — Cell-type signature gene sets
+\item \code{list(category = "C8")} - Cell-type signature gene sets
 }
 See \code{msigdbr::msigdbr_collections()} for the full catalogue.}
 
 \item{species}{Character. Species passed to \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}. Must
-match the species names recognised by that function. Common values:
+match the species names recognized by that function. Common values:
 \itemize{
-\item \code{"Homo sapiens"} — human (default)
-\item \code{"Mus musculus"} — mouse
-\item \code{"Rattus norvegicus"} — rat
-\item \code{"Danio rerio"} — zebrafish
+\item \code{"Homo sapiens"} - human (default)
+\item \code{"Mus musculus"} - mouse
+\item \code{"Rattus norvegicus"} - rat
+\item \code{"Danio rerio"} - zebrafish
 }
 Run \code{msigdbr::msigdbr_species()} for the complete list.}
 
@@ -84,7 +124,7 @@ Default \code{"RNA"}. For BPCells sketch workflows use \code{"sketch"}.}
 
 \item{min_cells}{Integer. Skip subsets with fewer cells. Default \code{20}.
 A separate guard also skips any \verb{(label, split)} combination that has
-fewer than 2 levels of \code{group.by} after subsetting — this prevents
+fewer than 2 levels of \code{group.by} after subsetting - this prevents
 \code{presto::wilcoxauc} from crashing when e.g. one \code{label.by} level contains
 only one \code{group.by} category (e.g., a Cognitive.Status group with a single
 Sex). A message is emitted for each skipped combination.}
@@ -97,6 +137,11 @@ Default \code{0.1}.}
 
 \item{top_n}{Integer. Number of top and bottom pathways per cluster shown
 in summary heatmaps. Default \code{5}.}
+
+\item{nes.cutoff}{Numeric. After selecting the union of top/bottom \code{top_n}
+pathways per cluster, rows whose maximum \verb{|NES|} across all clusters falls
+below this threshold are removed from the summary heatmap. Set to \code{0} to
+skip the filter. Default \code{1.0}.}
 
 \item{output_dir}{Character or \code{NULL}. If provided, CSVs and PDFs are
 written here in a structured subdirectory tree. If \code{NULL}, results are
@@ -116,15 +161,36 @@ Default \code{FALSE}.}
 
 \item{heatmap_params}{Named list of additional arguments forwarded to
 \code{\link[ComplexHeatmap:Heatmap]{ComplexHeatmap::Heatmap()}} for both the full and summary NES heatmaps.
-Any default set by scSidekick can be overridden here — e.g.
+Any default set by scSidekick can be overridden here - e.g. clustering
+distance, font size, or row ordering.}
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{heatmap_params = list(
-  clustering_distance_rows = "pearson",
-  row_names_gp = grid::gpar(fontsize = 6, fontface = "italic"),
-  col = circlize::colorRamp2(c(-3, 0, 3),
-                             c("navy", "white", "darkred"))
-)
-}\if{html}{\out{</div>}}}
+\item{heatmap_colors}{A \code{circlize::colorRamp2} color function for the
+heatmap fill scale. \code{NULL} (default) uses a 5-stop blue-white-red
+diverging palette where the limits are auto-scaled to the data range
+(capped at +/-4):
+\preformatted{
+  circlize::colorRamp2(
+    c(-lim, -lim/2, 0, lim/2, lim),
+    c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000")
+  )}
+Supply any \code{colorRamp2} object to override. The breaks you set in the
+custom function are used as-is (no auto-scaling). Examples:
+\itemize{
+\item \strong{Classic RdBu (3-stop):}
+\code{circlize::colorRamp2(c(-3, 0, 3), c("#2166ac", "white", "#b2182b"))}
+\item \strong{Viridis plasma (sequential, for one-sided scores):}
+\code{circlize::colorRamp2(seq(0, 3, length.out = 9), viridis::plasma(9))}
+\item \strong{Purple-green (PRGn, for a cooler look):}
+\code{circlize::colorRamp2(c(-3, 0, 3), RColorBrewer::brewer.pal(3, "PRGn"))}
+\item \strong{Same palette, tighter breaks (good for subtle signals):}
+\code{circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
+}
+Note: for NES heatmaps, diverging palettes (centered at 0) are
+semantically correct because 0 means "no enrichment".}
+
+\item{caffeinate}{Logical. If \code{TRUE}, prevents the Mac from sleeping during
+the run via \code{caffeinate}. Useful for long multi-database runs overnight.
+Default \code{FALSE}.}
 }
 \value{
 A nested named list structured as

@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — UMAP Visualization: PlotDimPlots"
+title: "scSidekick - UMAP Visualization: PlotDimPlots"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -32,7 +32,7 @@ options(cli.width = 80)
 - Pass a **vector** to `group.by` and scSidekick iterates, producing one
   complete figure per variable
 
-Colors come from `PrepObject` automatically — no need to pass them manually.
+Colors come from `PrepObject` automatically - no need to pass them manually.
 
 ---
 
@@ -65,8 +65,8 @@ bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
 
 ## 1. Basic UMAP by cell type
 
-```{r basic}
-PlotDimPlots(bmcite, group.by = "celltype.l1",split.by = NULL)
+```{r basic, fig.height=4, fig.width=4}
+PlotDimPlots(bmcite, group.by = "celltype.l1",split.by = NULL,legendnrow = 1)
 ```
 
 ---
@@ -78,7 +78,7 @@ donor's cells, colored by cell type. The legend is shared.
 
 ```{r split-by-donor, fig.height=4}
 PlotDimPlots(bmcite,
-  group.by = "celltype.l1",
+  group.by = "celltype.l1",legendnrow = 1,
   split.by = "donor")
 ```
 
@@ -86,14 +86,13 @@ PlotDimPlots(bmcite,
 
 ## 3. Adding a composition trend panel
 
-`show_trend = TRUE` appends a stacked bar chart to the right showing the
-proportional cell-type composition per split group — reads as a combined
-spatial + compositional figure.
+`show_trend = TRUE` appends a stacked bar chart to the left showing the
+proportional cell-type composition per split group.
 
 ```{r trend, fig.height=4}
 PlotDimPlots(bmcite,
   group.by   = "celltype.l1",
-  split.by   = "donor",
+  split.by   = "donor",legendnrow = 1,
   show_trend = TRUE)
 ```
 
@@ -106,19 +105,19 @@ avoiding legend look-up.
 
 ```{r labels}
 PlotDimPlots(bmcite,
-  group.by    = "celltype.l1",
+  group.by    = "celltype.l1",legendnrow = 1,
   show_labels = TRUE)
 ```
 
 ---
 
-## 5. Multiple `group.by` — one figure per variable
+## 5. Multiple `group.by` - one figure per variable
 
 Pass a character vector to produce one complete figure per grouping variable.
 This is the primary way to compare how different annotations map onto the same
 embedding.
 
-```{r multi-group, fig.height=4}
+```{r multi-group, fig.height=8, fig.width=8}
 p=PlotDimPlots(bmcite,
   group.by = c("celltype.l1", "celltype.l2"))
 patchwork::wrap_plots(p,ncol = 1)
@@ -128,10 +127,10 @@ patchwork::wrap_plots(p,ncol = 1)
 
 ## 6. Row grouping with `row.by`
 
-`row.by` creates a 2-D grid: rows = levels of `row.by`, columns = levels of
+`row.by` creates a 2D grid: rows = levels of `row.by`, columns = levels of
 `split.by`. Use this to compare two categorical cuts simultaneously.
 
-```{r row-by, eval=FALSE}
+```{r row-by, eval=FALSE, fig.height=8, fig.width=4}
 PlotDimPlots(bmcite,
   group.by = "celltype.l1",
   row.by = "donor",
@@ -214,10 +213,10 @@ PlotDimPlots(bmcite,
 
 ## See also
 
-- Vignette 01: `PrepObject` — set default `group.by`, `split.by`, and colors
-- Vignette 02: `Determine_nDims` — choose `dims` before running `RunUMAP()`
-- Vignette 04: `PlotFeaturePlots` — gene expression overlaid on the same layout
-- Vignette 10: `PlotTrendLabeled` — standalone composition figure
+- Vignette 01: `PrepObject` - set default `group.by`, `split.by`, and colors
+- Vignette 02: `Determine_nDims` - choose `dims` before running `RunUMAP()`
+- Vignette 04: `PlotFeaturePlots` - gene expression overlaid on the same layout
+- Vignette 10: `PlotTrendLabeled` - standalone composition figure
 
 ---
 

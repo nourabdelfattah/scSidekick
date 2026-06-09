@@ -8,12 +8,12 @@
 #' linear reduction (PCA, LSI, etc.) to pass to UMAP, neighbor graphs, and
 #' clustering.
 #'
-#' **Heuristic 1 — cumulative variance plateau**: finds the first dimension
+#' **Heuristic 1 - cumulative variance plateau**: finds the first dimension
 #' where cumulative variance explained exceeds `threshold_cum_pct` *and* the
 #' per-dimension contribution has already dropped below `threshold_pct`. This
 #' marks the point of diminishing returns.
 #'
-#' **Heuristic 2 — elbow**: finds the last dimension where the drop in
+#' **Heuristic 2 - elbow**: finds the last dimension where the drop in
 #' per-dimension variance between successive dimensions is still larger than
 #' `threshold_diff_pct`. Beyond this point the curve has flattened.
 #'
@@ -52,12 +52,12 @@ Determine_nDims <- function(seurat_object,
   pct_var <- stdev / sum(stdev) * 100
   cum_var <- cumsum(pct_var)
 
-  # Heuristic 1 — cumulative plateau:
+  # Heuristic 1 - cumulative plateau:
   # first dim where cumulative variance > threshold_cum_pct
   # AND per-dim contribution has already fallen below threshold_pct
   h1 <- which(cum_var > threshold_cum_pct & pct_var < threshold_pct)[1L]
 
-  # Heuristic 2 — elbow:
+  # Heuristic 2 - elbow:
   # last dim where the step-down in variance between consecutive dims
   # is still larger than threshold_diff_pct (i.e. the curve is still dropping)
   h2 <- sort(which(abs(diff(pct_var)) > threshold_diff_pct),

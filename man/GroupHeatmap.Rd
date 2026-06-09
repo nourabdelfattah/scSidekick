@@ -9,6 +9,8 @@ GroupHeatmap(
   group.by,
   features,
   feature_split = NULL,
+  feature_column = NULL,
+  feature_group_column = NULL,
   column_split_by = NULL,
   assay = "RNA",
   layer = "data",
@@ -28,15 +30,19 @@ GroupHeatmap(
   cluster_row_slices = FALSE,
   cluster_columns = FALSE,
   heatmap_params = list(show_row_names = TRUE, row_names_side = "right", row_names_gp =
-    grid::gpar(fontsize = 8), show_row_dend = FALSE, show_column_names = TRUE,
-    column_names_side = "top", row_title = NULL, column_title = NULL),
+    grid::gpar(fontsize = 8), show_row_dend = FALSE, column_names_side = "top", row_title
+    = NULL, column_title = NULL),
   auto_draw = TRUE,
   legend_side = "right",
   width = grid::unit(5, "in"),
   height = grid::unit(7, "in"),
+  auto_size = TRUE,
+  pdf.width = NULL,
+  pdf.height = NULL,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  subset_name = "",
+  file_name = NULL
 )
 }
 \arguments{
@@ -46,11 +52,25 @@ GroupHeatmap(
 combinations become the heatmap columns (e.g.
 \code{c("CellTypes", "Treatment")}).}
 
-\item{features}{Character vector of gene names to plot.}
+\item{features}{Either a character vector of gene names, \strong{or} a
+\code{data.frame}.  When a data.frame, the gene column is taken from
+\code{feature_column} and (if given) row groups from
+\code{feature_group_column} - so a marker table can be passed directly.}
 
-\item{feature_split}{Named character or factor vector (names = gene
-symbols, values = row-group labels).  When supplied, rows are split
-and labelled.}
+\item{feature_split}{Row-group labels.  Either a \strong{named} vector
+(names = gene symbols, values = group labels), or an \strong{unnamed}
+vector the same length as \code{features} (matched by position).  When
+supplied, rows are split and labelled.  Ignored when \code{features} is a
+data.frame with \code{feature_group_column} set.}
+
+\item{feature_column}{Character or \code{NULL}.  When \code{features} is a
+data.frame, the column holding gene names.  \code{NULL} auto-detects
+(\code{gene}/\code{feature}/\code{Genes}/...) or uses the first column.}
+
+\item{feature_group_column}{Character or \code{NULL}.  When \code{features}
+is a data.frame, the column holding row-group labels (becomes
+\code{feature_split}).  \code{NULL} auto-detects
+(\code{group}/\code{cluster}/\code{CellType}/...) if present.}
 
 \item{column_split_by}{Optional metadata column used to \emph{facet}
 (visually split) the columns into panels.  May be one of the
@@ -67,38 +87,38 @@ and labelled.}
 \code{TRUE}.}
 
 \item{add_bg}{Logical.  Draw a white disc behind each dot so it pops
-against dark expression colours.  Default \code{TRUE}.}
+against dark expression colors.  Default \code{TRUE}.}
 
 \item{dot_size}{Base dot size as a \code{grid::unit} object. Default
 \code{grid::unit(4, "mm")}.}
 
-\item{pct_cutoff}{Minimum fraction expressing (0–1) to draw a dot.
+\item{pct_cutoff}{Minimum fraction expressing (0-1) to draw a dot.
 Default \code{0}.}
 
-\item{palette}{RColorBrewer diverging palette for the expression colour
+\item{palette}{RColorBrewer diverging palette for the expression color
 scale.  Default \code{"RdBu"}.}
 
 \item{color_scale}{Optional pre-built \code{circlize::colorRamp2} object.
 Overrides \code{palette}.}
 
-\item{scale_limits}{\code{c(min, max)} for the colour scale. Default
+\item{scale_limits}{\code{c(min, max)} for the color scale. Default
 \code{c(-2, 2)}.}
 
-\item{group_colors}{Colours for \code{group.by} levels.  Accepts:
+\item{group_colors}{Colors for \code{group.by} levels.  Accepts:
 \itemize{
-\item A \strong{named list} where each element is a named colour
+\item A \strong{named list} where each element is a named color
 vector for one \code{group.by} variable, e.g.
 \code{list(CellType = ct_cols, Treatment = tx_cols)}.
 \item A \strong{named vector} when \code{group.by} has length 1
 (backward-compatible).
-\item \code{NULL} (default) — auto-assigned from PrepObject or
+\item \code{NULL} (default) - auto-assigned from PrepObject or
 \code{Nour_pal}.
 }}
 
-\item{column_split_colors}{Named colour vector for \code{column_split_by}
+\item{column_split_colors}{Named color vector for \code{column_split_by}
 levels.}
 
-\item{feature_split_colors}{Named colour vector for \code{feature_split}
+\item{feature_split_colors}{Named color vector for \code{feature_split}
 categories (cosmetic; not currently used in cell_fun).}
 
 \item{textbox_labels}{Logical.  Use \code{anno_textbox} when available
@@ -121,16 +141,38 @@ Default \code{FALSE}.}
 
 \item{legend_side}{Where to place the legend.  Default \code{"right"}.}
 
-\item{width}{Heatmap body width as a \code{grid::unit}. Default
-\code{grid::unit(5, "in")}.}
+\item{width}{Heatmap body width, as a \code{grid::unit} \emph{or} a bare
+numeric (interpreted as inches).  When left at the default and
+\code{auto_size = TRUE}, the body width is derived from the number of
+columns. Default \code{grid::unit(5, "in")}.}
 
-\item{height}{Heatmap body height.  Default \code{grid::unit(7, "in")}.}
+\item{height}{Heatmap body height (\code{grid::unit} or numeric inches).
+Auto-derived from the number of rows when left at the default and
+\code{auto_size = TRUE}. Default \code{grid::unit(7, "in")}.}
+
+\item{auto_size}{Logical.  When \code{TRUE} (default) and \code{width} /
+\code{height} are not explicitly supplied, size the heatmap body from the
+number of genes and column groups.  The saved PDF is \emph{always} sized to
+fit the longest row and column names regardless of this setting.}
+
+\item{pdf.width, pdf.height}{Numeric.  PDF device width and height in inches.
+When supplied, these are passed \emph{directly} to \code{grDevices::pdf()}
+and override all automatic size estimation.  Use these when the heuristic
+sizing gets the device dimensions wrong (e.g. very wide heatmaps with many
+donors).  \code{NULL} (default) keeps the automatic behavior.}
 
 \item{output_dir}{Directory to save a PDF.  \code{NULL} = no file.}
 
-\item{object_name}{Prefix for output file names.}
+\item{object_name}{Prefix for output file names. Falls back to the
+\code{object_name} stored by \code{\link{PrepObject}}.}
 
-\item{subset_name}{Optional subset label.}
+\item{subset_name}{Optional subset label inserted into the file name. Falls
+back to the \code{subset_name} stored by \code{\link{PrepObject}}.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces the name from
+\code{object_name}, \code{subset_name}, the \code{features} variable name,
+and the \code{group.by} / \code{column_split_by} variables.}
 }
 \value{
 Invisibly, a named list:
@@ -149,15 +191,15 @@ Computes mean expression per combination of \code{group.by} levels for the
 supplied \code{features}, scales across groups (z-score by default), and
 draws a \code{ComplexHeatmap} with:
 \itemize{
-\item \strong{Colour fill} = scaled mean expression
-\item \strong{Dot overlay} (optional) — dots sized by \\% of cells
+\item \strong{Color fill} = scaled mean expression
+\item \strong{Dot overlay} (optional) - dots sized by \\% of cells
 expressing each gene within each column group
-\item \strong{Row split + textbox labels} — rows grouped and annotated
+\item \strong{Row split + textbox labels} - rows grouped and annotated
 by \code{feature_split} categories
-\item \strong{Column faceting} — each level of \code{column_split_by}
+\item \strong{Column faceting} - each level of \code{column_split_by}
 forms a panel; within every panel \emph{all} \code{group.by}
 combinations are shown
-\item \strong{Column annotation} — one colour bar per \code{group.by}
+\item \strong{Column annotation} - one color bar per \code{group.by}
 variable (analogous to ComplexHeatmap's multi-bar top annotation)
 }
 }
@@ -166,15 +208,15 @@ variable (analogous to ComplexHeatmap's multi-bar top annotation)
 \code{group.by} may be a character vector of length > 1.  The heatmap
 columns are the \emph{observed} unique combinations of all listed
 variables, ordered by the first variable, then the second, etc.
-The top annotation automatically shows one colour bar per variable.
+The top annotation automatically shows one color bar per variable.
 }
 
-\section{column_split_by behaviour}{
+\section{column_split_by behavior}{
 
 When \code{column_split_by} is supplied the function computes expression
 for \emph{every} (group.by × column_split_by) combination found in the
 object.  This means a CellType that appears in both "Vehicle" and "Drug"
 produces \emph{two} columns (one per treatment), placed in their
-respective panels.  This is the correct faceting behaviour.
+respective panels.  This is the correct faceting behavior.
 }
 

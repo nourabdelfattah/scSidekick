@@ -1,0 +1,511 @@
+---
+title: "scSidekick - Cell-Cell Communication: CellChat Suite"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Cell-Cell Communication: CellChat Suite}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALSE)
+```
+
+## Overview
+
+scSidekick wraps CellChat to provide a streamlined, reproducible cell-cell
+communication workflow. Four functions cover the full pipeline:
+
+| Function | What it does |
+|---|---|
+| `RunCellChat()` | Run the full CellChat pipeline for each condition; save summary figures |
+| `CompareCellChat()` | Generate cross-condition comparison plots from pre-computed CellChat objects |
+| `RankCellChatPathways()` | Rank pathways by differential activity; flow heatmap + sender/receiver tiles |
+| `RenameCellTypeInCC()` | Rename a cell type label throughout a CellChat object post-hoc |
+
+All functions are designed for multi-condition studies where you want to ask
+"which interactions and pathways are gained or lost between Control and Treated?"
+
+> **Note:** scSidekick requires CellChat >= 2.1.0 (the `jinworks/CellChat` fork).
+> Install with: `devtools::install_github("jinworks/CellChat")`
+
+---
+
+## Standard setup
+
+```{r standard-setup}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(CellChat)
+library(dplyr)
+
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- bmcite %>%
+  NormalizeData() %>% FindVariableFeatures() %>% ScaleData() %>% RunPCA()
+dims <- Determine_nDims(bmcite, elbow_plot = FALSE)
+bmcite <- RunUMAP(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindNeighbors(bmcite, dims = 1:dims$n_dims)
+bmcite <- FindClusters(bmcite, resolution = 0.5)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2", "seurat_clusters"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  output_dir  = tempdir(),
+  object_name = "bmcite")
+```
+
+---
+
+# Part 1: RunCellChat
+
+## 1. Basic call
+
+`RunCellChat()` splits the Seurat object by the levels of `group.by`, builds
+one CellChat object per level, runs the full inference pipeline on each, and
+saves summary figures.
+
+```{r cellchat-basic}
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",   # cell identity column for communication inference
+  group.by   = "donor",         # one CellChat run per condition/group
+  output_dir = file.path(tempdir(), "CellChat"))
+```
+
+`cell.by` defines the cell-type identity used for communication inference.
+`group.by` defines the groups run separately (typically conditions). The function
+returns a named list of CellChat objects, one per level of `group.by`.
+
+CellChat RDS files are saved in a `CellChatObjects/` subdirectory of
+`output_dir` by default.
+
+---
+
+## 2. Specifying groups explicitly
+
+Use `groups` to run only a subset of levels or to fix the comparison order:
+
+```{r cellchat-groups}
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  groups     = c("Control", "Treated"),
+  output_dir = file.path(tempdir(), "CellChat"))
+```
+
+---
+
+## 3. Mouse data
+
+Set `species = "mouse"` to use the CellChatDB.mouse ligand-receptor database:
+
+```{r cellchat-mouse}
+cc_brain <- RunCellChat(brain,
+  cell.by    = "seurat_clusters",
+  group.by   = "Condition",
+  species    = "mouse",
+  output_dir = file.path(tempdir(), "CellChat"))
+```
+
+---
+
+## 4. Custom cell-type colors
+
+Pass a named character vector to `colors` to override the palette used in chord
+diagrams and network plots. Keys must match levels of `cell.by`.
+
+```{r cellchat-colors}
+cluster_cols <- GetColors(bmcite, "celltype.l1")
+
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  colors     = cluster_cols,
+  output_dir = file.path(tempdir(), "CellChat"))
+```
+
+---
+
+## 5. Resuming an interrupted run
+
+`resume = TRUE` checks `robj_dir` for already-completed CellChat `.rds` files
+and skips those groups, resuming from where the run stopped.
+
+`redo_plots = TRUE` reloads all saved `.rds` files and regenerates PDFs without
+re-running any CellChat inference - useful after updating colors or fixing
+cell-type names with `RenameCellTypeInCC`.
+
+```{r cellchat-resume}
+# Resume an interrupted run
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  output_dir = file.path(tempdir(), "CellChat"),
+  resume     = TRUE)
+
+# Regenerate all PDFs from saved RDS (no re-inference)
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  output_dir = file.path(tempdir(), "CellChat"),
+  redo_plots = TRUE)
+```
+
+---
+
+## 6. Communication pattern analysis
+
+`run.patterns = TRUE` (default) additionally runs `identifyCommunicationPatterns`
+to extract global signaling patterns (incoming and outgoing) using NMF.
+`pattern_k_range` controls which values of k are tested; the best k is selected
+automatically.
+
+```{r cellchat-patterns}
+# Skip pattern analysis to save time
+cc_results <- RunCellChat(bmcite,
+  cell.by        = "celltype.l1",
+  group.by       = "Condition",
+  output_dir     = file.path(tempdir(), "CellChat"),
+  run.patterns   = FALSE)
+
+# Custom k range
+cc_results <- RunCellChat(bmcite,
+  cell.by        = "celltype.l1",
+  group.by       = "Condition",
+  output_dir     = file.path(tempdir(), "CellChat"),
+  run.patterns   = TRUE,
+  pattern_k_range = 2:6)
+```
+
+---
+
+## 7. Outputs produced per group
+
+For each level of `group.by`, `RunCellChat()` saves the following files:
+
+| File | Content |
+|------|---------|
+| `CellChatObjects/{group}_CellChat.rds` | Serialized CellChat object |
+| `{group}_interaction_heatmap.pdf` | Heatmap of interaction counts/weights |
+| `{group}_chord_diagram.pdf` | Chord diagram of significant L-R pairs |
+| `{group}_bubble_plot.pdf` | Dot size = p-value, color = probability |
+| `{group}_pathway_summary.pdf` | Bar chart of top signaling pathways |
+| `{group}_outgoing_patterns.pdf` | Outgoing communication patterns (if `run.patterns`) |
+| `{group}_incoming_patterns.pdf` | Incoming communication patterns (if `run.patterns`) |
+
+---
+
+# Part 2: CompareCellChat
+
+`CompareCellChat()` takes a named list of CellChat objects (one per condition)
+and generates comparative visualizations side by side.
+
+> **Pain point fixed.** Two things go wrong natively. (1) When a signaling
+> pathway is detected in one condition but absent in another, the per-pathway
+> plot errors on conditions that lack it, so those panels are silently dropped
+> and the *absence* becomes invisible. (2) Each object draws its cell groups in
+> its own colors and order, so panels are not comparable position-for-position.
+> `CompareCellChat()` puts every condition on a shared node layout with the
+> same colors and the same group order in every panel, for every pathway present
+> in *any* object. Use `thresh = 1` to also compare pathways that are active at
+> the L-R level but did not reach pathway-level significance in some conditions.
+
+## 1. Basic comparison
+
+```{r compare-basic}
+# cc_results is the named list returned by RunCellChat()
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir    = file.path(tempdir(), "CellChat", "Comparison"))
+```
+
+---
+
+## 2. Loading saved CellChat objects
+
+If you previously ran `RunCellChat()` in a different session, reload the
+`.rds` files and build the list manually:
+
+```{r compare-reload}
+cc_ctrl    <- readRDS(file.path(tempdir(), "CellChat", "CellChatObjects",
+                                "Control_CellChat.rds"))
+cc_treated <- readRDS(file.path(tempdir(), "CellChat", "CellChatObjects",
+                                "Treated_CellChat.rds"))
+
+CompareCellChat(
+  cellchat_list = list(Control = cc_ctrl, Treated = cc_treated),
+  output_dir    = file.path(tempdir(), "CellChat", "Comparison"))
+```
+
+---
+
+## 3. What the comparison plots show
+
+| File | What it shows |
+|------|---------------|
+| `Comparison_interaction_count_bar.pdf` | Interaction counts per cell type per condition |
+| `Comparison_interaction_strength_bar.pdf` | Interaction strength (probability) per cell type |
+| `Comparison_differential_heatmap.pdf` | Differential strength (Treated - Control); red = gained, blue = lost |
+| `Comparison_chord_gained.pdf` | Interactions gained or strengthened in the second condition |
+| `Comparison_chord_lost.pdf` | Interactions diminished or lost in the second condition |
+| `Comparison_pathway_heatmap.pdf` | Pathway-level NES across all conditions |
+| `Comparison_scatter_pathway.pdf` | x = flow (condition 1), y = flow (condition 2); deviations = changed pathways |
+| `{pathway}_comparison.pdf` | Per-pathway: circle plots, chord diagrams, and heatmaps for all conditions |
+
+---
+
+# Part 3: RankCellChatPathways
+
+`RankCellChatPathways()` goes one level deeper than `CompareCellChat`: it ranks
+pathways by how much their information flow changes across conditions, then
+decomposes those changes into which cell types are driving them as senders and
+receivers.
+
+**Four outputs:**
+
+1. **Flow heatmap** - top N pathways x conditions, row-normalized so color
+   shows which condition has relatively higher activity
+2. **Sender tile plot** - faceted by pathway; shows how much each cell type
+   sends per condition
+3. **Receiver tile plot** - same for receivers
+4. **Top changed links heatmap** - the sender-receiver pairs with the highest
+   variance across conditions, showing exactly which cell-type interactions
+   drive pathway-level changes
+5. **CSV** - all underlying metrics for custom analysis
+
+## 1. Basic call
+
+```{r rank-basic}
+rank_results <- RankCellChatPathways(
+  cellchat_list = cc_results,
+  output_dir    = file.path(tempdir(), "CellChat", "Ranked"))
+```
+
+---
+
+## 2. Controlling which pathways and links to show
+
+`top_n` controls how many pathways appear in the flow heatmap and tile plots.
+`top_links` controls how many sender-receiver pairs appear in the links heatmap.
+Both are ranked by differential activity (`rank_by = "range"` or `"cv"`).
+
+```{r rank-params}
+rank_results <- RankCellChatPathways(
+  cellchat_list = cc_results,
+  output_dir    = file.path(tempdir(), "CellChat", "Ranked"),
+  top_n         = 30L,
+  top_links     = 20L,
+  rank_by       = "cv")    # coefficient of variation instead of range
+```
+
+---
+
+## 3. Custom colors
+
+Supply condition colors (for the flow heatmap strips) and cell-type colors
+(for the sender/receiver tile annotation strips):
+
+```{r rank-colors}
+cond_colors <- c(Control = "#4575b4", Treated = "#d73027")
+cell_colors <- GetColors(bmcite, "celltype.l1")
+
+rank_results <- RankCellChatPathways(
+  cellchat_list = cc_results,
+  output_dir    = file.path(tempdir(), "CellChat", "Ranked"),
+  colors        = cond_colors,
+  cell_colors   = cell_colors)
+```
+
+---
+
+## 4. Return value
+
+```{r rank-return}
+# Data frame: pathway x condition flow + ranking columns
+head(rank_results$flow_table)
+
+# Long data frame: which cell types send each pathway per condition
+head(rank_results$sender_table)
+
+# Long data frame: which cell types receive each pathway per condition
+head(rank_results$receiver_table)
+
+# Long data frame: sender-receiver pair flow per condition
+head(rank_results$links_table)
+
+# ggplot2 / pheatmap objects
+rank_results$flow_heatmap
+rank_results$sender_plot
+rank_results$receiver_plot
+rank_results$links_plot
+```
+
+---
+
+# Part 4: RenameCellTypeInCC
+
+If you rename a cluster or cell type after running CellChat (e.g. to correct
+an annotation mistake), `RenameCellTypeInCC()` patches the CellChat object so
+the new name propagates to all internal arrays: the probability matrices,
+centrality scores, communication pattern tables, and LR significance tables.
+
+Communication probabilities are **not** recomputed - only labels change. This
+is safe because the underlying values are invariant to what the cell type is
+called.
+
+## 1. Rename in a single object
+
+```{r rename-single}
+cc_fixed <- RenameCellTypeInCC(cc_ctrl,
+  old_name = "Immune_contam",
+  new_name  = "NK_TCells")
+
+# Save the fixed object back
+saveRDS(cc_fixed,
+  file.path(tempdir(), "CellChat", "CellChatObjects", "Control_CellChat.rds"))
+```
+
+---
+
+## 2. Batch rename across all conditions
+
+The typical workflow: patch and re-save all RDS files, then regenerate
+comparison figures without any re-inference.
+
+```{r rename-batch}
+# Step 1: patch and re-save all RDS files
+rds_dir   <- file.path(tempdir(), "CellChat", "CellChatObjects")
+rds_files <- list.files(rds_dir, pattern = "CellChat\\.rds$", full.names = TRUE)
+
+for (f in rds_files) {
+  cc <- RenameCellTypeInCC(readRDS(f),
+    old_name = "Immune_contam",
+    new_name  = "NK_TCells")
+  saveRDS(cc, f)
+}
+
+# Step 2: reload the fixed list and regenerate comparison figures
+cclist <- setNames(
+  lapply(rds_files, readRDS),
+  sub("_CellChat\\.rds$", "", basename(rds_files))
+)
+
+CompareCellChat(cclist,
+  output_dir = file.path(tempdir(), "CellChat", "Comparison"))
+
+RankCellChatPathways(cclist,
+  output_dir = file.path(tempdir(), "CellChat", "Ranked"))
+
+# Step 3: regenerate per-group RunCellChat PDFs (plots only, no re-inference)
+RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  output_dir = file.path(tempdir(), "CellChat"),
+  redo_plots = TRUE)
+```
+
+---
+
+## Typical two-condition workflow
+
+```{r full-workflow}
+out_dir <- file.path(tempdir(), "CellChat")
+
+# Step 1: run CellChat per condition
+cc_results <- RunCellChat(bmcite,
+  cell.by    = "celltype.l1",
+  group.by   = "Condition",
+  groups     = c("Control", "Treated"),
+  colors     = GetColors(bmcite, "celltype.l1"),
+  output_dir = out_dir,
+  resume     = TRUE)
+
+# Step 2: cross-condition comparison
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir    = file.path(out_dir, "Comparison"))
+
+# Step 3: pathway ranking
+RankCellChatPathways(
+  cellchat_list = cc_results,
+  output_dir    = file.path(out_dir, "Ranked"),
+  top_n         = 20L)
+```
+
+---
+
+## Parameter reference - `RunCellChat`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `seurat_object` | Seurat | required | Processed, annotated Seurat object |
+| `cell.by` | character | required | Metadata column defining cell identity |
+| `group.by` | character | required | Metadata column defining groups (one run per level) |
+| `groups` | character vector | `NULL` | Subset or reorder levels of `group.by` |
+| `species` | character | `"human"` | `"human"` or `"mouse"` |
+| `colors` | named character | `NULL` | Override cell-type color palette |
+| `output_dir` | character | required | Root directory for saving outputs |
+| `robj_dir` | character or `NULL` | `NULL` | Directory for CellChat RDS files; defaults to `output_dir/CellChatObjects/` |
+| `min.cells` | integer | `0` | Minimum cells a group must have to be included |
+| `thresh.p` | numeric | `0.05` | P-value threshold for CellChat communication inference |
+| `run.patterns` | logical | `TRUE` | Run communication pattern NMF analysis |
+| `pattern_k_range` | integer vector | `3:10` | Range of k values for NMF pattern selection |
+| `save.rds` | logical | `TRUE` | Save CellChat objects as RDS files |
+| `resume` | logical | `FALSE` | Skip groups with existing RDS files |
+| `redo_plots` | logical | `FALSE` | Reload saved RDS and regenerate PDFs only |
+| `assay_type` | character or `NULL` | `NULL` | Seurat assay to extract counts from |
+| `caffeinate` | logical | `FALSE` | Prevent system sleep during the run |
+
+## Parameter reference - `CompareCellChat`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cellchat_list` | named list | required | Named list of CellChat objects or paths to `.rds` files |
+| `output_dir` | character | required | Directory for saving comparison plots |
+| `groups.show` | character vector | `NULL` | Subset of conditions to include |
+| `group.merged` | character | `NULL` | Merge these conditions before comparison |
+| `colors` | named character | `NULL` | Override cell-type palette |
+| `species` | character | `"human"` | `"human"` or `"mouse"` |
+| `thresh` | numeric | `0.05` | P-value threshold; use `1` to include all pathways |
+| `caffeinate` | logical | `FALSE` | Prevent system sleep |
+
+## Parameter reference - `RankCellChatPathways`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cellchat_list` | named list | required | Named list of CellChat objects or paths to `.rds` files |
+| `output_dir` | character or `NULL` | `NULL` | Directory for PDFs and CSV; `NULL` = return objects only |
+| `top_n` | integer | `20` | Number of top pathways in flow heatmap and tile plots |
+| `top_links` | integer | `15` | Number of top sender-receiver pairs in links heatmap |
+| `rank_by` | character | `"range"` | Ranking metric: `"range"` (max - min flow) or `"cv"` (coefficient of variation) |
+| `colors` | named character | `NULL` | Condition colors for heatmap annotation strips |
+| `cell_colors` | named character | `NULL` | Cell-type colors for sender/receiver tile annotation |
+
+## Parameter reference - `RenameCellTypeInCC`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cc` | CellChat | required | CellChat object to modify |
+| `old_name` | character | required | Cell type label to replace |
+| `new_name` | character | required | Replacement label |
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject` - register cell-type colors used in chord diagrams
+- Vignette 06: `CellTypeAssignmentHelper` - assign cell types before CellChat
+- Vignette 08: `RunGSEA` - pathway-level gene set enrichment
+- Vignette 09: `RunGSEA_pseudobulk` - sample-level pseudobulk pathway analysis
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

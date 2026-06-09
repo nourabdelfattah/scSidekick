@@ -6,7 +6,7 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Nour18 — original 18-color qualitative palette
+# Nour18 - original 18-color qualitative palette
 # -----------------------------------------------------------------------------
 
 #' Nour18 color palette
@@ -50,7 +50,7 @@ Nour_cols <- function(...) {
 }
 
 # -----------------------------------------------------------------------------
-# Nour20 — 20-color full-spectrum palette (blues → teals → greens →
+# Nour20 - 20-color full-spectrum palette (blues → teals → greens →
 #           yellows → oranges → reds → purples)
 # -----------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ Nour_cols20 <- function(...) {
 }
 
 # -----------------------------------------------------------------------------
-# Named palette lists — used by Nour_pal()
+# Named palette lists - used by Nour_pal()
 # -----------------------------------------------------------------------------
 
 #' Named list of scSidekick color palettes
@@ -164,9 +164,9 @@ scale_color_Nour <- function(palette = "main", discrete = TRUE,
                               reverse = FALSE, ...) {
   pal <- Nour_pal(palette = palette, reverse = reverse)
   if (discrete) {
-    ggplot2::discrete_scale("colour", paste0("Nour_", palette), palette = pal, ...)
+    ggplot2::discrete_scale("color", paste0("Nour_", palette), palette = pal, ...)
   } else {
-    ggplot2::scale_color_gradientn(colours = pal(256), ...)
+    ggplot2::scale_color_gradientn(colors = pal(256), ...)
   }
 }
 
@@ -185,6 +185,103 @@ scale_fill_Nour <- function(palette = "main", discrete = TRUE,
   if (discrete) {
     ggplot2::discrete_scale("fill", paste0("Nour_", palette), palette = pal, ...)
   } else {
-    ggplot2::scale_fill_gradientn(colours = pal(256), ...)
+    ggplot2::scale_fill_gradientn(colors = pal(256), ...)
   }
+}
+
+
+# =============================================================================
+# SelectColors - generate a named color vector from any vector or factor
+# =============================================================================
+
+#' Generate a named color vector from a variable
+#'
+#' Accepts any vector (factor or not), resolves its levels, and returns a named
+#' character vector of colors - one per level - ready to pass to
+#' \code{scale_color_manual()}, \code{PrepObject(custom_colors = ...)}, or any
+#' scSidekick \code{colors} argument.
+#'
+#' If \code{x} is not already a factor it is converted automatically and a
+#' message is printed.  Supply \code{levels} to control the order; any levels
+#' present in the data but not listed are appended at the end.
+#'
+#' @param x A vector (factor, character, or numeric).
+#' @param palette Color source.  One of:
+#'   \itemize{
+#'     \item A \strong{Nour_pal name} string (e.g. \code{"all"}, \code{"spectrum"}).
+#'     \item A \strong{character vector} of hex colors - interpolated to the
+#'       required length via \code{colorRampPalette}.
+#'     \item A \strong{palette function} that accepts an integer \code{n} and
+#'       returns \code{n} colors (e.g. \code{scales::hue_pal()}).
+#'   }
+#'   Default \code{"all"}.
+#' @param levels Optional character vector specifying level order.  Levels
+#'   present in \code{x} but absent here are appended at the end.
+#' @param reverse Logical.  Reverse the color order.  Default \code{FALSE}.
+#'
+#' @return A named character vector of hex colors, one per level.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # From a Seurat metadata column
+#' cols <- SelectColors(SeuratObj$seurat_clusters)
+#'
+#' # Custom level order + warm palette
+#' cols <- SelectColors(SeuratObj$Group,
+#'   levels  = c("Control", "Treated"),
+#'   palette = "warm")
+#'
+#' # Any color vector as palette
+#' cols <- SelectColors(SeuratObj$CellType,
+#'   palette = c("#003f5c", "#bc5090", "#ffa600"))
+#' }
+SelectColors <- function(x,
+                          palette = "all",
+                          levels  = NULL,
+                          reverse = FALSE) {
+
+  # ── 1. Factor check / conversion ─────────────────────────────────────────
+  if (!is.factor(x)) {
+    x <- factor(x)   # R's default: alphabetical order, no unique() abuse
+    message("scSidekick: Variable was converted to a factor (levels set alphabetically). ",
+            "If you need a different order, use `levels = c(\"level1\", \"level2\", ...)`.")
+  }
+
+  # ── 2. Apply / update levels if requested ────────────────────────────────
+  if (!is.null(levels)) {
+    # Warn about any requested levels not actually present in the data
+    phantom <- setdiff(levels, base::levels(x))
+    if (length(phantom))
+      warning("scSidekick: The following levels were not found in x and will be ignored: ",
+              paste(phantom, collapse = ", "))
+    levels <- intersect(levels, base::levels(x))        # keep only real ones
+    rest   <- setdiff(base::levels(x), levels)          # unlisted → append
+    x      <- factor(x, levels = c(levels, rest))
+  }
+
+  lvls <- base::levels(x)
+  n    <- length(lvls)
+
+  # ── 3. Resolve palette → color vector of length n ────────────────────────
+  cols <- if (is.function(palette)) {
+    out <- palette(n)
+    if (reverse) rev(out) else out
+
+  } else if (is.character(palette) && length(palette) == 1L &&
+             palette %in% names(Nour_palettes)) {
+    Nour_pal(palette, reverse = reverse)(n)
+
+  } else if (is.character(palette) && length(palette) > 1L) {
+    if (reverse) palette <- rev(palette)
+    grDevices::colorRampPalette(palette)(n)
+
+  } else {
+    stop("'palette' must be a Nour_pal name (\"all\", \"spectrum\", etc.), ",
+         "a character vector of colors, or a palette function.\n",
+         "Available Nour_pal names: ",
+         paste(names(Nour_palettes), collapse = ", "))
+  }
+
+  stats::setNames(cols, lvls)
 }

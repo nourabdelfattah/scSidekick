@@ -76,7 +76,7 @@ result data frames.  Invisibly when \code{output_dir} is set.
 \description{
 Runs over-representation analysis (ORA) using \pkg{enrichR} on a gene list
 or on significant DEGs from a data frame, then automatically calls
-\code{\link{PlotEnrichment}} to visualise the results.  When
+\code{\link{PlotEnrichment}} to visualize the results.  When
 \code{group_column} is supplied, analysis is run separately per group.
 }
 \seealso{

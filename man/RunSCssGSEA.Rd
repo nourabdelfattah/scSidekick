@@ -2,7 +2,7 @@
 % Please edit documentation in R/pathway_sc.R
 \name{RunSCssGSEA}
 \alias{RunSCssGSEA}
-\title{Single-cell ssGSEA with significance testing and heatmap visualisation}
+\title{Single-cell ssGSEA with significance testing and heatmap visualization}
 \usage{
 RunSCssGSEA(
   seurat_object,
@@ -39,12 +39,14 @@ RunSCssGSEA(
   split_colors = NULL,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
+  heatmap_colors = NULL,
   add_boxplots = TRUE,
   add_pvalues = TRUE,
   add_to_object = FALSE,
   output_dir,
   object_name = "Analysis",
-  subset_name = ""
+  subset_name = "",
+  caffeinate = FALSE
 )
 }
 \arguments{
@@ -58,6 +60,16 @@ variable for the heatmap columns and significance testing
 splitting heatmap columns (e.g. \code{"Health"}, \code{"Condition"}). When set,
 significance is also tested \strong{within each split level} in addition to
 the pooled test.}
+
+\item{subset_cells}{Logical. If \code{TRUE}, subset the Seurat object to
+\code{subset_values} before scoring. Default \code{FALSE}.}
+
+\item{subset_by}{Character or \code{NULL}. Metadata column used for subsetting
+(required when \code{subset_cells = TRUE}). \code{NULL} treats \code{subset_values} as
+cell barcodes directly.}
+
+\item{subset_values}{Character vector. Values to retain in \code{subset_by}, or
+cell barcodes when \code{subset_by = NULL}.}
 
 \item{gene_sets}{Named list of gene vectors (Mode 1). \code{NULL} if using another
 mode.}
@@ -90,15 +102,15 @@ in each gene set. Default \code{20}.}
 \item{gene_set_library}{Character or \code{NULL}. MSigDB collection code (Mode 3
 or 4). Common options:
 \itemize{
-\item \code{"H"} — Hallmark (50 coherent biological processes)
-\item \code{"C2"} — Curated: canonical pathways (combine with
+\item \code{"H"} - Hallmark (50 coherent biological processes)
+\item \code{"C2"} - Curated: canonical pathways (combine with
 \code{gene_set_subcategory = "CP:KEGG"}, \code{"CP:REACTOME"},
 \code{"CP:WIKIPATHWAYS"}, \code{"CP:BIOCARTA"}, \code{"CP:PID"})
-\item \code{"C5"} — Gene Ontology (\code{subcategory = "GO:BP"},
+\item \code{"C5"} - Gene Ontology (\code{subcategory = "GO:BP"},
 \code{"GO:MF"}, \code{"GO:CC"})
-\item \code{"C6"} — Oncogenic signatures
-\item \code{"C7"} — Immunologic signatures (IMMUNESIGDB)
-\item \code{"C8"} — Cell-type signatures
+\item \code{"C6"} - Oncogenic signatures
+\item \code{"C7"} - Immunologic signatures (IMMUNESIGDB)
+\item \code{"C8"} - Cell-type signatures
 }
 \code{NULL} fetches all collections (slow; use with \code{search_terms}).}
 
@@ -108,18 +120,18 @@ Default \code{NULL} (entire collection).}
 \item{search_terms}{Search filter applied to MSigDB gene-set names (case-
 insensitive, regex). Accepts two forms:
 
-\strong{Character vector — OR search.} Any gene set whose name matches at least
+\strong{Character vector - OR search.} Any gene set whose name matches at least
 one term is kept: \code{search_terms = c("APOPTOSIS", "CELL_DEATH")}.
 
-\strong{List of character vectors — AND/OR search.} Each list element is an
+\strong{List of character vectors - AND/OR search.} Each list element is an
 AND-group: all terms in that element must appear in the same pathway name
 (order and separation do not matter). Results are the union (OR) across
 AND-groups. Examples:
 \itemize{
-\item \code{list(c("T_CELL", "ACTIVATION"))} — both words in same name
-\item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} — previous OR APOPTOSIS
+\item \code{list(c("T_CELL", "ACTIVATION"))} - both words in same name
+\item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} - previous OR APOPTOSIS
 \item \code{list(c("T_CELL","ACTIVATION"), c("B_CELL","DIFFERENTIATION"))}
-— two independent AND-groups, union of results
+- two independent AND-groups, union of results
 }
 \code{NULL} (default) keeps all gene sets in the fetched collection.}
 
@@ -127,20 +139,38 @@ AND-groups. Examples:
 \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}. Default \code{"Homo sapiens"}. Use \code{"Mus musculus"} for
 mouse datasets. See \code{msigdbr::msigdbr_species()} for all supported species.}
 
+\item{method}{Character. Scoring backend. \code{"gsva"} (default) uses the GSVA
+package's ssGSEA algorithm; \code{"ucell"} uses the UCell package's rank-based
+U statistic, which is faster and memory-efficient for large datasets but
+does not produce normalized enrichment scores.}
+
 \item{downsample}{Integer or \code{NULL}. Maximum cells per \code{group.by} identity
-to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} — downsampling to
-500–2000 cells per group dramatically reduces runtime with minimal loss of
+to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} - downsampling to
+500-2000 cells per group dramatically reduces runtime with minimal loss of
 group-level signal. \code{NULL} uses all cells. Default \code{NULL}.}
 
 \item{min.size}{Integer. Minimum gene-set size after intersecting with the
 expression matrix. Gene sets below this threshold are silently dropped.
 Default \code{5}.}
 
-\item{ssgsea.norm}{Logical. Normalise ssGSEA enrichment scores to the
-\verb{[0, 1]} range? Default \code{TRUE} (matches \code{escape::enrichIt} default).}
+\item{ssgsea.norm}{Logical. Normalize ssGSEA enrichment scores to the
+\verb{[0, 1]} range? Default \code{TRUE} (matches \code{escape::enrichIt} default).
+Ignored when \code{method = "ucell"}.}
 
-\item{cores}{Integer. Number of parallel cores for GSVA. Requires
-\pkg{BiocParallel}. Falls back to serial if unavailable. Default \code{1}.}
+\item{ucell_max_rank}{Integer. UCell only: only the top \code{ucell_max_rank}
+genes per cell (by expression rank) are considered when computing the
+U statistic. Lower values reduce memory use. Default \code{1500L}.}
+
+\item{cores}{Integer. Number of parallel cores. For \code{method = "gsva"},
+requires \pkg{BiocParallel}; falls back to serial if unavailable.
+For \code{method = "ucell"}, sets the number of UCell threads. Default \code{1}.}
+
+\item{chunk_size}{Integer. UCell only: number of cells processed per
+parallel chunk. Tune to balance memory and speed. Default \code{1000L}.}
+
+\item{resume}{Logical. If \code{TRUE} and a combined-scores CSV checkpoint from a
+previous run exists in \code{output_dir}, load it and skip scoring. Useful for
+re-running plots after adjusting significance thresholds. Default \code{FALSE}.}
 
 \item{fit}{Character. Significance test applied per pathway:
 \code{"ANOVA"} (default, parametric F-test) or \code{"Kruskal"} (non-parametric
@@ -160,9 +190,49 @@ pathways with \code{p_adj < p_cutoff}. Falls back to top 30 by statistic if no
 pathways pass the threshold. If \code{FALSE}, all pathways are shown. Default
 \code{TRUE}.}
 
+\item{group_colors}{Named character vector of colors for \code{group.by} levels.
+\code{NULL} (default) auto-generates colors from the Nour palette.}
+
+\item{split_colors}{Named character vector of colors for \code{split.by} levels.
+\code{NULL} (default) auto-generates colors from the Nour palette. Ignored
+when \code{split.by = NULL}.}
+
+\item{heatmap_params}{Named list of additional arguments forwarded to
+\code{\link[ComplexHeatmap:Heatmap]{ComplexHeatmap::Heatmap()}}. Overrides internal defaults for row label
+placement, dendrogram display, and row-name width.}
+
+\item{heatmap_colors}{A \code{circlize::colorRamp2} color function for the
+heatmap fill scale. \code{NULL} (default) uses a 5-stop blue-white-red
+diverging palette at breaks \code{c(-2, -1, 0, 1, 2)} (row z-scores):
+\preformatted{
+  circlize::colorRamp2(c(-2, -1, 0, 1, 2),
+                       c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))
+  }
+Supply any \code{colorRamp2} object to override. The breaks you set are used
+as-is - for row z-score heatmaps, symmetric breaks around 0 are
+recommended. Examples:
+\itemize{
+\item \strong{Classic RdBu (3-stop):}
+\code{circlize::colorRamp2(c(-2, 0, 2), c("#2166ac", "white", "#b2182b"))}
+\item \strong{Purple-green (PRGn):}
+\code{circlize::colorRamp2(c(-2, 0, 2), RColorBrewer::brewer.pal(3, "PRGn"))}
+\item \strong{Viridis plasma (for raw non-z-scored scores):}
+\code{circlize::colorRamp2(seq(0, 1, length.out = 9), viridis::plasma(9))}
+\item \strong{Tighter scale for subtle signals:}
+\code{circlize::colorRamp2(c(-1, -0.5, 0, 0.5, 1), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
+}}
+
+\item{add_boxplots}{Logical. If \code{TRUE} (default), generate per-pathway
+boxplot pages showing per-cell score distributions across \code{group.by}
+groups (and split by \code{split.by} if set).}
+
+\item{add_pvalues}{Logical. If \code{TRUE} (default), add BH-adjusted p-value
+brackets to boxplots using \code{ggpubr::stat_compare_means()}. Requires
+\code{add_boxplots = TRUE}.}
+
 \item{add_to_object}{Logical. If \code{FALSE} (default), returns the enrichment
 scores data frame invisibly and does not modify the Seurat object (scores
-are saved to CSV only — recommended for large datasets to avoid metadata
+are saved to CSV only - recommended for large datasets to avoid metadata
 bloat). If \code{TRUE}, adds one metadata column per gene set to \code{seurat_object@meta.data}
 and returns the modified Seurat object. When \code{downsample} is also set, cells
 not included in the downsampled scoring set receive \code{NA}.}
@@ -174,6 +244,9 @@ Default \code{"Analysis"}.}
 
 \item{subset_name}{Character. Second component of output file name prefix.
 Default \code{""}.}
+
+\item{caffeinate}{Logical. If \code{TRUE}, prevents the Mac from sleeping during
+the run using the \code{caffeinate} system command. Default \code{FALSE}.}
 }
 \value{
 If \code{add_to_object = FALSE} (default): invisibly returns a data frame of
@@ -185,13 +258,13 @@ metadata column per gene set.
 
 \strong{Files saved to \code{output_dir}:}
 \itemize{
-\item \verb{<prefix> ssGSEA_scores.csv} — per-cell enrichment scores + group
+\item \verb{<prefix> ssGSEA_scores.csv} - per-cell enrichment scores + group
 labels
-\item \verb{<prefix> ssGSEA_significance.csv} — per-pathway significance
+\item \verb{<prefix> ssGSEA_significance.csv} - per-pathway significance
 (pooled across all cells)
-\item \verb{<prefix> ssGSEA_significance_by_<split.by>.csv} — per-pathway
+\item \verb{<prefix> ssGSEA_significance_by_<split.by>.csv} - per-pathway
 significance within each \code{split.by} level (only when \code{split.by} is set)
-\item \verb{<prefix> ssGSEA heatmap.pdf} — ComplexHeatmap of mean z-scored
+\item \verb{<prefix> ssGSEA heatmap.pdf} - ComplexHeatmap of mean z-scored
 enrichment per group
 }
 }
@@ -206,32 +279,32 @@ mean z-scored enrichment per group.
 Unlike pseudobulk ssGSEA (see \code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}}), this function scores
 every cell individually rather than aggregating by sample first. It is
 appropriate when you have no meaningful biological replicates (sample IDs),
-or when you want to use the single-cell resolution for visualisation.
+or when you want to use the single-cell resolution for visualization.
 For datasets with proper replicates, pseudobulk ssGSEA is statistically
 more rigorous.
 }
 \section{Gene-set input (choose exactly one mode)}{
 
 
-\strong{Mode 1 — pre-built named list}
+\strong{Mode 1 - pre-built named list}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gene_sets = list(SetA = c("GENE1", "GENE2"), SetB = c("GENE3"))
 }\if{html}{\out{</div>}}
 
-\strong{Mode 2 — DEG data frame}\cr
+\strong{Mode 2 - DEG data frame}\cr
 Converts a marker/DEG table into one gene set per group. The \code{deg_group_column}
 argument can name \strong{one column} (simple group, e.g. \code{"celltype"}) or \strong{two
 columns} (e.g. \code{c("celltype", "cytokine")}). When two columns are supplied,
 gene set names are built as \code{"celltype__NKSEP__cytokine"} internally and the
 heatmap rows are automatically split by the first column (celltype).
 
-\strong{Mode 3 — MSigDB collection}
+\strong{Mode 3 - MSigDB collection}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gene_set_library = "H"                        # Hallmark
 gene_set_library = "C2", gene_set_subcategory = "CP:KEGG"
 }\if{html}{\out{</div>}}
 
-\strong{Mode 4 — MSigDB term search} (fetch all gene sets matching a pattern)
+\strong{Mode 4 - MSigDB term search} (fetch all gene sets matching a pattern)
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{search_terms = c("CELL_DEATH", "APOPTOSIS")
 # optionally restrict to a collection:

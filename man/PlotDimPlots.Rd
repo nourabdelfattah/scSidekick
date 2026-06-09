@@ -11,9 +11,10 @@ PlotDimPlots(
   group.by = NULL,
   split.by = NULL,
   row.by = NULL,
+  number_labels = FALSE,
   show_trend = FALSE,
   show_labels = FALSE,
-  label_by = NULL,
+  label.by = NULL,
   colors = NULL,
   reduction = "umap",
   pt.size = 0.1,
@@ -23,9 +24,15 @@ PlotDimPlots(
   legendtitle = NA,
   trend_width = 1,
   split.col.levels = NULL,
+  width = NULL,
+  height = NULL,
+  join_plots = FALSE,
+  join_nrow = NULL,
+  join_ncol = NULL,
   output_dir = NULL,
   object_name = "",
   subset_name = "",
+  file_name = NULL,
   ...
 )
 
@@ -54,6 +61,8 @@ PlotTrendAndUMAP(
   legendnrow = 2,
   legendtitle = NA,
   trend_width = 1,
+  legendmargin = NULL,
+  plotwidths = NULL,
   split.col.levels = NULL,
   split.cols = NULL,
   split.rows = NULL
@@ -62,11 +71,16 @@ PlotTrendAndUMAP(
 \arguments{
 \item{seurat_object}{A Seurat object.}
 
-\item{group.by}{Character. Metadata column for point colour.}
+\item{group.by}{Character. Metadata column for point color.}
 
 \item{split.by}{Character. Metadata column for columns (samples/conditions).}
 
 \item{row.by}{Character or \code{NULL}. Metadata column for rows.}
+
+\item{number_labels}{Logical. When \code{TRUE}, prefix each legend entry
+and centroid label with a zero-padded index (e.g., "01. CellType").
+Useful when there are many groups and alphanumeric ordering aids
+interpretation. Default \code{FALSE}.}
 
 \item{show_trend}{Logical. Add a stacked composition trend panel to the
 left. Default \code{FALSE}.}
@@ -74,10 +88,10 @@ left. Default \code{FALSE}.}
 \item{show_labels}{Logical. Overlay numbered cluster labels. Default
 \code{FALSE}.}
 
-\item{label_by}{Character or \code{NULL}. Column for label centroids.
+\item{label.by}{Character or \code{NULL}. Column for label centroids.
 \code{NULL} → \code{group.by}.}
 
-\item{colors}{Named colour vector. \code{NULL} auto-resolves from
+\item{colors}{Named color vector. \code{NULL} auto-resolves from
 PrepObject or \code{Nour_pal}.}
 
 \item{reduction}{Character. Reduction name (case-insensitive).}
@@ -98,16 +112,34 @@ column. Default \code{1}.}
 \item{split.col.levels}{Character vector. Explicit ordering for
 \code{split.by} levels.}
 
+\item{width}{Numeric or \code{NULL}. Saved PDF width in inches. \code{NULL}
+(default) auto-sizes to fit the panel grid and the legend.}
+
+\item{height}{Numeric or \code{NULL}. Saved PDF height in inches. \code{NULL}
+(default) auto-sizes from the number of rows plus the legend strip.}
+
+\item{join_plots}{Logical. When \code{group.by} has more than one variable,
+combine the per-variable plots into a \emph{single} figure / PDF instead of
+one file each. Default \code{FALSE}.}
+
+\item{join_nrow, join_ncol}{Integer or \code{NULL}. Grid layout for
+\code{join_plots}. \code{NULL} auto-arranges into a near-square grid.}
+
 \item{output_dir}{Character or \code{NULL}. Directory to save a PDF.}
 
 \item{object_name}{Character. Output file-name prefix.}
 
 \item{subset_name}{Character. Optional second prefix.}
 
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces from \code{object_name},
+\code{subset_name}, and \code{group.by}.}
+
 \item{...}{Ignored (forward compatibility).}
 }
 \value{
-A \code{ggpubr} combined plot.
+A \code{patchwork} combined plot.  With multiple \code{group.by} and
+\code{join_plots = FALSE}, a named list of plots (one per variable).
 }
 \description{
 Produces a UMAP grid where \strong{columns} correspond to \code{split.by}
@@ -119,8 +151,8 @@ bordered boxes.  The optional composition trend panel
 }
 \section{Functions}{
 \itemize{
-\item \code{PlotGridUMAP()}: Deprecated — use \code{PlotDimPlots(show_trend=FALSE)}.
+\item \code{PlotGridUMAP()}: Deprecated - use \code{PlotDimPlots(show_trend=FALSE)}.
 
-\item \code{PlotTrendAndUMAP()}: Deprecated — use \code{PlotDimPlots(show_trend=TRUE)}.
+\item \code{PlotTrendAndUMAP()}: Deprecated - use \code{PlotDimPlots(show_trend=TRUE)}.
 
 }}

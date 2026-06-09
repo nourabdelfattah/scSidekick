@@ -26,7 +26,7 @@ log_analysis_params(
 
 \item{assay_type}{Character. Sequencing modality. Controls the word used for
 individual observations in auto-generated legends and methods text.
-Recognised values (case-sensitive):
+Recognized values (case-sensitive):
 \itemize{
 \item \code{"scRNAseq"} → "single-cell RNA-seq" / "cells" (default)
 \item \code{"snRNAseq"} → "single-nucleus RNA-seq" / "nuclei"

@@ -23,30 +23,32 @@ RunCellChat(
   save.rds = TRUE,
   resume = FALSE,
   redo_plots = FALSE,
-  assay_type = NULL
+  assay_type = NULL,
+  caffeinate = FALSE
 )
 }
 \arguments{
-\item{seurat_object}{A Seurat object.}
+\item{seurat_object}{A Seurat object. Ignored when \code{redo_plots = TRUE}.}
 
-\item{groups}{Character vector or \code{NULL}. Specific levels of \code{group.col} to
+\item{cell.by}{Character. Metadata column for cell identities (y-axis of
+chord/circle diagrams, e.g., \code{"subAssignment"}). \code{identity_column} is
+accepted as a deprecated alias.}
+
+\item{group.by}{Character. Metadata column whose levels each get their own
+CellChat run (e.g., \code{"Group"}). \code{group.col} is accepted as a deprecated alias.}
+
+\item{groups}{Character vector or \code{NULL}. Specific levels of \code{group.by} to
 process. \code{NULL} uses all levels.}
-
-\item{identity_column}{Character. Metadata column for cell identities (y-axis of
-chord/circle diagrams, e.g., \code{"subAssignment"}).}
-
-\item{group.col}{Character. Metadata column whose levels each get their own
-CellChat run (e.g., \code{"Group"}).}
 
 \item{species}{Character. Determines which CellChatDB ligand-receptor
 database and PPI network are loaded. One of:
 \itemize{
-\item \code{"human"} (default) — uses \code{CellChatDB.human} and \code{PPI.human}
-\item \code{"mouse"} — uses \code{CellChatDB.mouse} and \code{PPI.mouse}
+\item \code{"human"} (default) - uses \code{CellChatDB.human} and \code{PPI.human}
+\item \code{"mouse"} - uses \code{CellChatDB.mouse} and \code{PPI.mouse}
 }}
 
-\item{colors}{Named character vector mapping \code{identity_column} levels to colours.
-\code{NULL} uses CellChat's default palette. Tip: use the same colour vector as
+\item{colors}{Named character vector mapping \code{cell.by} levels to colors.
+\code{NULL} uses CellChat's default palette. Tip: use the same color vector as
 your Seurat DimPlots so all figures are consistent.}
 
 \item{output_dir}{Character. Root directory for all output. Per-group
@@ -100,7 +102,7 @@ successful group run and replaces the checkpoint. If this file
 exists, that group is considered fully complete and skipped.
 }}
 
-\item{redo_plots}{Logical. Re-generate all per-group visualisation PDFs from
+\item{redo_plots}{Logical. Re-generate all per-group visualization PDFs from
 existing RDS files without re-running the communication probability
 pipeline. Default \code{FALSE}. When \code{TRUE}:
 \itemize{
@@ -108,10 +110,17 @@ pipeline. Default \code{FALSE}. When \code{TRUE}:
 \item All plotting code (circle, pathway, bubble, scatter, patterns) is
 re-executed using the loaded object.
 \item The pipeline (\code{computeCommunProb}, \code{aggregateNet}, etc.) is
-completely skipped — the \code{seurat_object} argument is ignored.
+completely skipped - the \code{seurat_object} argument is ignored.
 \item Use this after \code{\link[=RenameCellTypeInCC]{RenameCellTypeInCC()}} + \code{saveRDS()} to regenerate
 figures with corrected cell-type labels.
 }}
+
+\item{assay_type}{Character or \code{NULL}. Seurat assay to use for ligand-receptor
+expression. \code{NULL} (default) auto-detects: uses \code{"RNA"} for Seurat v4 objects
+and \code{"RNA"} / \code{"Spatial"} for v5 objects depending on available assays.}
+
+\item{caffeinate}{Logical. If \code{TRUE}, prevents the Mac from sleeping during
+the run using the \code{caffeinate} system command. Default \code{FALSE}.}
 }
 \value{
 A named list of CellChat objects (one per group level processed).

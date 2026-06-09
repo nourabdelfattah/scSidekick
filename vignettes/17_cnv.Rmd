@@ -1,0 +1,307 @@
+---
+title: "scSidekick - Copy Number Variation Inference"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Copy Number Variation Inference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  eval    = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Distinguishing malignant cells from normal stromal and immune infiltrates is a
+common challenge in tumor single-cell studies. scSidekick provides two
+complementary wrappers:
+
+- **`RunInferCNV()`** - full inferCNV workflow with automatic gene-order
+  generation, downsampling, HMM-optional inference, and a Tirosh-style
+  reference-anchored CNV score threshold.
+- **`RunCopyKAT()`** - fast Bayesian CNV calling via CopyKAT; can run in
+  unsupervised mode (no normal reference required).
+
+Both functions add new metadata columns to the Seurat object and save standard
+figures to `output_dir`.
+
+### When to use which
+
+| | `RunInferCNV()` | `RunCopyKAT()` |
+|---|---|---|
+| **Accuracy** | Higher (gene-order smoothing + denoising) | Moderate (fast Bayesian model) |
+| **Speed** | Slow (minutes to hours) | Fast (minutes) |
+| **Reference required** | Yes | Optional (unsupervised mode) |
+| **Best use** | Publication-grade tumor/normal separation | Quick first pass; no normal cells available |
+
+Run both and compare `CNV_Prediction` vs. `copykat_prediction` for maximum
+confidence.
+
+---
+
+## Installation
+
+```{r install}
+# inferCNV (Bioconductor)
+if (!requireNamespace("BiocManager")) install.packages("BiocManager")
+BiocManager::install("infercnv")
+
+# CopyKAT (GitHub)
+devtools::install_github("navinlabcode/copykat")
+```
+
+---
+
+## 1. `RunInferCNV()` - reference-guided CNV inference
+
+### Basic call
+
+```{r infercnv-basic}
+library(scSidekick)
+library(Seurat)
+
+# Typical tumor dataset: immune and stromal cells serve as the normal reference
+obj <- RunInferCNV(obj,
+  cell_type_col   = "Assignment",      # metadata column with cell-type labels
+  ref_group_names = c("T cell", "B cell", "Macrophage", "Endothelial"),
+  output_dir      = "./Figures/inferCNV",
+  species         = "human")
+```
+
+`RunInferCNV()` automatically runs `AnnotateFeatures()` to generate the gene
+order table if the object has not been annotated yet.
+
+### Output metadata columns
+
+| Column | Description |
+|--------|-------------|
+| `CNV_score` | Per-cell CNV score: `mean((expr - 1)^2)` across all genes (Tirosh 2016) |
+| `CNV_Prediction` | `"Malignant"` or `"Normal"` based on `cnv_score_threshold` |
+| `infercnv_subcluster` | Cell subcluster assigned by inferCNV's internal clustering |
+| `proportion_cnv_chrN` | Fraction of chromosome N genes called as CNV-affected |
+
+### Output figures
+
+Three PDFs are saved to `output_dir`:
+
+- `CNV_proportion_heatmap.pdf` - ComplexHeatmap of per-chromosome CNV
+  proportions, split by cell type.
+- `CNV_dimplot.pdf` - UMAP colored by `CNV_Prediction` (left) and cell type
+  (right).
+- `CNV_score_featureplot.pdf` - Continuous `CNV_score` overlaid on the UMAP.
+
+---
+
+## 2. Tuning the malignancy threshold
+
+The default `cnv_score_threshold = "auto"` anchors the threshold to the
+**reference cells**:
+
+```
+threshold = mean(ref_scores) + cnv_k * sd(ref_scores)
+```
+
+`cnv_k = 2` (default) is a good starting point. Increase it to call fewer
+cells malignant (more conservative); decrease it to be more sensitive.
+
+```{r threshold-auto}
+# More conservative: require 3 SD above reference mean
+obj <- RunInferCNV(obj,
+  cell_type_col   = "Assignment",
+  ref_group_names = c("T cell", "B cell", "Macrophage"),
+  output_dir      = "./Figures/inferCNV",
+  species         = "human",
+  cnv_k           = 3)
+```
+
+Override with a fixed numeric value when you have a biological reason:
+
+```{r threshold-manual}
+obj <- RunInferCNV(obj,
+  cell_type_col       = "Assignment",
+  ref_group_names     = c("T cell", "B cell"),
+  output_dir          = "./Figures/inferCNV",
+  species             = "human",
+  cnv_score_threshold = 0.02)
+```
+
+Inspect the score distribution to choose a threshold:
+
+```{r threshold-inspect}
+hist(obj$CNV_score,
+  breaks = 50,
+  main   = "CNV score distribution",
+  xlab   = "CNV score",
+  col    = "steelblue")
+abline(v = 0.02, col = "red", lty = 2)
+
+# Tabulate predictions
+table(obj$CNV_Prediction, obj$Assignment)
+```
+
+---
+
+## 3. `resume = TRUE` - skip re-running
+
+inferCNV can take hours on large datasets. Use `resume = TRUE` after the first
+run to skip the inference step and jump straight to post-processing (useful
+when tuning `cnv_k` or `cnv_score_threshold`):
+
+```{r resume}
+# First run - full inference (~2 hours)
+obj <- RunInferCNV(obj,
+  cell_type_col   = "Assignment",
+  ref_group_names = c("T cell", "B cell"),
+  output_dir      = "./Figures/inferCNV",
+  species         = "human")
+
+# Tune threshold without re-running - post-processing only (~seconds)
+obj <- RunInferCNV(obj,
+  cell_type_col       = "Assignment",
+  ref_group_names     = c("T cell", "B cell"),
+  output_dir          = "./Figures/inferCNV",
+  species             = "human",
+  cnv_score_threshold = 0.015,
+  resume              = TRUE)
+```
+
+---
+
+## 4. HMM mode and advanced parameters
+
+```{r infercnv-hmm}
+RunInferCNV(obj,
+  cell_type_col   = "Assignment",
+  ref_group_names = c("T cell", "B cell"),
+  output_dir      = "./Figures/inferCNV_HMM",
+  species         = "human",
+  HMM             = TRUE,     # adds subclonal CNV state calls; much slower
+  denoise         = TRUE,
+  downsample      = 300L,     # cells per group (NULL = use all)
+  cutoff          = 0.1,      # 0.1 for 10x; use 1 for Smart-seq2
+  num_threads     = 8L,
+  caffeinate      = TRUE)     # keep laptop awake during long run
+```
+
+### Limiting chromosomes
+
+By default all autosomes + X/Y are analyzed. Restrict to a subset when you
+have a prior reason (e.g., known focal amplification on chr8q in MYC-driven
+tumors):
+
+```{r infercnv-chromosomes}
+RunInferCNV(obj,
+  cell_type_col   = "Assignment",
+  ref_group_names = c("T cell", "B cell"),
+  output_dir      = "./Figures/inferCNV",
+  species         = "human",
+  chromosomes     = as.character(c(1:8, 17)))
+```
+
+---
+
+## 5. `RunCopyKAT()` - fast Bayesian CNV calling
+
+### Reference-guided mode
+
+```{r copykat-ref}
+obj <- RunCopyKAT(obj,
+  cell_type_col = "Assignment",
+  ref_cells     = c("T cell", "B cell", "Macrophage"),
+  output_dir    = "./Figures/CopyKAT",
+  n_cores       = 8L)
+```
+
+### Unsupervised mode (no normal reference)
+
+When the sample contains no confidently normal cells, omit `ref_cells`:
+
+```{r copykat-unsupervised}
+obj <- RunCopyKAT(obj,
+  cell_type_col = "Assignment",
+  output_dir    = "./Figures/CopyKAT",
+  n_cores       = 8L)
+```
+
+CopyKAT will infer the diploid baseline automatically.
+
+### Output metadata columns
+
+| Column | Description |
+|--------|-------------|
+| `copykat_prediction` | `"aneuploid"`, `"diploid"`, or `"not.defined"` |
+| `copykat_score` | Sum of absolute CNA values across all genomic windows (continuous) |
+
+`"not.defined"` cells are those CopyKAT could not confidently classify -
+typically very sparse cells or cells at the boundary of the two populations.
+
+---
+
+## 6. Combining both tools
+
+Use both and require agreement for high-confidence malignancy calls:
+
+```{r combine}
+# Run both (output_dir can be the same or different)
+obj <- RunInferCNV(obj,
+  cell_type_col   = "Assignment",
+  ref_group_names = c("T cell", "B cell"),
+  output_dir      = "./Figures/inferCNV",
+  species         = "human")
+
+obj <- RunCopyKAT(obj,
+  cell_type_col = "Assignment",
+  ref_cells     = c("T cell", "B cell"),
+  output_dir    = "./Figures/CopyKAT")
+
+# Cells called malignant/aneuploid by BOTH tools
+obj$CNV_consensus <- with(obj@meta.data,
+  ifelse(CNV_Prediction == "Malignant" & copykat_prediction == "aneuploid",
+         "Malignant", "Normal/Uncertain"))
+
+table(obj$CNV_consensus, obj$Assignment)
+```
+
+Visualize agreement:
+
+```{r combine-plot}
+library(ggplot2)
+
+ggplot(obj@meta.data, aes(x = CNV_score, y = copykat_score,
+                            color = CNV_consensus)) +
+  geom_point(size = 0.5, alpha = 0.6) +
+  scale_color_manual(values = c(Malignant = "#ab3000",
+                                 "Normal/Uncertain" = "#2f4b7c")) +
+  labs(x = "inferCNV score", y = "CopyKAT score",
+       title = "CNV score concordance") +
+  theme_classic()
+```
+
+---
+
+## See also
+
+- `AnnotateFeatures()` / `GetGeneOrder()` - gene-order annotation used
+  internally by `RunInferCNV()` (vignette 01)
+- `PlotDimPlots()` - visualize `CNV_Prediction` on the UMAP after inference
+  (vignette 03)
+- `RunWilcoxAUC()` - find markers distinguishing malignant from normal clusters
+  after labeling
+
+---
+
+## Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

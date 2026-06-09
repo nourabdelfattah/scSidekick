@@ -2,7 +2,7 @@
 % Please edit documentation in R/viz_de.R
 \name{PlotGSEAEnrichment}
 \alias{PlotGSEAEnrichment}
-\title{GSEA Running Score Mountain Plots — Direct or from RunGSEA Output Directory}
+\title{GSEA Running Score Mountain Plots - Direct or from RunGSEA Output Directory}
 \usage{
 PlotGSEAEnrichment(
   fgsea_result = NULL,
@@ -37,7 +37,7 @@ used in \code{\link{RunGSEA}}.}
 \item{database}{Database subfolder name (e.g. \code{"Hallmark"},
 \code{"C2"}). \code{NULL} uses the first database found.}
 
-\item{search_terms}{Keyword search for pathways — same AND/OR logic as
+\item{search_terms}{Keyword search for pathways - same AND/OR logic as
 \code{\link{RunSCssGSEA}}: a character vector applies OR; a list of
 character vectors applies AND within each element, OR across elements.
 Case-insensitive.}
@@ -64,7 +64,7 @@ value the groups are chunked across multiple pages within the same PDF.
 Default \code{6}.}
 
 \item{colors}{Named vector with \code{"pos"} (positive NES) and \code{"neg"}
-(negative NES) colour entries. Default red / blue.}
+(negative NES) color entries. Default red / blue.}
 
 \item{ncol}{\emph{Direct mode only.} Number of columns in the output layout.
 Default \code{1}.}
@@ -84,19 +84,19 @@ PDFs are written to \code{output_dir} (one per lab×cl combination).
 \description{
 Two operating modes:
 
-\strong{Direct mode} — pass \code{fgsea_result} and \code{ranked_stats}
+\strong{Direct mode} - pass \code{fgsea_result} and \code{ranked_stats}
 directly (e.g. from an ad-hoc fgsea run or a single CSV).
 
-\strong{RunGSEA directory mode} — point to the \code{output_dir} of a
+\strong{RunGSEA directory mode} - point to the \code{output_dir} of a
 completed \code{\link{RunGSEA}} run via \code{gsea_dir}.  The function
 auto-discovers all CSV files, searches pathway names with keyword search
 (same AND/OR logic as \code{\link{RunSCssGSEA}}), loads the ranked AUC
 vectors from the cached DE RDS files, and produces a grid layout:
 \itemize{
-\item \strong{One PDF per split.by level} (cell type) — each PDF may have
+\item \strong{One PDF per split.by level} (cell type) - each PDF may have
 multiple pages when there are more groups than \code{max_cols}
 \item \strong{Columns} = group.by levels (comparison groups, e.g. Male / Female)
-— up to \code{max_cols} per page; additional groups wrap to new pages
+- up to \code{max_cols} per page; additional groups wrap to new pages
 \item \strong{Rows} = matched pathways (one 3-panel mountain stack per pathway)
 }
 }

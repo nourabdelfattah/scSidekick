@@ -1,12 +1,12 @@
 # =============================================================================
 # scSidekick CellChat wrappers
 #
-# RunCellChat     — run the full CellChat pipeline for each level of a
+# RunCellChat     - run the full CellChat pipeline for each level of a
 #                   grouping variable, saving all standard visualizations
 #                   (circle, chord, bubble, pathway, communication patterns)
 #                   and the CellChat object as an RDS file.
 #
-# CompareCellChat — compare a named list of CellChat objects across all shared
+# CompareCellChat - compare a named list of CellChat objects across all shared
 #                   pathways, generating per-pathway circle, chord, and heatmap
 #                   comparison PDFs.
 #
@@ -22,22 +22,28 @@
 #' pathway probability → aggregate network → communication patterns),
 #' and writes visualizations + the CellChat RDS file to `output_dir`.
 #'
-#' @param seurat_object A Seurat object.
-#' @param identity_column Character. Metadata column for cell identities (y-axis of
-#'   chord/circle diagrams, e.g., `"subAssignment"`).
-#' @param group.col Character. Metadata column whose levels each get their own
-#'   CellChat run (e.g., `"Group"`).
-#' @param groups Character vector or `NULL`. Specific levels of `group.col` to
+#' @param seurat_object A Seurat object. Ignored when `redo_plots = TRUE`.
+#' @param cell.by Character. Metadata column for cell identities (y-axis of
+#'   chord/circle diagrams, e.g., `"subAssignment"`). `identity_column` is
+#'   accepted as a deprecated alias.
+#' @param group.by Character. Metadata column whose levels each get their own
+#'   CellChat run (e.g., `"Group"`). `group.col` is accepted as a deprecated alias.
+#' @param groups Character vector or `NULL`. Specific levels of `group.by` to
 #'   process. `NULL` uses all levels.
 #' @param species Character. Determines which CellChatDB ligand-receptor
 #'   database and PPI network are loaded. One of:
 #'   \itemize{
-#'     \item `"human"` (default) — uses `CellChatDB.human` and `PPI.human`
-#'     \item `"mouse"` — uses `CellChatDB.mouse` and `PPI.mouse`
+#'     \item `"human"` (default) - uses `CellChatDB.human` and `PPI.human`
+#'     \item `"mouse"` - uses `CellChatDB.mouse` and `PPI.mouse`
 #'   }
-#' @param colors Named character vector mapping `identity_column` levels to colours.
-#'   `NULL` uses CellChat's default palette. Tip: use the same colour vector as
+#' @param colors Named character vector mapping `cell.by` levels to colors.
+#'   `NULL` uses CellChat's default palette. Tip: use the same color vector as
 #'   your Seurat DimPlots so all figures are consistent.
+#' @param assay_type Character or `NULL`. Seurat assay to use for ligand-receptor
+#'   expression. `NULL` (default) auto-detects: uses `"RNA"` for Seurat v4 objects
+#'   and `"RNA"` / `"Spatial"` for v5 objects depending on available assays.
+#' @param caffeinate Logical. If `TRUE`, prevents the Mac from sleeping during
+#'   the run using the `caffeinate` system command. Default `FALSE`.
 #' @param output_dir Character. Root directory for all output. Per-group
 #'   sub-folders are created automatically.
 #' @param robj_dir Character or `NULL`. Directory for RDS checkpoint files.
@@ -80,7 +86,7 @@
 #'       successful group run and replaces the checkpoint. If this file
 #'       exists, that group is considered fully complete and skipped.
 #'   }
-#' @param redo_plots Logical. Re-generate all per-group visualisation PDFs from
+#' @param redo_plots Logical. Re-generate all per-group visualization PDFs from
 #'   existing RDS files without re-running the communication probability
 #'   pipeline. Default `FALSE`. When `TRUE`:
 #'   \itemize{
@@ -88,7 +94,7 @@
 #'     \item All plotting code (circle, pathway, bubble, scatter, patterns) is
 #'       re-executed using the loaded object.
 #'     \item The pipeline (`computeCommunProb`, `aggregateNet`, etc.) is
-#'       completely skipped — the `seurat_object` argument is ignored.
+#'       completely skipped - the `seurat_object` argument is ignored.
 #'     \item Use this after [RenameCellTypeInCC()] + `saveRDS()` to regenerate
 #'       figures with corrected cell-type labels.
 #'   }
@@ -114,7 +120,10 @@ RunCellChat <- function(seurat_object       = NULL,
                          save.rds        = TRUE,
                          resume          = FALSE,
                          redo_plots      = FALSE,
-                         assay_type      = NULL) {
+                         assay_type      = NULL,
+                         caffeinate      = FALSE) {
+
+  if (caffeinate) { .caff <- .nk_caffeinate(); on.exit(.nk_decaffeinate(.caff), add = TRUE) }
 
   # Deprecated aliases
   if (!is.null(identity_column)) cell.by  <- identity_column
@@ -139,7 +148,7 @@ RunCellChat <- function(seurat_object       = NULL,
   PPI   <- if (species == "mouse") CellChat::PPI.mouse else
     CellChat::PPI.human
 
-  # redo_plots = TRUE: seurat_object is not used — groups come from robj_dir
+  # redo_plots = TRUE: seurat_object is not used - groups come from robj_dir
   if (redo_plots) {
     if (is.null(groups)) {
       rds_found  <- list.files(robj_dir, pattern = "CellChat\\.rds$")
@@ -204,8 +213,8 @@ RunCellChat <- function(seurat_object       = NULL,
     format(as.integer(n_cells_cc), big.mark = ",") else NULL
 
   # ── Write method params so create_analysis_pptx() finds them in output_dir ──
-  # n_cells_final is set from seurat_object — overrides whatever the parent params
-  # say so the CellChat PPTX reports the correct analysed cell count.
+  # n_cells_final is set from seurat_object - overrides whatever the parent params
+  # say so the CellChat PPTX reports the correct analyzed cell count.
   .write_subdir_params(output_dir, list(
     date                = format(Sys.Date()),
     assay_type          = effective_at,
@@ -231,18 +240,20 @@ RunCellChat <- function(seurat_object       = NULL,
       "Ligand-receptor interactions were drawn from CellChatDB.", species,
       ". Overexpressed ligands and receptors were identified per cell type ",
       "using a Wilcoxon rank-sum test (p < ", thresh.p, "). ",
-      "Communication probability was computed with a mass-action signalling ",
+      "Communication probability was computed with a mass-action signaling ",
       "model; probabilities were aggregated to the pathway level and filtered ",
       "to remove interactions involving fewer than ", min.cells, " ", cell_word, ". ",
-      "Signalling roles were characterised by network centrality analysis ",
+      "Signaling roles were characterized by network centrality analysis ",
       "(netAnalysis_computeCentrality). ",
       if (run.patterns)
         paste0("Communication patterns were identified for k = ",
                min(pattern_k_range), " to ", max(pattern_k_range),
-               " latent patterns using non-negative matrix factorisation. ")
+               " latent patterns using non-negative matrix factorization. ")
       else "",
       "All analyses were conducted in R using the scSidekick package wrapper."
-    )
+    ),
+    cellchat_run_patterns    = isTRUE(run.patterns),
+    cellchat_pattern_k_range = if (isTRUE(run.patterns)) as.list(pattern_k_range) else NA
   ))
 
   results <- list()
@@ -255,23 +266,23 @@ RunCellChat <- function(seurat_object       = NULL,
     rds_final <- file.path(robj_dir, paste0(grp, "CellChat.rds"))
     rds_ckpt  <- file.path(robj_dir, paste0(grp, "CellChat_ckpt.rds"))
 
-    # ── redo_plots: load final RDS and jump straight to visualisations ──────
+    # ── redo_plots: load final RDS and jump straight to visualizations ──────
     # The pipeline (computeCommunProb etc.) is completely skipped.
     # Use this after RenameCellTypeInCC() + saveRDS() to regenerate all
     # per-group PDFs with corrected cell-type labels.
     if (redo_plots) {
       if (!file.exists(rds_final)) {
-        message("  redo_plots: no RDS found for ", grp, " — skipping.")
+        message("  redo_plots: no RDS found for ", grp, " - skipping.")
         next
       }
       cc_check <- try(readRDS(rds_final), silent = TRUE)
       if (!inherits(cc_check, "CellChat")) {
         message("  redo_plots: RDS for ", grp,
-                " is not a valid CellChat object — skipping.")
+                " is not a valid CellChat object - skipping.")
         next
       }
       message("  redo_plots: loaded RDS for ", grp,
-              " — re-running visualisations only.")
+              " - re-running visualizations only.")
       cc <- cc_check
 
     } else {
@@ -281,11 +292,11 @@ RunCellChat <- function(seurat_object       = NULL,
       if (resume && save.rds && file.exists(rds_final)) {
         cc_check <- try(readRDS(rds_final), silent = TRUE)
         if (inherits(cc_check, "CellChat")) {
-          message("  Resuming: final RDS found — skipping ", grp)
+          message("  Resuming: final RDS found - skipping ", grp)
           results[[grp]] <- cc_check
           next
         }
-        message("  Final RDS found but not a valid CellChat — re-running ", grp)
+        message("  Final RDS found but not a valid CellChat - re-running ", grp)
       }
 
       # Pipeline checkpoint: skip expensive steps if present
@@ -294,7 +305,7 @@ RunCellChat <- function(seurat_object       = NULL,
         cc_check <- try(readRDS(rds_ckpt), silent = TRUE)
         if (inherits(cc_check, "CellChat")) {
           message("  Resuming: pipeline checkpoint found for ", grp,
-                  " — skipping to visualizations")
+                  " - skipping to visualizations")
           cc            <- cc_check
           pipeline_done <- TRUE
         }
@@ -365,7 +376,7 @@ RunCellChat <- function(seurat_object       = NULL,
     .write_legend_sidecar(f_weight, paste0(
       "Circle plot showing the aggregate interaction strength (communication ",
       "probability) between cell populations in ", grp, ". Edge width reflects ",
-      "the total signalling weight of predicted interactions; node size reflects ",
+      "the total signaling weight of predicted interactions; node size reflects ",
       "the number of cells in each population."
     ))
 
@@ -401,7 +412,7 @@ RunCellChat <- function(seurat_object       = NULL,
       message("  Pathway: ", pw)
       # All plots are called *inside* the PDF device.
       # netVisual_aggregate("circle") and ("chord") use circlize/base graphics
-      # and draw directly to the current device — they must NOT be called
+      # and draw directly to the current device - they must NOT be called
       # before pdf() is opened or their output goes to the null device.
       # netVisual_aggregate("hierarchy") and contribution/scatter return ggplot
       # objects and need print(); heatmap returns a ComplexHeatmap and needs draw().
@@ -414,20 +425,20 @@ RunCellChat <- function(seurat_object       = NULL,
                                                       font.size = 10,
                                                       color.use = grp_cols),
           silent = TRUE)
-      # 2. Hierarchy layout (ggplot — needs print)
+      # 2. Hierarchy layout (ggplot - needs print)
       try(print(CellChat::netVisual_aggregate(cc, signaling = pw,
                                               vertex.receiver = vertex.receiver,
                                               layout = "hierarchy",
                                               color.use = grp_cols)), silent = TRUE)
-      # 3. Circle layout (base/circos — draws directly, no print)
+      # 3. Circle layout (base/circos - draws directly, no print)
       try(CellChat::netVisual_aggregate(cc, signaling = pw,
                                         layout = "circle",
                                         color.use = grp_cols), silent = TRUE)
-      # 4. Chord layout (base/circos — draws directly, no print)
+      # 4. Chord layout (base/circos - draws directly, no print)
       try(CellChat::netVisual_aggregate(cc, signaling = pw,
                                         layout = "chord",
                                         color.use = grp_cols), silent = TRUE)
-      # 5. Heatmap (ComplexHeatmap — print calls draw())
+      # 5. Heatmap (ComplexHeatmap - print calls draw())
       try(print(CellChat::netVisual_heatmap(cc, signaling = pw,
                                             color.heatmap = "Reds",
                                             color.use = grp_cols)), silent = TRUE)
@@ -441,11 +452,11 @@ RunCellChat <- function(seurat_object       = NULL,
           silent = TRUE)
       grDevices::dev.off()
       .write_legend_sidecar(f_pw, paste0(
-        "Cell-cell communication networks for the ", pw, " signalling pathway ",
+        "Cell-cell communication networks for the ", pw, " signaling pathway ",
         "in ", grp, ". Panels show hierarchy, circle, and chord diagram layouts ",
         "of predicted ligand-receptor interactions, a heatmap of pairwise ",
         "communication probability, L-R pair contribution scores, and a scatter ",
-        "plot of sender/receiver signalling roles."
+        "plot of sender/receiver signaling roles."
       ))
     }
 
@@ -462,7 +473,7 @@ RunCellChat <- function(seurat_object       = NULL,
         "Bubble plot of predicted ligand-receptor interactions with ",
         ids[j], " as the source cell population in ", grp, ". ",
         "Each bubble represents one L-R pair; bubble size reflects ",
-        "communication probability and colour indicates interaction significance. ",
+        "communication probability and color indicates interaction significance. ",
         "All target cell populations are shown on the y-axis."
       ))
     }
@@ -474,17 +485,17 @@ RunCellChat <- function(seurat_object       = NULL,
     print(gg1)
     grDevices::dev.off()
     .write_legend_sidecar(f_role, paste0(
-      "Scatter plot of signalling roles across cell populations in ", grp, ". ",
+      "Scatter plot of signaling roles across cell populations in ", grp, ". ",
       "Each point represents a cell type positioned by its outgoing (x-axis) ",
       "and incoming (y-axis) interaction strength, aggregated across all ",
-      "signalling pathways. Cell types in the upper-right quadrant act as both ",
+      "signaling pathways. Cell types in the upper-right quadrant act as both ",
       "dominant senders and receivers of intercellular signals."
     ))
 
     # ---- Communication patterns ----
     if (run.patterns) {
       if (!requireNamespace("ggalluvial", quietly = TRUE))
-        message("  'ggalluvial' not installed — skipping pattern river plots.")
+        message("  'ggalluvial' not installed - skipping pattern river plots.")
 
       for (xx in pattern_k_range) {
         for (direction in c("outgoing", "incoming")) {
@@ -492,7 +503,7 @@ RunCellChat <- function(seurat_object       = NULL,
           # Use a temp variable so cc is NEVER overwritten with a try-error.
           # If the assignment were `cc <- try(...)` and it failed, cc would
           # become a try-error, subsequent iterations would also fail, and
-          # the corrupted cc would be saveRDS()'d — breaking CompareCellChat.
+          # the corrupted cc would be saveRDS()'d - breaking CompareCellChat.
           cc_pat <- try(CellChat::identifyCommunicationPatterns(
             cc, pattern = direction, k = xx, heatmap.show = FALSE
           ), silent = TRUE)
@@ -541,7 +552,7 @@ RunCellChat <- function(seurat_object       = NULL,
             "in ", grp, " (k = ", xx, " patterns). The heatmap shows the ",
             "contribution of each cell type to each latent communication ",
             "pattern; the river (alluvial) plot links patterns to the ",
-            "signalling pathways they coordinate; the dot plot shows ",
+            "signaling pathways they coordinate; the dot plot shows ",
             "pathway-level enrichment per pattern."
           ))
         }
@@ -587,12 +598,14 @@ RunCellChat <- function(seurat_object       = NULL,
 #'   interactions when drawing circle, chord, and heatmap plots. Default `0.05`
 #'   (matches CellChat's standard significance filter). Set `thresh = 1` to
 #'   display **all** predicted interactions regardless of statistical
-#'   significance — this is essential for comparing pathways that are active
+#'   significance - this is essential for comparing pathways that are active
 #'   in some conditions but did not reach pathway-level significance in others
 #'   (i.e. the pathway is in `cc@net$prob` but not in `cc@netP$pathways`).
-#'   Internally, all visualisations use the bundled `netVisual_aggregate2`-style
+#'   Internally, all visualizations use the bundled `netVisual_aggregate2`-style
 #'   functions which read `cc@net$prob` directly so the comparison is not
 #'   limited to pathways that passed CellChat's aggregation threshold.
+#' @param caffeinate Logical. If `TRUE`, prevents the Mac from sleeping during
+#'   the run using the `caffeinate` system command. Default `FALSE`.
 #'
 #' @return A named list of the (possibly updated) CellChat objects.
 #' @export
@@ -602,7 +615,10 @@ CompareCellChat <- function(cellchat_list,
                              group.merged  = NULL,
                              colors        = NULL,
                              species       = "human",
-                             thresh        = 0.05) {
+                             thresh        = 0.05,
+                             caffeinate    = FALSE) {
+
+  if (caffeinate) { .caff <- .nk_caffeinate(); on.exit(.nk_decaffeinate(.caff), add = TRUE) }
 
   if (!requireNamespace("CellChat", quietly = TRUE))
     stop("Package 'CellChat' is required.")
@@ -615,7 +631,7 @@ CompareCellChat <- function(cellchat_list,
   })
 
   # Update objects to current CellChat version.
-  # Keep the original on failure — never let a try-error replace a valid object.
+  # Keep the original on failure - never let a try-error replace a valid object.
   cellchat_list <- lapply(cellchat_list, function(cc) {
     if (!inherits(cc, "CellChat")) return(cc)
     cc_up <- try(CellChat::updateCellChat(cc), silent = TRUE)
@@ -632,7 +648,7 @@ CompareCellChat <- function(cellchat_list,
   })
 
   # Determine pathways to compare.
-  # When thresh < 1 (default 0.05): union of cc@netP$pathways — same set
+  # When thresh < 1 (default 0.05): union of cc@netP$pathways - same set
   #   CellChat considers significant.
   # When thresh >= 1 (show-all mode): also include pathways present in
   #   cc@LR$LRsig$pathway_name so interactions that exist at the L-R level
@@ -710,7 +726,7 @@ CompareCellChat <- function(cellchat_list,
     # Unlike standard CellChat functions, these read cc@net$prob (L-R pair
     # level) rather than cc@netP$prob (significance-filtered pathway level),
     # so pathways that have communication but did not reach pathway-level
-    # significance are still shown — controlled by the `thresh` parameter.
+    # significance are still shown - controlled by the `thresh` parameter.
 
     # Row 1: circle
     graphics::par(mfrow = c(1, n_obj), xpd = TRUE, mar = c(0, 0, 0, 0))
@@ -738,7 +754,7 @@ CompareCellChat <- function(cellchat_list,
       ), silent = TRUE)
     }
 
-    # Row 2b (optional): merged chord — group.merged is a named character
+    # Row 2b (optional): merged chord - group.merged is a named character
     # vector mapping cell-type labels to broader category names, e.g.:
     #   c(Ex_L23_IT = "Excitatory", Inh_Sst = "Inhibitory", Astrocytes = "Glia")
     # This uses .cc_chord_cell which forwards `group` to circlize directly.
@@ -751,12 +767,12 @@ CompareCellChat <- function(cellchat_list,
           cc, signaling = pw, thresh = thresh,
           group      = group.merged,
           color.use  = group_colors(cc),
-          title.name = paste0(pw, " — ", names(cellchat_list)[i])
+          title.name = paste0(pw, " - ", names(cellchat_list)[i])
         ), silent = TRUE)
       }
     }
 
-    # Row 3: heatmaps — .cc_heatmap reads netP$prob with a zero-matrix
+    # Row 3: heatmaps - .cc_heatmap reads netP$prob with a zero-matrix
     # fallback so conditions where the pathway is absent are shown as a
     # white/empty heatmap rather than being dropped from the combined panel.
     ht_list <- lapply(seq_along(cellchat_list), function(i) {
@@ -797,7 +813,7 @@ CompareCellChat <- function(cellchat_list,
     grDevices::dev.off()
     try(grDevices::dev.off(), silent = TRUE)
     .write_legend_sidecar(f_cmp, paste0(
-      "Cross-condition comparison of the ", pw, " signalling pathway across ",
+      "Cross-condition comparison of the ", pw, " signaling pathway across ",
       n_obj, " CellChat object(s) (p-value threshold: ", thresh, "). ",
       "Row 1: circle plots of communication probability. ",
       "Row 2: chord diagrams of cell-type interactions. ",
@@ -805,13 +821,13 @@ CompareCellChat <- function(cellchat_list,
         "Row 2b: merged chord diagrams with cell types grouped by broader category. "
       else "",
       "Row 3: heatmaps of pairwise communication probability. ",
-      "Visualisations read ligand-receptor pair probabilities directly (cc@net$prob) ",
+      "Visualizations read ligand-receptor pair probabilities directly (cc@net$prob) ",
       "so conditions where the pathway did not reach pathway-level significance ",
       "are still shown rather than being silently excluded."
     ))
   }
 
-  message("CompareCellChat complete — ", length(all_pathways), " pathways processed.")
+  message("CompareCellChat complete - ", length(all_pathways), " pathways processed.")
   invisible(cellchat_list)
 }
 
@@ -819,14 +835,14 @@ CompareCellChat <- function(cellchat_list,
 # RankCellChatPathways                                                          #
 # --------------------------------------------------------------------------- #
 
-#' Rank and visualise differentially active CellChat pathways across conditions
+#' Rank and visualize differentially active CellChat pathways across conditions
 #'
 #' Extracts per-pathway information flow and sender/receiver cell-type marginals
 #' from a named list of CellChat objects, ranks pathways by differential
 #' activity, and produces four outputs:
 #' \enumerate{
-#'   \item A **flow heatmap**: top `top_n` pathways × conditions, row-normalised
-#'         so colour reflects which condition has higher activity.
+#'   \item A **flow heatmap**: top `top_n` pathways × conditions, row-normalized
+#'         so color reflects which condition has higher activity.
 #'   \item **Sender and receiver tile plots**: faceted by top pathway, showing
 #'         how much each cell type sends/receives per condition.
 #'   \item A **top changed links heatmap**: the `top_links` sender→receiver pairs
@@ -841,15 +857,15 @@ CompareCellChat <- function(cellchat_list,
 #' @param output_dir Character or `NULL`. Directory for PDFs and CSVs.
 #'   `NULL` returns objects only.
 #' @param top_n Integer. Number of top pathways (ranked by flow range across
-#'   conditions) to include in visualisations. Default `20`.
+#'   conditions) to include in visualizations. Default `20`.
 #' @param top_links Integer. Number of top sender→receiver links (ranked by
 #'   variance of flow across conditions) to show in the links heatmap.
 #'   Default `15`.
 #' @param rank_by Character. Metric used to rank pathways:
 #'   `"range"` (max − min flow; default) or `"cv"` (coefficient of variation).
-#' @param colors Named character vector. Condition colours (names = condition
+#' @param colors Named character vector. Condition colors (names = condition
 #'   names). `NULL` uses ggplot2 defaults.
-#' @param cell_colors Named character vector. Cell-type colours (names = cell
+#' @param cell_colors Named character vector. Cell-type colors (names = cell
 #'   type labels). Used for annotation strips in tile plots.
 #'
 #' @return Invisibly, a named list:
@@ -882,7 +898,7 @@ RankCellChatPathways <- function(cellchat_list,
   if (!is.null(output_dir))
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Load RDS files if paths were provided — same as CompareCellChat.
+  # Load RDS files if paths were provided - same as CompareCellChat.
   cellchat_list <- lapply(cellchat_list, function(x) {
     if (is.character(x)) readRDS(x) else x
   })
@@ -984,14 +1000,14 @@ RankCellChatPathways <- function(cellchat_list,
   message("Building flow heatmap...")
   sub_flow <- flow_mat[top_pathways, , drop = FALSE]
 
-  # Row-normalise to [0, 1]: colour shows "high in which condition"
+  # Row-normalize to [0, 1]: color shows "high in which condition"
   sub_norm <- t(apply(sub_flow, 1, function(r) {
     rng <- range(r)
     if (rng[2] == rng[1]) rep(0.5, length(r)) else (r - rng[1]) / diff(rng)
   }))
 
   # Build pheatmap annotation only when every condition name is present in
-  # colors — pheatmap::pheatmap errors if annotation_colors has fewer names
+  # colors - pheatmap::pheatmap errors if annotation_colors has fewer names
   # than factor levels (e.g. when colors is GroupColors keyed by full group
   # names but the CellChat list is keyed by shorter condition labels).
   ann_col <- if (!is.null(colors) &&
@@ -1016,17 +1032,17 @@ RankCellChatPathways <- function(cellchat_list,
     annotation_col = if (!is.null(ann_col)) ann_col$df else NULL,
     annotation_colors = if (!is.null(ann_col)) ann_col$colors else NULL,
     main = paste0("Top ", length(top_pathways), " pathways by flow ",
-                  rank_by, "  (row-normalised to [0,1])"),
+                  rank_by, "  (row-normalized to [0,1])"),
     filename = if (!is.null(flow_hm_path)) flow_hm_path else NA
   )
 
   if (!is.null(flow_hm_path))
     .write_legend_sidecar(flow_hm_path, paste0(
-      "Heatmap of the top ", length(top_pathways), " CellChat signalling pathways ",
+      "Heatmap of the top ", length(top_pathways), " CellChat signaling pathways ",
       "ranked by information-flow ", rank_by, " across ", length(grp_names),
       " conditions. Each value is the total communication probability summed ",
-      "across all sender–receiver pairs for that pathway, row-normalised to ",
-      "[0–1] so colour encodes which condition has relatively higher activity. ",
+      "across all sender-receiver pairs for that pathway, row-normalized to ",
+      "[0-1] so color encodes which condition has relatively higher activity. ",
       "Pathways are hierarchically clustered; conditions retain their input order."
     ))
 
@@ -1037,7 +1053,7 @@ RankCellChatPathways <- function(cellchat_list,
     df <- long_df[long_df$pathway %in% top_pathways, , drop = FALSE]
     if (nrow(df) == 0) return(ggplot2::ggplot())
 
-    # Normalise flow within each pathway so colour = relative activity
+    # Normalize flow within each pathway so color = relative activity
     df <- do.call(rbind, lapply(split(df, df$pathway), function(x) {
       mx <- max(x$flow, na.rm = TRUE)
       x$flow_norm <- if (mx > 0) x$flow / mx else x$flow
@@ -1055,7 +1071,7 @@ RankCellChatPathways <- function(cellchat_list,
     # Pathway order = same as top_pathways ranking
     df$pathway <- factor(df$pathway, levels = rev(top_pathways))
 
-    fill_label  <- paste0(role, " flow\n(pathway-normalised)")
+    fill_label  <- paste0(role, " flow\n(pathway-normalized)")
     fill_colors <- if (!is.null(colors))
       ggplot2::scale_fill_manual(values = colors) else
       ggplot2::scale_fill_viridis_c(option = "plasma", name = fill_label)
@@ -1066,7 +1082,7 @@ RankCellChatPathways <- function(cellchat_list,
       ggplot2::scale_fill_viridis_c(option = "plasma", name = fill_label,
                                     limits = c(0, 1)) +
       ggplot2::facet_wrap(~ pathway, ncol = 4) +
-      ggplot2::labs(title = paste(role, "information flow — top pathways"),
+      ggplot2::labs(title = paste(role, "information flow - top pathways"),
                     x = NULL, y = NULL) +
       theme_NourMin() +
       ggplot2::theme(
@@ -1086,9 +1102,9 @@ RankCellChatPathways <- function(cellchat_list,
 
   for (info in list(
     list(plot = sender_plot,   suffix = "sender_tile",
-         legend = "Sender information flow (row = cell type, column = condition, facet = pathway). Colour encodes each cell type's outgoing communication probability for that pathway, normalised within each pathway panel to [0–1]."),
+         legend = "Sender information flow (row = cell type, column = condition, facet = pathway). Color encodes each cell type's outgoing communication probability for that pathway, normalized within each pathway panel to [0-1]."),
     list(plot = receiver_plot, suffix = "receiver_tile",
-         legend = "Receiver information flow (row = cell type, column = condition, facet = pathway). Colour encodes each cell type's incoming communication probability for that pathway, normalised within each pathway panel to [0–1].")
+         legend = "Receiver information flow (row = cell type, column = condition, facet = pathway). Color encodes each cell type's incoming communication probability for that pathway, normalized within each pathway panel to [0-1].")
   )) {
     if (!is.null(output_dir)) {
       p_path <- file.path(output_dir,
@@ -1110,7 +1126,7 @@ RankCellChatPathways <- function(cellchat_list,
                                      links_table$receiver, "\n(",
                                      links_table$pathway, ")")
 
-    # Variance of flow across conditions per link — rank by this
+    # Variance of flow across conditions per link - rank by this
     lv <- tapply(links_table$flow, links_table$link_label, stats::var)
     lv[is.na(lv)] <- 0
     top_link_labels <- names(sort(lv, decreasing = TRUE))[
@@ -1121,7 +1137,7 @@ RankCellChatPathways <- function(cellchat_list,
     sub_links$link_label <- factor(sub_links$link_label,
                                    levels = top_link_labels)
 
-    # Colour the sender cell type if cell_colors provided
+    # Color the sender cell type if cell_colors provided
     sender_fill <- if (!is.null(cell_colors)) {
       senders <- unique(sub_links$sender)
       sc <- cell_colors[senders[senders %in% names(cell_colors)]]
@@ -1161,10 +1177,10 @@ RankCellChatPathways <- function(cellchat_list,
                       height = link_h, limitsize = FALSE)
       .write_legend_sidecar(lp_path, paste0(
         "Heatmap of the top ", min(top_links, length(lv)),
-        " sender→receiver–pathway links ranked by variance of ",
+        " sender→receiver-pathway links ranked by variance of ",
         "communication probability across all conditions. Each row is a unique ",
-        "cell-type pair and signalling pathway; each column is a condition. ",
-        "Colour = raw communication probability (viridis inferno scale). ",
+        "cell-type pair and signaling pathway; each column is a condition. ",
+        "Color = raw communication probability (viridis inferno scale). ",
         "High variance rows identify the specific intercellular links that ",
         "change most between conditions."
       ))
@@ -1201,10 +1217,10 @@ RankCellChatPathways <- function(cellchat_list,
 #'
 #' Patches every slot that carries cell-type names (idents, meta, net arrays,
 #' netP arrays, centrality scores, pattern tables, LR significant pairs) so
-#' that downstream visualisation functions and `CompareCellChat` /
+#' that downstream visualization functions and `CompareCellChat` /
 #' `RankCellChatPathways` see the new name.
 #'
-#' The communication probability matrices are **not** recomputed — only labels
+#' The communication probability matrices are **not** recomputed - only labels
 #' change. This is safe because the underlying values are invariant to what the
 #' cell type is called.
 #'
@@ -1217,21 +1233,21 @@ RankCellChatPathways <- function(cellchat_list,
 #'   saveRDS(cc, f)
 #' }
 #'
-#' # 2. Re-run comparison figures (fast — pure plotting)
+#' # 2. Re-run comparison figures (fast - pure plotting)
 #' cclist <- setNames(lapply(rds_files, readRDS),
 #'                    sub("CellChat\\.rds$", "", basename(rds_files)))
 #' CompareCellChat(cclist, output_dir = ...)
 #' RankCellChatPathways(cclist, output_dir = ...)
 #'
 #' # 3. Per-group RunCellChat PDFs: delete old PDFs and re-run RunCellChat with
-#' #    resume = TRUE — the pipeline checkpoint means only plots are regenerated.
+#' #    resume = TRUE - the pipeline checkpoint means only plots are regenerated.
 #' ```
 #'
 #' @param cc A CellChat object.
 #' @param old_name Character. The cell type label to replace.
 #' @param new_name Character. The replacement label.
 #'
-#' @return The modified CellChat object (the original is not changed in place —
+#' @return The modified CellChat object (the original is not changed in place -
 #'   assign the result back).
 #' @export
 RenameCellTypeInCC <- function(cc, old_name, new_name) {

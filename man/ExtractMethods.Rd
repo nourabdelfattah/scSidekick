@@ -4,7 +4,7 @@
 \alias{ExtractMethods}
 \title{Extract analysis parameters and generate a methods text from a Seurat object}
 \usage{
-ExtractMethods(seurat_object, cite_seurat = TRUE)
+ExtractMethods(seurat_object, cite_seurat = TRUE, modality = NULL)
 }
 \arguments{
 \item{seurat_object}{A Seurat object with commands recorded (i.e., the standard
@@ -13,12 +13,17 @@ custom wrappers that bypass command logging).}
 
 \item{cite_seurat}{Logical. Append a Seurat citation reminder at the end
 of the methods paragraph. Default \code{TRUE}.}
+
+\item{modality}{Character or \code{NULL}. Override the sequencing modality label
+used in the methods text. Typical values: \code{"scRNA-seq"}, \code{"snRNA-seq"}.
+\code{NULL} (default) auto-detects from \code{seurat_object@misc$scSidekick_params}
+or the \code{"modality"} metadata column.}
 }
 \value{
 A named list with two elements:
 \describe{
 \item{\code{summary}}{Named list of extracted parameter values.}
-\item{\code{methods_text}}{Character string — a draft methods paragraph
+\item{\code{methods_text}}{Character string - a draft methods paragraph
 ready to paste into a manuscript.}
 }
 }

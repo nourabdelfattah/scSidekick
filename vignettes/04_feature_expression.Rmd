@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Feature Expression: PlotFeaturePlots & PlotMultiFeature"
+title: "scSidekick - Feature Expression: PlotFeaturePlots & PlotMultiFeature"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -25,9 +25,9 @@ options(cli.width = 80)
 
 Two functions for visualizing gene expression on UMAP (or any reduction):
 
-- **`PlotFeaturePlots()`** — one panel per gene × split group. Saves to disk
+- **`PlotFeaturePlots()`** - one panel per gene × split group. Saves to disk
   by convention; alias `GenerateFeatureMaps()`.
-- **`PlotMultiFeature()`** — co-expression of several genes on a single panel
+- **`PlotMultiFeature()`** - co-expression of several genes on a single panel
   (gene mode, intersection mode, or continuous scale mode).
 
 ---
@@ -68,17 +68,24 @@ PlotFeaturePlots(bmcite,
   features = "CD3E")
 ```
 
-### 2. Multiple genes — one row per gene
+### 2. Multiple genes - one row per gene
 
 ```{r multi-gene-rows, fig.height=8}
 PlotFeaturePlots(bmcite,
   features = c("CD3E", "CD79A", "LYZ"))
 ```
 
-### 3. Split by donor — one column per donor
+### 3. Split by donor - one column per donor
 
 `split.by` creates one column per level. Combined with multiple features, this
 produces a gene × donor grid.
+
+> **Pain point fixed.** Seurat's `FeaturePlot(..., split.by =)` renders the
+> panels with **no colour legend at all** - you can't tell what the colours
+> mean, and the common `& RestoreLegend()` workaround attaches a guide that
+> doesn't match the data. `PlotFeaturePlots()` keeps **one shared, accurate
+> colour scale** across every panel, so expression is directly comparable
+> across conditions.
 
 ```{r split-by-donor, eval=FALSE}
 PlotFeaturePlots(bmcite,
@@ -95,17 +102,17 @@ immediately connect expression hotspots to their identity.
 PlotFeaturePlots(bmcite,
   features = c("CD3E", "CD79A"),
   label    = TRUE,
-  label_by = "celltype.l1")
+  label.by = "celltype.l1")
 ```
 
-### 5. Multiple `split.by` — iterate automatically
+### 5. Multiple `split.by` - iterate automatically
 
 Passing a vector to `split.by` generates one complete figure per split variable.
 
 ```{r multi-split, eval=FALSE}
 PlotFeaturePlots(bmcite,
   features = c("CD3E", "NKG7", "CD79A"),
-  split.by = c("lane"),row_var = "donor",layout_method = "metadata")
+  split.by = c("lane"),row.by = "donor",layout_method = "metadata")
 ```
 
 ### 6. Saving to disk
@@ -123,7 +130,7 @@ PlotFeaturePlots(bmcite,
 
 ## `PlotMultiFeature`
 
-### Mode 1 — Gene mode (default)
+### Mode 1 - Gene mode (default)
 
 Each gene gets a distinct color. Cells expressing a gene above `threshold` are
 colored accordingly; cells expressing more than one gene get a blended color.
@@ -134,7 +141,7 @@ PlotMultiFeature(bmcite,
   features = c("CD3E", "CD79A", "LYZ", "NKG7") )
 ```
 
-### Mode 2 — Intersection mode
+### Mode 2 - Intersection mode
 
 Highlights only cells that co-express **all** listed genes above the cutoff.
 Useful for identifying rare dual-positive populations.
@@ -147,7 +154,7 @@ PlotMultiFeature(bmcite,
   intersection_label = "CD3+CD8+ T cells")
 ```
 
-### Mode 3 — Scale mode
+### Mode 3 - Scale mode
 
 Plots a single gene (or averaged signature) as a continuous gradient. Equivalent
 to `FeaturePlot()` but integrated with the scSidekick saving pipeline.
@@ -160,7 +167,7 @@ PlotMultiFeature(bmcite,
 
 ---
 
-## Parameter reference — `PlotFeaturePlots`
+## Parameter reference - `PlotFeaturePlots`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -172,7 +179,7 @@ PlotMultiFeature(bmcite,
 | `object_name` | character | `""` | Label used in filenames |
 | `subset_name` | character | `""` | Sub-label used in filenames |
 
-## Parameter reference — `PlotMultiFeature`
+## Parameter reference - `PlotMultiFeature`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -188,9 +195,9 @@ PlotMultiFeature(bmcite,
 
 ## See also
 
-- Vignette 03: `PlotDimPlots` — cell-type UMAP without expression overlay
-- Vignette 05: `GroupHeatmap`, `FastDotPlot` — expression across clusters
-- Vignette 07: `PlotSpatialFeaturePlots` — same concept for spatial data
+- Vignette 03: `PlotDimPlots` - cell-type UMAP without expression overlay
+- Vignette 05: `GroupHeatmap`, `FastDotPlot` - expression across clusters
+- Vignette 07: `PlotSpatialFeaturePlots` - same concept for spatial data
 
 ---
 

@@ -16,7 +16,7 @@ A ggplot2 theme object.
 }
 \description{
 A clean, publication-ready theme built on \code{\link[ggplot2:ggtheme]{ggplot2::theme_light()}}.
-Features: no gridlines, light grey panel borders, centered titles,
+Features: no gridlines, light gray panel borders, centered titles,
 transparent strip backgrounds, and compact margins. Use this instead of
-\code{theme_min2()} from analysis scripts — they are identical.
+\code{theme_min2()} from analysis scripts - they are identical.
 }

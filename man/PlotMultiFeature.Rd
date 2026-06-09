@@ -8,7 +8,7 @@ PlotMultiFeature(
   seurat_object,
   features,
   colors = NULL,
-  null_color = "grey70",
+  null_color = "gray70",
   threshold = 0.0125,
   plot_mode = c("gene", "intersection", "scale"),
   pct_cutoff = 0.3,
@@ -31,14 +31,14 @@ PlotMultiFeature(
 \arguments{
 \item{seurat_object}{A Seurat object (v3 or v5).}
 
-\item{features}{Character vector of gene names to visualise.}
+\item{features}{Character vector of gene names to visualize.}
 
 \item{colors}{Named or unnamed character vector of colors (one per gene).
 Auto-filled from \code{Nour_pal("all")} for missing entries. If
 \code{NULL}, the full \code{Nour_pal("all")} palette is used.}
 
 \item{null_color}{Color for cells that express no gene above threshold.
-Default \code{"grey70"}.}
+Default \code{"gray70"}.}
 
 \item{threshold}{Numeric scalar, or named numeric vector (names = gene
 names), giving the minimum expression value for a cell to be considered
@@ -49,7 +49,7 @@ or \code{"scale"}.}
 
 \item{pct_cutoff}{For \code{plot_mode = "intersection"}: the fraction of
 the gene list a cell must express to count as co-expressing.  Default
-\code{0.3} (i.e. ≥30 \\% of genes).}
+\code{0.3} (i.e. >= 30\% of genes).}
 
 \item{intersection_label}{Label shown in the legend for co-expressing cells.
 Default \code{"Co-expressing"}.}

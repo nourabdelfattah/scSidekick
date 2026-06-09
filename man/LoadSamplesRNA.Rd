@@ -6,18 +6,24 @@
 \usage{
 LoadSamplesRNA(
   sample_ids,
-  run_ids,
+  run_ids = NULL,
   run_ids_x = NULL,
+  input_type = c("h5", "10x_dir"),
+  data_paths = NULL,
   metadata = NULL,
   sample_id_col = "sample_id",
-  base_dir,
+  base_dir = NULL,
   h5_template = paste0("{base_dir}/{run_id}/per_sample_outs/", "{run_id_x}/count/",
     "sample_filtered_feature_bc_matrix.h5"),
+  matrix_dir_template = "{base_dir}/{run_id}/filtered_feature_bc_matrix",
   cellanno_template = paste0("{base_dir}/{run_id}/per_sample_outs/", "{run_id_x}/count/",
     "cell_types/cell_types.csv"),
   output_dir,
   robj_dir = NULL,
   merged_filename = "merged_object.rds",
+  save_individual = FALSE,
+  resume = FALSE,
+  individual_dir = NULL,
   min.features = 100L,
   mt_pattern = "^MT-",
   run_doublet = TRUE,
@@ -26,7 +32,8 @@ LoadSamplesRNA(
   miqc_posterior = 0.95,
   force_assay_v3 = TRUE,
   merge_samples = TRUE,
-  add_cell_ids = NULL
+  add_cell_ids = NULL,
+  modality = c("scRNA-seq", "snRNA-seq")
 )
 }
 \arguments{
@@ -35,12 +42,25 @@ LoadSamplesRNA(
 key column when matching \code{metadata}.}
 
 \item{run_ids}{Character vector of Cellranger run IDs corresponding to
-\code{sample_ids} (e.g. \code{paste0("MYSC", 220:223)}). Used to build h5 paths.}
+\code{sample_ids} (e.g. \code{paste0("MYSC", 220:223)}). Used to build h5 / matrix
+paths and as cell-id prefixes on merge. \code{NULL} (allowed only when
+\code{data_paths} is supplied) falls back to \code{sample_ids}.}
 
 \item{run_ids_x}{Character vector or \code{NULL}. The "underscored" form of
 \code{run_ids} used in \verb{per_sample_outs/} subdirectory names
 (e.g. \code{paste0("MYSC_", 220:223)}). \code{NULL} auto-generates by inserting
 \verb{_} before the trailing digit block: \code{"MYSC220"} → \code{"MYSC_220"}.}
+
+\item{input_type}{Character. How to read each sample's counts:
+\code{"h5"} (default) uses \code{Seurat::Read10X_h5()}; \code{"10x_dir"} uses
+\code{Seurat::Read10X()} on a matrix folder. Ignored if \code{data_paths} already
+points at the right kind of source (the type is still used to pick the
+reader, so set it to match your \code{data_paths}).}
+
+\item{data_paths}{Character vector or \code{NULL}. Exact path to each sample's
+data source (an h5 file when \code{input_type = "h5"}, or a matrix folder when
+\code{input_type = "10x_dir"}), one entry per \code{sample_ids}. When supplied,
+\code{base_dir} and the path templates are bypassed entirely. Default \code{NULL}.}
 
 \item{metadata}{Data frame or \code{NULL}. One row per sample; must contain a
 column matching \code{sample_id_col}. All other columns are attached to
@@ -50,17 +70,22 @@ afterwards).}
 \item{sample_id_col}{Character. Name of the column in \code{metadata} that
 matches \code{sample_ids}. Default \code{"sample_id"}.}
 
-\item{base_dir}{Character. Root directory containing the Cellranger run
-folders (one subfolder per \code{run_id}).}
+\item{base_dir}{Character or \code{NULL}. Root directory containing the
+Cellranger run folders (one subfolder per \code{run_id}). Required unless
+\code{data_paths} is supplied.}
 
-\item{h5_template}{Character. Path template for the h5 file. Available
-placeholders: \code{{base_dir}}, \code{{run_id}}, \code{{run_id_x}}. Default matches
-Cellranger-multi per-sample output layout.}
+\item{h5_template}{Character. Path template for the h5 file
+(\code{input_type = "h5"}). Available placeholders: \code{{base_dir}}, \code{{run_id}},
+\code{{run_id_x}}. Default matches Cellranger-multi per-sample output layout.}
+
+\item{matrix_dir_template}{Character. Path template for the 10X matrix
+folder (\code{input_type = "10x_dir"}). Same placeholders as \code{h5_template}.
+Default \code{"{base_dir}/{run_id}/filtered_feature_bc_matrix"}.}
 
 \item{cellanno_template}{Character or \code{NULL}. Path template for the
 per-cell annotation CSV (e.g. from Cellranger cell-type calling).
 \code{NULL} disables cell annotation loading. Files that do not exist are
-silently skipped per sample — it is safe to provide a template even when
+silently skipped per sample - it is safe to provide a template even when
 only some samples have the file.}
 
 \item{output_dir}{Character. Directory for per-sample QC PDF plots.}
@@ -70,6 +95,19 @@ Seurat object. \code{NULL} skips saving.}
 
 \item{merged_filename}{Character. Filename for the saved merged object.
 Default \code{"merged_object.rds"}.}
+
+\item{save_individual}{Logical. Save each fully-processed sample as its own
+\verb{<sample_id>.rds} in \code{individual_dir} as it finishes. Combined with
+\code{resume = TRUE}, this lets a long load survive interruptions. Default
+\code{FALSE}.}
+
+\item{resume}{Logical. Before processing a sample, check \code{individual_dir}
+for an existing \verb{<sample_id>.rds}; if found, load it and skip all
+re-processing (read, QC, doublets, miQC) for that sample. Default \code{FALSE}.}
+
+\item{individual_dir}{Character or \code{NULL}. Directory for the per-sample
+\code{.rds} files used by \code{save_individual} / \code{resume}. \code{NULL} defaults to
+\verb{<robj_dir or output_dir>/Individual_Samples}.}
 
 \item{min.features}{Integer. Minimum features per cell for
 \code{CreateSeuratObject()}. Default \code{100}.}
@@ -97,18 +135,42 @@ object at the end? Default \code{TRUE}.}
 
 \item{add_cell_ids}{Character vector or \code{NULL}. Prefix added to each cell
 barcode on merge. \code{NULL} uses \code{run_ids}.}
+
+\item{modality}{Character. Sequencing modality label stored in the merged
+object's metadata and \verb{@misc$scSidekick_params}. One of \code{"scRNA-seq"}
+(default) or \code{"snRNA-seq"}.}
 }
 \value{
 If \code{merge_samples = TRUE}, the merged Seurat object (invisibly).
 If \code{merge_samples = FALSE}, a named list of individual Seurat objects.
 }
 \description{
-Iterates over a list of samples, reads Cellranger h5 files, optionally
+Iterates over a list of samples, reads the 10X count data, optionally
 adds per-cell annotation CSVs, attaches per-sample metadata, runs
 DoubletFinder and miQC quality control, saves per-sample QC plots,
 and finally merges all objects into a single Seurat object.
 }
-\section{Metadata (recommended — \code{metadata} data.frame)}{
+\section{Input methods}{
+
+Three ways to point the function at your data:
+\enumerate{
+\item \strong{h5 files via templates} (default, \code{input_type = "h5"}):
+paths built from \code{base_dir} + \code{h5_template} using
+\code{Read10X_h5()}. Matches Cellranger-multi output.
+\item \strong{10X matrix folders via templates}
+(\code{input_type = "10x_dir"}): paths built from \code{base_dir} +
+\code{matrix_dir_template} and read with \code{Read10X()}. Each folder
+must contain \code{barcodes.tsv(.gz)}, \code{features.tsv(.gz)}, and
+\code{matrix.mtx(.gz)} (the Cellranger \code{filtered_feature_bc_matrix/}
+directory).
+\item \strong{Explicit paths} (\code{data_paths = ...}): a character vector
+of exact h5 files or matrix folders, one per sample, used verbatim.
+Use this when your samples are not organized in a consistent layout.
+\code{base_dir} and the templates are then ignored for path building.
+}
+}
+
+\section{Metadata (recommended - \code{metadata} data.frame)}{
 
 Pass a \code{data.frame} with one row per sample.  The column named by
 \code{sample_id_col} must match \code{sample_ids} exactly.  Every other column is

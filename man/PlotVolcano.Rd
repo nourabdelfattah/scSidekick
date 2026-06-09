@@ -14,7 +14,7 @@ PlotVolcano(
   padj_cutoff = 0.05,
   top_n_labels = 10,
   highlight_genes = NULL,
-  colors = c(up = "#B40426", down = "#3B4CC0", ns = "grey70"),
+  colors = c(up = "#B40426", down = "#3B4CC0", ns = "gray70"),
   point_size = 1,
   point_alpha = 0.6,
   max_overlaps = 20,
@@ -51,7 +51,7 @@ Default \code{10}.}
 regardless of their ranking.}
 
 \item{colors}{Named character vector with elements \code{"up"}, \code{"down"},
-and \code{"ns"} (not significant). Defaults to red/blue/grey.}
+and \code{"ns"} (not significant). Defaults to red/blue/gray.}
 
 \item{point_size}{Point size. Default \code{1}.}
 
@@ -74,6 +74,6 @@ device.
 Produces a publication-ready volcano plot from a DEG data frame (presto,
 \code{FindMarkers}, or any table with logFC and adjusted p-value columns).
 Automatically detects column names for common output formats.  Points are
-coloured by direction × significance; top genes per direction are labelled
+colored by direction × significance; top genes per direction are labelled
 with \code{ggrepel}.
 }

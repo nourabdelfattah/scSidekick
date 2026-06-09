@@ -2,7 +2,7 @@
 % Please edit documentation in R/cellchat.R
 \name{RankCellChatPathways}
 \alias{RankCellChatPathways}
-\title{Rank and visualise differentially active CellChat pathways across conditions}
+\title{Rank and visualize differentially active CellChat pathways across conditions}
 \usage{
 RankCellChatPathways(
   cellchat_list,
@@ -22,7 +22,7 @@ Names are used as condition labels throughout.}
 \code{NULL} returns objects only.}
 
 \item{top_n}{Integer. Number of top pathways (ranked by flow range across
-conditions) to include in visualisations. Default \code{20}.}
+conditions) to include in visualizations. Default \code{20}.}
 
 \item{top_links}{Integer. Number of top sender→receiver links (ranked by
 variance of flow across conditions) to show in the links heatmap.
@@ -31,10 +31,10 @@ Default \code{15}.}
 \item{rank_by}{Character. Metric used to rank pathways:
 \code{"range"} (max − min flow; default) or \code{"cv"} (coefficient of variation).}
 
-\item{colors}{Named character vector. Condition colours (names = condition
+\item{colors}{Named character vector. Condition colors (names = condition
 names). \code{NULL} uses ggplot2 defaults.}
 
-\item{cell_colors}{Named character vector. Cell-type colours (names = cell
+\item{cell_colors}{Named character vector. Cell-type colors (names = cell
 type labels). Used for annotation strips in tile plots.}
 }
 \value{
@@ -55,8 +55,8 @@ Extracts per-pathway information flow and sender/receiver cell-type marginals
 from a named list of CellChat objects, ranks pathways by differential
 activity, and produces four outputs:
 \enumerate{
-\item A \strong{flow heatmap}: top \code{top_n} pathways × conditions, row-normalised
-so colour reflects which condition has higher activity.
+\item A \strong{flow heatmap}: top \code{top_n} pathways × conditions, row-normalized
+so color reflects which condition has higher activity.
 \item \strong{Sender and receiver tile plots}: faceted by top pathway, showing
 how much each cell type sends/receives per condition.
 \item A \strong{top changed links heatmap}: the \code{top_links} sender→receiver pairs

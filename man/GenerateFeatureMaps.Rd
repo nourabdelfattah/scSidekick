@@ -12,7 +12,7 @@ GenerateFeatureMaps(
   features,
   layout_method = "auto",
   split.by = NULL,
-  row_var = NULL,
+  row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
   output_dir = NULL,
@@ -20,13 +20,14 @@ GenerateFeatureMaps(
   subset_name = "",
   order = TRUE,
   label = FALSE,
-  label_by = NULL,
+  label.by = NULL,
   label_colors = NULL,
   repel = FALSE,
   label.size = 2,
   pt.size = 0.001,
   add_boxplot = FALSE,
   plot_type = "violin",
+  alpha = 0.7,
   ref_group = NULL,
   comparisons = NULL,
   group_colors = NULL,
@@ -41,7 +42,7 @@ PlotFeaturePlots(
   features,
   layout_method = "auto",
   split.by = NULL,
-  row_var = NULL,
+  row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
   output_dir = NULL,
@@ -49,13 +50,14 @@ PlotFeaturePlots(
   subset_name = "",
   order = TRUE,
   label = FALSE,
-  label_by = NULL,
+  label.by = NULL,
   label_colors = NULL,
   repel = FALSE,
   label.size = 2,
   pt.size = 0.001,
   add_boxplot = FALSE,
   plot_type = "violin",
+  alpha = 0.7,
   ref_group = NULL,
   comparisons = NULL,
   group_colors = NULL,
@@ -74,11 +76,11 @@ PlotFeaturePlots(
 \item{features}{Character vector of gene names to plot.}
 
 \item{layout_method}{Character. \code{"auto"} (default) or \code{"metadata"}. In
-\code{"metadata"} mode \code{row_var} must be specified.}
+\code{"metadata"} mode \code{row.by} must be specified.}
 
 \item{split.by}{Character. Metadata column to split UMAP panels by.}
 
-\item{row_var}{Character or \code{NULL}. In \code{"metadata"} layout, the metadata
+\item{row.by}{Character or \code{NULL}. In \code{"metadata"} layout, the metadata
 column whose levels define the rows of the grid.}
 
 \item{colors}{Character vector. Color gradient from low to high expression.}
@@ -96,13 +98,13 @@ Default \code{""}.}
 \item{label}{Logical. Overlay cell-type / cluster labels on UMAP panels.
 Default \code{FALSE}.}
 
-\item{label_by}{Character. Metadata column to use for labels.  If \code{NULL}
+\item{label.by}{Character. Metadata column to use for labels.  If \code{NULL}
 (default) and \code{label = TRUE}, labels are drawn using \code{Seurat::Idents()}.
-Accepts \strong{any} metadata column — avoids Seurat's ident-order problem and
+Accepts \strong{any} metadata column - avoids Seurat's ident-order problem and
 the error that occurs when a column is literally named \code{"idents"}.}
 
 \item{label_colors}{Named character vector mapping each label value to a
-hex colour (e.g. \code{c("Excitatory" = "#E41A1C", "Inhibitory" = "#377EB8")}).
+hex color (e.g. \code{c("Excitatory" = "#E41A1C", "Inhibitory" = "#377EB8")}).
 Labels not present in the vector default to \code{"black"}.  \code{NULL} = all black.}
 
 \item{repel}{Logical. Use \code{ggrepel::geom_text_repel} to avoid overlapping
@@ -119,20 +121,23 @@ Default \code{FALSE}. Requires \code{split.by} to be set.}
 \item{plot_type}{Character. Type of expression plot: \code{"violin"} (default),
 \code{"box"}, or \code{"both"} (violin with a thin white box overlay).}
 
+\item{alpha}{Numeric. Fill transparency for violin and box geoms. Default
+\code{0.7}.}
+
 \item{ref_group}{Character or \code{NULL}. If set, each group is compared only
 to this reference level. \code{NULL} (default) performs all pairwise tests.}
 
 \item{comparisons}{List of character vectors or \code{NULL}. Custom pairs to
 test, e.g. \code{list(c("NCI","AD"), c("MCI","AD"))}. Overrides \code{ref_group}.}
 
-\item{group_colors}{Named character vector or \code{NULL}. Fill colours for each
+\item{group_colors}{Named character vector or \code{NULL}. Fill colors for each
 \code{split.by} level. \code{NULL} auto-assigns from \code{Nour18}.}
 
 \item{label_format}{Character. \code{"p.signif"} (default, shows \code{*}/\verb{**}/\code{ns})
 or \code{"p.format"} (shows \code{p = 0.023}).}
 
 \item{hide_ns}{Logical. If \code{TRUE}, omit \code{ns} brackets entirely. Default
-\code{FALSE} (shows \code{ns} in grey).}
+\code{FALSE} (shows \code{ns} in gray).}
 }
 \value{
 Invisibly returns the last assembled plot when \code{output_dir = NULL};
@@ -146,9 +151,9 @@ strips legends from individual panels, and attaches a single shared legend.
 \details{
 When \code{add_boxplot = TRUE} a violin/box plot column is appended to the right
 of the UMAP grid.  In \code{"metadata"} layout each row gets its own boxplot
-(cells from that \code{row_var} level only); in \code{"auto"} layout a single boxplot
+(cells from that \code{row.by} level only); in \code{"auto"} layout a single boxplot
 covers all cells.  Pairwise Wilcoxon tests are computed with BH correction
-and displayed as brackets: significant comparisons in black, \code{ns} in grey.
+and displayed as brackets: significant comparisons in black, \code{ns} in gray.
 
 When \code{output_dir} is provided the figure is saved as a PDF and nothing is
 returned. When \code{output_dir = NULL} the assembled plot is returned invisibly.

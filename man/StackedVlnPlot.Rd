@@ -18,7 +18,7 @@ StackedVlnPlot(
 \item{features}{Character vector of features (genes) to plot. One panel per
 feature.}
 
-\item{pt.size}{Jitter point size (default \code{0} — no points).}
+\item{pt.size}{Jitter point size (default \code{0} - no points).}
 
 \item{plot.margin}{Plot margin around each panel as a
 \code{grid::unit} object (default \code{unit(c(-0.75, 0, -0.75, 0), "cm")}).

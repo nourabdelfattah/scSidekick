@@ -6,15 +6,20 @@ Authors@R:
            family = "Abdelfattah",
            role = c("aut", "cre"),
            email = "neabdelfattah@gmail.com")
-Description: A toolkit for single-cell RNA-seq and spatial
-    transcriptomics analysis. Provides enhanced visualization functions
+Description: A toolkit for single-cell RNA-seq, spatial transcriptomics,
+    and bulk expression analysis. Provides enhanced visualization functions
     (dot plots, UMAP grids, feature maps, spatial plots), a custom
     ggplot2 theme and color palettes, GSEA pathway analysis wrappers,
     CellChat pipeline wrappers, and utility functions for extracting
-    methods text from Seurat objects. Also includes a PowerPoint summary
-    builder (PDFs → PPTX via officer/magick), a passive session logger
-    that auto-captures commands and plots, and a rule-based session
-    summarizer that generates a markdown report and a clean R script.
+    methods text from Seurat objects. Also includes a Kaplan-Meier survival
+    analysis module (SurvPlot) that accepts bulk expression matrices or
+    downloads TCGA datasets automatically, supports gene-level and
+    gene-set-signature stratification, flexible High/Low or quartile
+    splitting per facet group, and row x column faceting by clinical
+    metadata variables. Also includes a PowerPoint summary builder
+    (PDFs → PPTX via officer/magick), a passive session logger that
+    auto-captures commands and plots, and a rule-based session summarizer
+    that generates a markdown report and a clean R script.
     Designed to work seamlessly with Seurat.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -41,6 +46,8 @@ Suggests:
     Seurat (>= 5.0.0),
     SeuratObject (>= 5.0.0),
     presto,
+    reticulate,
+    png,
     fgsea,
     msigdbr,
     pheatmap,
@@ -64,5 +71,12 @@ Suggests:
     knitr,
     rmarkdown,
     ggforce,
-    enrichR
+    ggrastr,
+    survival,
+    survminer,
+    recount3,
+    TCGAbiolinks,
+    SummarizedExperiment
+SystemRequirements: Optional Python packages for cNMF program discovery
+    (RunCNMF / GetCNMFPrograms): cnmf, anndata (install via `pip install cnmf`).
 URL: https://nourabdelfattah.github.io/scSidekick/

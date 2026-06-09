@@ -46,12 +46,12 @@ linear reduction (PCA, LSI, etc.) to pass to UMAP, neighbor graphs, and
 clustering.
 }
 \details{
-\strong{Heuristic 1 — cumulative variance plateau}: finds the first dimension
+\strong{Heuristic 1 - cumulative variance plateau}: finds the first dimension
 where cumulative variance explained exceeds \code{threshold_cum_pct} \emph{and} the
 per-dimension contribution has already dropped below \code{threshold_pct}. This
 marks the point of diminishing returns.
 
-\strong{Heuristic 2 — elbow}: finds the last dimension where the drop in
+\strong{Heuristic 2 - elbow}: finds the last dimension where the drop in
 per-dimension variance between successive dimensions is still larger than
 \code{threshold_diff_pct}. Beyond this point the curve has flattened.
 
