@@ -1,11 +1,11 @@
 ---
-title: "scSidekick — Getting Started: PrepObject, ShowColors, GetColors"
+title: "scSidekick - Getting Started: PrepObject, ShowColors, GetColors"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{scSidekick — Getting Started: PrepObject, ShowColors, GetColors}
+  %\VignetteIndexEntry{scSidekick - Getting Started: PrepObject, ShowColors, GetColors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -27,10 +27,10 @@ options(cli.width = 80)
 after clustering and it stores a color palette, factor-level ordering, and
 default plotting parameters directly inside the Seurat object at
 `seurat_object@misc$nk_settings`. Every downstream scSidekick function reads
-from that slot when its own arguments are left `NULL` — so you never repeat
+from that slot when its own arguments are left `NULL` - so you never repeat
 color or grouping choices across dozens of plots.
 
-**In short:** run `PrepObject()` once → get consistent, publication-ready
+**In short:** run `PrepObject()` once -> get consistent, publication-ready
 colors and layouts everywhere automatically.
 
 ---
@@ -50,8 +50,8 @@ library(dplyr)
 ```
 
 We use `bmcite`, a bone marrow CITE-seq dataset from SeuratData. It is small
-(~30 k cells) and already comes with rich metadata — `lane`, `donor`,
-`celltype.l1`, and `celltype.l2` — so we can demonstrate multi-variable
+(~30 k cells) and already comes with rich metadata - `lane`, `donor`,
+`celltype.l1`, and `celltype.l2` - so we can demonstrate multi-variable
 workflows without manufacturing fake columns.
 
 ```{r demo-data, include=FALSE}
@@ -101,7 +101,7 @@ bmcite <- PrepObject(bmcite,
 ```
 
 With these stored, a bare `PlotDimPlots(bmcite)` will group by cell type,
-split by donor, and save to the specified folder — no repeated arguments.
+split by donor, and save to the specified folder - no repeated arguments.
 
 ---
 
@@ -142,7 +142,7 @@ bmcite <- PrepObject(bmcite, variables = "seurat_clusters")
 ## 4. Inspect registered colors with `ShowColors()`
 
 `ShowColors()` renders a swatch grid for every variable stored in
-`nk_settings` — one panel per variable, levels on the y-axis. This is the
+`nk_settings` - one panel per variable, levels on the y-axis. This is the
 fastest sanity check before generating figures.
 
 ```{r show-colors, fig.height=8}
@@ -225,7 +225,7 @@ bmcite <- PrepObject(bmcite,
 
 This is a reference workflow for a real multi-sample project. Every step uses
 a scSidekick function; the Seurat processing steps in the middle are standard.
-Nothing here runs — it is a template you copy and adapt.
+Nothing here runs - it is a template you copy and adapt.
 
 ```{r full-pipeline, eval=FALSE}
 library(scSidekick)
@@ -289,7 +289,7 @@ markers_df <- data.frame(
 )
 SplitDotPlot(SeuratObj, markers_df = markers_df, group.by = "seurat_clusters")
 
-de <- wilcoxauc(SeuratObj, group_by = "seurat_clusters")
+de <- wilcoxauc(SeuratObj, group.by = "seurat_clusters")
 SeuratObj <- CellTypeAssignmentHelper(SeuratObj,
   markers        = de,
   cluster_column = "seurat_clusters",
@@ -362,7 +362,7 @@ create_analysis_pptx(output_dir = "./Figures", object_name = "MyProject")
 ## See also
 
 - Vignette 02: `Determine_nDims()` in the context of dimensionality reduction
-- Vignette 03: `PlotDimPlots()` — UMAP visualization using colors from `PrepObject`
+- Vignette 03: `PlotDimPlots()` - UMAP visualization using colors from `PrepObject`
 - Vignette 10: `Nour_pal()` and `Nour_cols()` for palette utilities
 
 ---

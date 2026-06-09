@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Heatmaps & Dot Plots: GroupHeatmap, SplitDotPlot, FastDotPlot"
+title: "scSidekick - Heatmaps & Dot Plots: GroupHeatmap, SplitDotPlot, FastDotPlot"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -25,11 +25,11 @@ options(cli.width = 80)
 
 Three functions for comparing gene expression across groups:
 
-- **`GroupHeatmap()`** — ComplexHeatmap with average expression per group,
+- **`GroupHeatmap()`** - ComplexHeatmap with average expression per group,
   optional dot-size overlay, and gene-category annotations.
-- **`SplitDotPlot()`** — dot plot organized by cell-type gene blocks; accepts
+- **`SplitDotPlot()`** - dot plot organized by cell-type gene blocks; accepts
   a `markers_df` data frame.
-- **`FastDotPlot()`** — quick dot plot from an explicit gene list or regex
+- **`FastDotPlot()`** - quick dot plot from an explicit gene list or regex
   pattern, no `markers_df` required.
 
 ---
@@ -114,7 +114,7 @@ GroupHeatmap(bmcite,
 ### 3. Dot overlay
 
 `add_dot = TRUE` overlays circles sized by percent-expressed on top of the
-color-encoded expression — a dot-heatmap hybrid.
+color-encoded expression - a dot-heatmap hybrid.
 
 ```{r heatmap-dot, fig.height=7}
 GroupHeatmap(bmcite,
@@ -174,7 +174,7 @@ SplitDotPlot(bmcite,
   split.by   = "donor")
 ```
 
-### 3. `SplitDotPlot2` — with gene clustering
+### 3. `SplitDotPlot2` - with gene clustering
 
 `SplitDotPlot2` adds hierarchical clustering within gene blocks.
 
@@ -200,21 +200,32 @@ FastDotPlot(bmcite,
   group.by = "celltype.l1")
 ```
 
-### 2. Regex pattern
+### 2. Regex pattern - stop looking up exact gene names
+
+> **Pain point fixed.** You rarely remember every gene symbol in a family.
+> Instead of hand-typing `c("CD3D","CD3E","CD3G","CD4","CD8A", ...)`, give
+> `FastDotPlot()` a **regex `pattern`** and it pulls every matching gene
+> straight from `rownames()`. Same idea powers the pathway *keyword* search in
+> Vignette 08 - describe what you want, not its exact name.
 
 `pattern` selects all matching genes; `k_genes` keeps only the top *k* most
 variable per cluster.
 
 ```{r fastdot-pattern, echo=TRUE}
 FastDotPlot(bmcite,
-  pattern  = "^CD",
+  pattern  = "^CD",          # every gene whose symbol starts with "CD"
   group.by = "celltype.l1",
   k_genes  = 3)
 ```
 
+A few handy patterns: `"^HLA-"` (MHC genes), `"^IFI|^ISG|^OAS"` (interferon
+response), `"^MT-"` (mitochondrial). `FastDotPlot2()` goes further - it
+clusters the matched genes into *k* labelled **"Pattern"** groups and can run
+enrichR on each, so a loose regex becomes an annotated, organised dot plot.
+
 ---
 
-## Parameter reference — `GroupHeatmap`
+## Parameter reference - `GroupHeatmap`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -226,7 +237,7 @@ FastDotPlot(bmcite,
 | `add_bg` | logical | `TRUE` | Background rectangles |
 | `output_dir` | character | `NULL` | Directory for saving |
 
-## Parameter reference — `SplitDotPlot`
+## Parameter reference - `SplitDotPlot`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -236,7 +247,7 @@ FastDotPlot(bmcite,
 | `group.by` | character | `"seurat_clusters"` | Metadata column for x-axis groups |
 | `split.by` | character | `NULL` | Variable for stacked panels |
 
-## Parameter reference — `FastDotPlot`
+## Parameter reference - `FastDotPlot`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -250,9 +261,9 @@ FastDotPlot(bmcite,
 
 ## See also
 
-- Vignette 04: `PlotFeaturePlots` — per-gene UMAP expression maps
-- Vignette 06: `CellTypeAssignmentHelper` — uses markers for annotation
-- Vignette 08: `RunGSEA` — pathway-level analysis
+- Vignette 04: `PlotFeaturePlots` - per-gene UMAP expression maps
+- Vignette 06: `CellTypeAssignmentHelper` - uses markers for annotation
+- Vignette 08: `RunGSEA` - pathway-level analysis
 
 ---
 

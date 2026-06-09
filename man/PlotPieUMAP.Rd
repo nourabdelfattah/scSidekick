@@ -59,8 +59,8 @@ levels. Auto-assigned from PrepObject or \code{Nour_pal} if \code{NULL}.}
 A \code{ggplot2} object.
 }
 \description{
-Overlays proportional pie charts on a UMAP (or any 2D reduction) — one pie
-per level of \code{group.by} — where each slice shows the fraction of cells
+Overlays proportional pie charts on a UMAP (or any 2D reduction) - one pie
+per level of \code{group.by} - where each slice shows the fraction of cells
 from each level of \code{split.by} (e.g. sample composition per cluster).
 
 Uses \code{ggforce::geom_arc_bar} for stable pie rendering that works

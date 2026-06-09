@@ -54,28 +54,28 @@ and the return list. The default covers four curated collections:
 
 Other useful collections (pass as additional list elements):
 \itemize{
-\item \code{list(category = "C2", subcategory = "CP:BIOCARTA")} — BioCarta
-\item \code{list(category = "C2", subcategory = "CP:PID")} — NCI Pathway
+\item \code{list(category = "C2", subcategory = "CP:BIOCARTA")} - BioCarta
+\item \code{list(category = "C2", subcategory = "CP:PID")} - NCI Pathway
 Interaction Database
-\item \code{list(category = "C5", subcategory = "GO:BP")} — Gene Ontology
+\item \code{list(category = "C5", subcategory = "GO:BP")} - Gene Ontology
 Biological Process
-\item \code{list(category = "C5", subcategory = "GO:MF")} — GO Molecular
+\item \code{list(category = "C5", subcategory = "GO:MF")} - GO Molecular
 Function
-\item \code{list(category = "C5", subcategory = "GO:CC")} — GO Cellular
+\item \code{list(category = "C5", subcategory = "GO:CC")} - GO Cellular
 Component
-\item \code{list(category = "C7", subcategory = "IMMUNESIGDB")} — ImmuneSigDB
+\item \code{list(category = "C7", subcategory = "IMMUNESIGDB")} - ImmuneSigDB
 (immune gene sets; recommended for immune datasets)
-\item \code{list(category = "C8")} — Cell-type signature gene sets
+\item \code{list(category = "C8")} - Cell-type signature gene sets
 }
 See \code{msigdbr::msigdbr_collections()} for the full catalogue.}
 
 \item{species}{Character. Species passed to \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}. Must
-match the species names recognised by that function. Common values:
+match the species names recognized by that function. Common values:
 \itemize{
-\item \code{"Homo sapiens"} — human (default)
-\item \code{"Mus musculus"} — mouse
-\item \code{"Rattus norvegicus"} — rat
-\item \code{"Danio rerio"} — zebrafish
+\item \code{"Homo sapiens"} - human (default)
+\item \code{"Mus musculus"} - mouse
+\item \code{"Rattus norvegicus"} - rat
+\item \code{"Danio rerio"} - zebrafish
 }
 Run \code{msigdbr::msigdbr_species()} for the complete list.}
 
@@ -84,7 +84,7 @@ Default \code{"RNA"}. For BPCells sketch workflows use \code{"sketch"}.}
 
 \item{min_cells}{Integer. Skip subsets with fewer cells. Default \code{20}.
 A separate guard also skips any \verb{(label, split)} combination that has
-fewer than 2 levels of \code{group.by} after subsetting — this prevents
+fewer than 2 levels of \code{group.by} after subsetting - this prevents
 \code{presto::wilcoxauc} from crashing when e.g. one \code{label.by} level contains
 only one \code{group.by} category (e.g., a Cognitive.Status group with a single
 Sex). A message is emitted for each skipped combination.}
@@ -116,7 +116,7 @@ Default \code{FALSE}.}
 
 \item{heatmap_params}{Named list of additional arguments forwarded to
 \code{\link[ComplexHeatmap:Heatmap]{ComplexHeatmap::Heatmap()}} for both the full and summary NES heatmaps.
-Any default set by scSidekick can be overridden here — e.g.
+Any default set by scSidekick can be overridden here - e.g.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{heatmap_params = list(
   clustering_distance_rows = "pearson",

@@ -1,10 +1,12 @@
 # =============================================================================
 # scSidekick cell-type annotation helpers
 #
-# .sctype_gene_sets_prepare()  — bundled from scType (MIT)
-# .sctype_score()              — bundled from scType (MIT)
-# .get_sctype_db()             — locates / downloads ScTypeDB_full.xlsx
-# CellTypeAssignmentHelper()   — runs rcellmarker + scType + SingleR,
+# AssignCellTypes()            - map a cluster -> cell-type lookup list onto
+#                                a metadata column (lightweight, no dependencies)
+# .sctype_gene_sets_prepare()  - bundled from scType (MIT)
+# .sctype_score()              - bundled from scType (MIT)
+# .get_sctype_db()             - locates / downloads ScTypeDB_full.xlsx
+# CellTypeAssignmentHelper()   - runs rcellmarker + scType + SingleR,
 #                                produces dotplots and UMAP summary figures
 #
 # scType source:  https://github.com/IanevskiAleksandr/sc-type
@@ -13,6 +15,105 @@
 #    marker combinations from single-cell transcriptomic data."
 #   Nature Communications, 2022. https://doi.org/10.1038/s41467-022-28803-w
 # =============================================================================
+
+#' Assign cell-type labels from a cluster map
+#'
+#' Converts a named list of \code{CellType -> cluster IDs} into a new metadata
+#' column on a Seurat object. Clusters absent from \code{assignments} receive
+#' \code{NA}.
+#'
+#' @param object A Seurat object.
+#' @param assignments Named list. Names are cell-type labels; each element is a
+#'   character vector of cluster IDs belonging to that type. E.g.:
+#'   \code{list(Excitatory_Neurons = c("C02","C03"), Astrocytes = "C05")}.
+#' @param cluster_col Metadata column containing cluster IDs. Default
+#'   \code{"Cluster"}.
+#' @param new_col Name of the new metadata column to create. Default
+#'   \code{"CellType"}.
+#' @param other Character or \code{NULL}. Label assigned to any cluster not
+#'   present in \code{assignments}. \code{NULL} (default) leaves them as
+#'   \code{NA}.
+#'
+#' @return The Seurat object with \code{new_col} added to \code{meta.data}.
+#' @export
+#' @examples
+#' \dontrun{
+#' Assign <- list(
+#'   Excitatory_Neurons = c("C02","C03","C07"),
+#'   Inhibitory_Neurons = c("C06","C08"),
+#'   Astrocytes         = "C05"
+#' )
+#' # Unassigned clusters labelled "Tumor"
+#' SeuratObj <- AssignCellTypes(SeuratObj, Assign,
+#'                              cluster_col = "Cluster",
+#'                              new_col     = "GlobalAssignment",
+#'                              other       = "Tumor")
+#' }
+AssignCellTypes <- function(object,
+                            assignments,
+                            cluster_col = "Cluster",
+                            new_col     = "CellType",
+                            other       = NULL) {
+  lookup <- setNames(
+    rep(names(assignments), lengths(assignments)),
+    unlist(assignments, use.names = FALSE)
+  )
+  result <- unname(lookup[as.character(object@meta.data[[cluster_col]])])
+  if (!is.null(other)) result[is.na(result)] <- other
+  object[[new_col]] <- result
+  object
+}
+
+# ---------------------------------------------------------------------------
+# .prep_rcm_markers()
+# Normalise a marker table to the columns rcellmarker::cellMarker(type="seurat")
+# requires: gene, cluster, avg_log2FC, p_val_adj.
+#
+# cellMarker filters `avg_log2FC >= weight & p_val_adj < padj`, so those four
+# columns MUST exist or it errors. presto / wilcoxauc output names them
+# differently (feature, group, logFC, padj), so we translate.
+#
+# Strategy (mirrors the proven manual recipe of mapping logFC -> avg_log2FC):
+#   1. Already has all four required columns -> use as-is (Seurat format).
+#   2. Standard presto/wilcoxauc 10-column layout -> rename POSITIONALLY, exactly
+#      like the working hand recipe (logFC becomes avg_log2FC, auc stays auc).
+#   3. Otherwise -> best-effort rename by known aliases, then fall back to auc
+#      for the fold-change column if logFC is absent.
+# ---------------------------------------------------------------------------
+.prep_rcm_markers <- function(markers) {
+  m  <- as.data.frame(markers)
+  cn <- colnames(m)
+  required <- c("gene", "cluster", "avg_log2FC", "p_val_adj")
+
+  # (1) Already correct
+  if (all(required %in% cn)) return(m)
+
+  # (2) presto / wilcoxauc layout -> rename POSITIONALLY (exactly like the proven
+  # hand recipe). presto always has these 10 columns in this order; Seurat output
+  # has 7, so a 10-column table that isn't already in target format is presto.
+  presto_cols <- c("feature", "group", "avgExpr", "logFC", "statistic",
+                   "auc", "pval", "padj", "pct_in", "pct_out")
+  if (ncol(m) == length(presto_cols)) {
+    colnames(m) <- c("gene", "cluster", "avgExpr", "avg_log2FC", "statistic",
+                     "auc", "pval", "p_val_adj", "pct_in", "pct_out")
+    return(m)
+  }
+
+  # (3) Best-effort alias remap
+  alias <- c(feature = "gene", group = "cluster",
+             logFC = "avg_log2FC", avg_logFC = "avg_log2FC",
+             padj = "p_val_adj", p_val.adj = "p_val_adj")
+  for (from in names(alias)) {
+    to <- alias[[from]]
+    if (from %in% colnames(m) && !to %in% colnames(m))
+      colnames(m)[colnames(m) == from] <- to
+  }
+  # Fold-change fallback: use auc if no log fold change is available
+  if (!"avg_log2FC" %in% colnames(m) && "auc" %in% colnames(m))
+    m$avg_log2FC <- m$auc
+
+  m
+}
 
 # ---------------------------------------------------------------------------
 # .sctype_gene_sets_prepare()
@@ -115,7 +216,7 @@
   cache_file <- file.path(cache_dir, "ScTypeDB_full.xlsx")
 
   if (!file.exists(cache_file)) {
-    message("ScTypeDB_full.xlsx not found — downloading to user cache ",
+    message("ScTypeDB_full.xlsx not found - downloading to user cache ",
             "(one-time setup)...")
     dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
     url <- paste0("https://raw.githubusercontent.com/",
@@ -180,23 +281,23 @@
 #'   bundled `ScTypeDB_full.xlsx`. Combine multiple types for broader coverage.
 #'   All valid values (from the bundled database):
 #'   \itemize{
-#'     \item `"Adrenal"` — adrenal gland
-#'     \item `"Brain"` — cerebral cortex, broad neuronal/glial types
-#'     \item `"Eye"` — retinal and eye-specific cell types
-#'     \item `"Heart"` — cardiac cell types
-#'     \item `"Hippocampus"` — hippocampal-specific subtypes (use with `"Brain"`
+#'     \item `"Adrenal"` - adrenal gland
+#'     \item `"Brain"` - cerebral cortex, broad neuronal/glial types
+#'     \item `"Eye"` - retinal and eye-specific cell types
+#'     \item `"Heart"` - cardiac cell types
+#'     \item `"Hippocampus"` - hippocampal-specific subtypes (use with `"Brain"`
 #'       for combined brain data)
-#'     \item `"Immune system"` — broad immune cells: T, B, NK, myeloid, etc.
-#'     \item `"Intestine"` — intestinal epithelial and stromal types
-#'     \item `"Kidney"` — renal cell types
-#'     \item `"Liver"` — hepatocytes, Kupffer cells, stellate cells
-#'     \item `"Lung"` — airway epithelium, alveolar cells, immune
-#'     \item `"Muscle"` — skeletal and smooth muscle
-#'     \item `"Pancreas"` — islet and exocrine types
-#'     \item `"Placenta"` — trophoblast and decidual types
-#'     \item `"Spleen"` — splenic immune populations
-#'     \item `"Stomach"` — gastric epithelial types
-#'     \item `"Thymus"` — thymocyte and thymic stromal types
+#'     \item `"Immune system"` - broad immune cells: T, B, NK, myeloid, etc.
+#'     \item `"Intestine"` - intestinal epithelial and stromal types
+#'     \item `"Kidney"` - renal cell types
+#'     \item `"Liver"` - hepatocytes, Kupffer cells, stellate cells
+#'     \item `"Lung"` - airway epithelium, alveolar cells, immune
+#'     \item `"Muscle"` - skeletal and smooth muscle
+#'     \item `"Pancreas"` - islet and exocrine types
+#'     \item `"Placenta"` - trophoblast and decidual types
+#'     \item `"Spleen"` - splenic immune populations
+#'     \item `"Stomach"` - gastric epithelial types
+#'     \item `"Thymus"` - thymocyte and thymic stromal types
 #'   }
 #'   Recommended combinations: `c("Brain", "Hippocampus")` for brain snRNAseq;
 #'   `c("Immune system", "Spleen")` for immune-rich tissues;
@@ -204,13 +305,13 @@
 #' @param sctype_assay Character. Seurat assay to use for scoring.
 #'   Must contain a `scale.data` (scaled) layer. Common choices:
 #'   \itemize{
-#'     \item `"RNA"` — standard full assay (default); use `sctype_layer = "scale.data"`
-#'     \item `"sketch"` — BPCells sketch assay for large datasets; use
+#'     \item `"RNA"` - standard full assay (default); use `sctype_layer = "scale.data"`
+#'     \item `"sketch"` - BPCells sketch assay for large datasets; use
 #'       `sctype_layer = "scale.data"` after `ScaleData()` on the sketch
 #'   }
 #' @param sctype_layer Character. Layer within `sctype_assay` that holds
 #'   scaled expression values. Default `"scale.data"`. Must be a scaled
-#'   (mean-centred) matrix — scType scores are not meaningful on raw counts.
+#'   (mean-centred) matrix - scType scores are not meaningful on raw counts.
 #' @param sctype_db Character or `NULL`. Path to a `ScTypeDB_full.xlsx`
 #'   database file. `NULL` (default) uses the copy bundled in
 #'   `inst/extdata/ScTypeDB_full.xlsx`; if that is missing it is downloaded
@@ -262,18 +363,18 @@
 #'
 #'   **`Type` values in the bundled `Markers.csv`:**
 #'   \itemize{
-#'     \item `"Brain Stroma"` — Astrocytes, Oligodendrocytes, OPC, Microglia,
+#'     \item `"Brain Stroma"` - Astrocytes, Oligodendrocytes, OPC, Microglia,
 #'       Endothelial, Pericytes, Neurons (excitatory, inhibitory, dopaminergic,
 #'       glutamatergic, serotonergic), VLMC, and stem/progenitor types
-#'     \item `"Lymphocytes"` — T cells (naive, cytotoxic, Th1/2/17, Treg,
+#'     \item `"Lymphocytes"` - T cells (naive, cytotoxic, Th1/2/17, Treg,
 #'       exhausted, MAIT, GDT), B cells, NK cells
-#'     \item `"Monocytes"` — CD14/CD16 monocytes, MDSCs
-#'     \item `"Macrophages"` — tissue macrophages
-#'     \item `"Dendritic cells"` — cDC1, cDC2, pDCs, LAMP3+ DCs
-#'     \item `"Granulocytes"` — neutrophils, basophils, mast cells
-#'     \item `"Bone Marrow Derived"` — BMD immune cells
-#'     \item `"All"` — proliferating cells (Prol)
-#'     \item `"Tumor"` — generic tumor marker
+#'     \item `"Monocytes"` - CD14/CD16 monocytes, MDSCs
+#'     \item `"Macrophages"` - tissue macrophages
+#'     \item `"Dendritic cells"` - cDC1, cDC2, pDCs, LAMP3+ DCs
+#'     \item `"Granulocytes"` - neutrophils, basophils, mast cells
+#'     \item `"Bone Marrow Derived"` - BMD immune cells
+#'     \item `"All"` - proliferating cells (Prol)
+#'     \item `"Tumor"` - generic tumor marker
 #'   }
 #'
 #'   Example for brain snRNAseq with separate immune panel:
@@ -350,7 +451,8 @@ CellTypeAssignmentHelper <- function(
 ) {
 
   # Walk up to PrepObject-stored defaults
-  output_dir  <- output_dir %||% .nk_setting(seurat_object, "output_dir")
+  output_dir  <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
   if (is.null(output_dir))
@@ -384,33 +486,68 @@ CellTypeAssignmentHelper <- function(
   rcm_cols <- NULL
   if (run_rcellmarker) {
     if (!requireNamespace("rcellmarker", quietly = TRUE)) {
-      warning("Package 'rcellmarker' not installed — skipping rcellmarker.")
+      warning("Package 'rcellmarker' not installed - skipping rcellmarker.")
       run_rcellmarker <- FALSE
+    } else if (!"package:rcellmarker" %in% search()) {
+      # cellMarker() looks up its lazy-loaded reference data (humancells /
+      # mousecells / ratcells) by bare name, which only resolves when the
+      # package is ATTACHED. Under `::` alone the lookup fails and cellMarker
+      # returns nothing, later erroring with "object 'Padj' not found".
+      # Attach it for this call and detach again on exit to stay tidy.
+      suppressPackageStartupMessages(
+        require("rcellmarker", quietly = TRUE, character.only = TRUE))
+      on.exit(try(detach("package:rcellmarker"), silent = TRUE), add = TRUE)
     }
   }
 
   if (run_rcellmarker) {
     message("Running rcellmarker...")
     tryCatch({
-      # Map presto/wilcoxauc columns to the names rcellmarker expects
-      m_rcm <- markers
-      col_map <- c(feature = "gene", group = "cluster", mean = "avgExpr",
-                   auc = "avg_log2FC", pvalue = "pval", padj = "p_val_adj",
-                   pct_in = "pct_in", pct_out = "pct_out")
-      for (from in names(col_map)) {
-        to <- col_map[[from]]
-        if (from %in% colnames(m_rcm) && !to %in% colnames(m_rcm))
-          colnames(m_rcm)[colnames(m_rcm) == from] <- to
-      }
+      # Normalise marker columns to what cellMarker(type="seurat") needs:
+      # gene, cluster, avg_log2FC, p_val_adj (handles presto/wilcoxauc + Seurat).
+      m_rcm <- .prep_rcm_markers(markers)
+      missing_req <- setdiff(c("gene", "cluster", "avg_log2FC", "p_val_adj"),
+                             colnames(m_rcm))
+      if (length(missing_req) > 0)
+        stop("markers table is missing the column(s) cellMarker needs: ",
+             paste(missing_req, collapse = ", "),
+             ". Provide presto/wilcoxauc output, Seurat FindAllMarkers output, ",
+             "or a table whose columns can be mapped to gene/cluster/",
+             "avg_log2FC/p_val_adj.")
+
       res_rcm <- rcellmarker::cellMarker(m_rcm, type = "seurat", species = species,
                                          topn = 1, keytype = "SYMBOL", weight = 0,
                                          padj = 0.05, tissue = NULL, minSize = 2)
       if (!is.null(res_rcm)) {
-        xxy  <- res_rcm$cellType
-        names(xxy) <- res_rcm$cluster
-        xxy2 <- xxy[as.character(seurat_object@meta.data[[cluster_column]])]
+        # rcellmarker can return several significant cellTypes for one cluster
+        # (even at topn = 1). Keep the FIRST (top-ranked) per cluster so the
+        # cluster->label map has unique names; otherwise xxy[cluster] silently
+        # picks an arbitrary match.
+        rcm_ct  <- as.character(res_rcm$cellType)
+        rcm_cl  <- as.character(res_rcm$cluster)
+        keep1   <- !duplicated(rcm_cl)
+        xxy     <- stats::setNames(rcm_ct[keep1], rcm_cl[keep1])
+
+        clusters_chr <- as.character(seurat_object@meta.data[[cluster_column]])
+        xxy2 <- xxy[clusters_chr]
         names(xxy2) <- rownames(seurat_object@meta.data)
-        seurat_object$rcellmarker_CellType <- factor(xxy2)
+
+        # Diagnose a cluster-id mismatch (markers' cluster values not matching
+        # the object's cluster_column) - otherwise the column is silently all-NA.
+        if (all(is.na(xxy2))) {
+          warning("rcellmarker: no cluster IDs matched between the markers ",
+                  "table and '", cluster_column, "' - rcellmarker_CellType ",
+                  "would be empty. Check that `markers` was computed on the ",
+                  "same clustering. Skipping rcellmarker.", call. = FALSE)
+          run_rcellmarker <- FALSE
+        } else {
+          if (anyNA(xxy2))
+            message("  rcellmarker: ", sum(is.na(xxy2)),
+                    " cell(s) in unmatched clusters left unlabeled.")
+          seurat_object$rcellmarker_CellType <- factor(xxy2)
+        }
+      }
+      if (run_rcellmarker && !is.null(res_rcm)) {
         rcm_lvls <- levels(seurat_object$rcellmarker_CellType)
         rcm_cols <- stats::setNames(
           Nour_pal(if (length(rcm_lvls) <= 18L) "all" else "spectrum")(length(rcm_lvls)),
@@ -420,7 +557,7 @@ CellTypeAssignmentHelper <- function(
         run_rcellmarker <- FALSE
       }
     }, error = function(e) {
-      warning("rcellmarker failed: ", conditionMessage(e), " — skipping.")
+      warning("rcellmarker failed: ", conditionMessage(e), " - skipping.")
       run_rcellmarker <<- FALSE
     })
   }
@@ -541,7 +678,7 @@ CellTypeAssignmentHelper <- function(
     for (pkg in c("SingleR", "scuttle", "celldex", "SingleCellExperiment")) {
       if (!requireNamespace(pkg, quietly = TRUE)) {
         warning("Package '", pkg,
-                "' not installed — skipping SingleR. Install from Bioconductor.")
+                "' not installed - skipping SingleR. Install from Bioconductor.")
         run_singler <- FALSE
         break
       }
@@ -564,7 +701,7 @@ CellTypeAssignmentHelper <- function(
         eval(parse(text = paste0(fn_name, "()"))),
         error = function(e) {
           warning("Could not load SingleR reference '", singler_ref,
-                  "': ", conditionMessage(e), " — falling back to BlueprintEncodeData.")
+                  "': ", conditionMessage(e), " - falling back to BlueprintEncodeData.")
           tryCatch(celldex::BlueprintEncodeData(), error = function(e2) NULL)
         }
       )
@@ -575,14 +712,14 @@ CellTypeAssignmentHelper <- function(
       # Seurat::as.SingleCellExperiment() attaches ALL assays as altExps,
       # which fails when different assays have different numbers of cells
       # (e.g. a full RNA assay + a 50k sketch assay in the same object).
-      # We need only the normalised RNA counts for SingleR, so we create
+      # We need only the normalized RNA counts for SingleR, so we create
       # the SCE manually and avoid the altExp dimension mismatch entirely.
       expr_singler <- tryCatch(
         .get_layer_data(seurat_object, assay = "RNA", layer = "data"),
         error = function(e) NULL
       )
       if (is.null(expr_singler)) {
-        warning("Could not extract RNA data layer for SingleR — skipping.")
+        warning("Could not extract RNA data layer for SingleR - skipping.")
         run_singler <- FALSE
       }
 
@@ -612,14 +749,14 @@ CellTypeAssignmentHelper <- function(
         if (!is.null(anno)) {
           sr_assign        <- anno$labels
           names(sr_assign) <- rownames(anno)
-          seurat_object[[singler_col]] <- as.character(sr_assign[seurat_object@meta.data[[cluster_column]]])
+          seurat_object@meta.data[[singler_col]] <- as.character(sr_assign[seurat_object@meta.data[[cluster_column]]])
 
           # Number the labels: 01.CellType, 02.CellType …
-          lvls   <- levels(as.factor(seurat_object[[singler_col]]))
+          lvls   <- levels(as.factor(seurat_object@meta.data[[singler_col]]))
           labels <- paste0(sprintf("%02d", seq_along(lvls)), ".", lvls)
           names(labels) <- lvls
-          seurat_object[[singler_col]] <- factor(
-            as.character(labels[seurat_object[[singler_col]]]))
+          seurat_object@meta.data[[singler_col]] <- factor(
+            as.character(labels[seurat_object@meta.data[[singler_col]]]))
 
           mycols_sr <- c(
             "#0D47A1","#3F81BD","#0F6FC6","#009DD9","#1B587C","#4BACC6",
@@ -627,27 +764,35 @@ CellTypeAssignmentHelper <- function(
             "#E65100","#FD817E","#FD625E","#C00000","#8872C4","#9B57D3",
             "#9030A0","#300890")
           singler_cols_out <- grDevices::colorRampPalette(mycols_sr)(
-            length(levels(seurat_object[[singler_col]])))
-          names(singler_cols_out) <- levels(seurat_object[[singler_col]])
+            length(levels(seurat_object@meta.data[[singler_col]])))
+          names(singler_cols_out) <- levels(seurat_object@meta.data[[singler_col]])
           cols_out$singler <- singler_cols_out
 
-          # Abbreviated numeric DimPlot
-          xx <- Seurat::DimPlot(seurat_object, reduction = reduction,
-                                group.by = singler_col, label = FALSE,
-                                cols = singler_cols_out, label.size = 7) +
-            ggplot2::guides(colour = ggplot2::guide_legend(
-              override.aes = list(size = 5), ncol = 2,
-              title.theme = ggplot2::element_text(size = 15, face = "bold"),
-              title.position = "top",
-              label.theme  = ggplot2::element_text(size = 10)))
+          # Abbreviated numeric DimPlot. Wrapped so a plotting failure cannot
+          # discard the SingleR column already written above - the panel is
+          # simply skipped (p_singler stays NULL, guarded at assembly time).
+          p_singler <- tryCatch({
+            xx <- Seurat::DimPlot(seurat_object, reduction = reduction,
+                                  group.by = singler_col, label = FALSE,
+                                  cols = singler_cols_out, label.size = 7) +
+              ggplot2::guides(colour = ggplot2::guide_legend(
+                override.aes = list(size = 5), ncol = 2,
+                title.theme = ggplot2::element_text(size = 15, face = "bold"),
+                title.position = "top",
+                label.theme  = ggplot2::element_text(size = 10)))
 
-          num_labels        <- sprintf("%02d", seq_along(lvls))
-          names(num_labels) <- labels   # labels are already "01.X", "02.X"…
-          xx[[1]][["data"]][["Label"]] <- factor(
-            num_labels[xx[[1]][["data"]][[singler_col]]])
+            num_labels        <- sprintf("%02d", seq_along(lvls))
+            names(num_labels) <- labels   # labels are already "01.X", "02.X"…
+            # Index by character (not the factor itself - that would use the
+            # factor's integer codes and mislabel the panel).
+            xx[[1]][["data"]][["Label"]] <- factor(
+              num_labels[as.character(xx[[1]][["data"]][[singler_col]])])
 
-          p_singler <- Seurat::LabelClusters(
-            plot = xx, id = "Label", repel = FALSE)
+            Seurat::LabelClusters(plot = xx, id = "Label", repel = FALSE)
+          }, error = function(e) {
+            warning("SingleR panel could not be drawn: ", conditionMessage(e))
+            NULL
+          })
         } else { run_singler <- FALSE }
       } else { run_singler <- FALSE }
     } else { run_singler <- FALSE }
@@ -734,7 +879,7 @@ CellTypeAssignmentHelper <- function(
     } else markers_csv
 
     if (!nzchar(csv_path) || !file.exists(csv_path)) {
-      warning("Markers CSV not found — skipping canonical-marker dotplots.")
+      warning("Markers CSV not found - skipping canonical-marker dotplots.")
     } else {
       mdf_all <- utils::read.csv(csv_path, stringsAsFactors = FALSE)
 
@@ -747,7 +892,7 @@ CellTypeAssignmentHelper <- function(
 
       if (!gene_col_csv %in% colnames(mdf_all)) {
         warning("Column '", gene_col_csv,
-                "' not found in markers CSV — skipping canonical dotplots.")
+                "' not found in markers CSV - skipping canonical dotplots.")
       } else {
         # Determine groups
         groups_to_plot <- if (!is.null(marker_groups)) {

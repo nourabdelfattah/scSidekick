@@ -90,15 +90,15 @@ in each gene set. Default \code{20}.}
 \item{gene_set_library}{Character or \code{NULL}. MSigDB collection code (Mode 3
 or 4). Common options:
 \itemize{
-\item \code{"H"} — Hallmark (50 coherent biological processes)
-\item \code{"C2"} — Curated: canonical pathways (combine with
+\item \code{"H"} - Hallmark (50 coherent biological processes)
+\item \code{"C2"} - Curated: canonical pathways (combine with
 \code{gene_set_subcategory = "CP:KEGG"}, \code{"CP:REACTOME"},
 \code{"CP:WIKIPATHWAYS"}, \code{"CP:BIOCARTA"}, \code{"CP:PID"})
-\item \code{"C5"} — Gene Ontology (\code{subcategory = "GO:BP"},
+\item \code{"C5"} - Gene Ontology (\code{subcategory = "GO:BP"},
 \code{"GO:MF"}, \code{"GO:CC"})
-\item \code{"C6"} — Oncogenic signatures
-\item \code{"C7"} — Immunologic signatures (IMMUNESIGDB)
-\item \code{"C8"} — Cell-type signatures
+\item \code{"C6"} - Oncogenic signatures
+\item \code{"C7"} - Immunologic signatures (IMMUNESIGDB)
+\item \code{"C8"} - Cell-type signatures
 }
 \code{NULL} fetches all collections (slow; use with \code{search_terms}).}
 
@@ -108,18 +108,18 @@ Default \code{NULL} (entire collection).}
 \item{search_terms}{Search filter applied to MSigDB gene-set names (case-
 insensitive, regex). Accepts two forms:
 
-\strong{Character vector — OR search.} Any gene set whose name matches at least
+\strong{Character vector - OR search.} Any gene set whose name matches at least
 one term is kept: \code{search_terms = c("APOPTOSIS", "CELL_DEATH")}.
 
-\strong{List of character vectors — AND/OR search.} Each list element is an
+\strong{List of character vectors - AND/OR search.} Each list element is an
 AND-group: all terms in that element must appear in the same pathway name
 (order and separation do not matter). Results are the union (OR) across
 AND-groups. Examples:
 \itemize{
-\item \code{list(c("T_CELL", "ACTIVATION"))} — both words in same name
-\item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} — previous OR APOPTOSIS
+\item \code{list(c("T_CELL", "ACTIVATION"))} - both words in same name
+\item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} - previous OR APOPTOSIS
 \item \code{list(c("T_CELL","ACTIVATION"), c("B_CELL","DIFFERENTIATION"))}
-— two independent AND-groups, union of results
+- two independent AND-groups, union of results
 }
 \code{NULL} (default) keeps all gene sets in the fetched collection.}
 
@@ -128,8 +128,8 @@ AND-groups. Examples:
 mouse datasets. See \code{msigdbr::msigdbr_species()} for all supported species.}
 
 \item{downsample}{Integer or \code{NULL}. Maximum cells per \code{group.by} identity
-to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} — downsampling to
-500–2000 cells per group dramatically reduces runtime with minimal loss of
+to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} - downsampling to
+500-2000 cells per group dramatically reduces runtime with minimal loss of
 group-level signal. \code{NULL} uses all cells. Default \code{NULL}.}
 
 \item{min.size}{Integer. Minimum gene-set size after intersecting with the
@@ -162,7 +162,7 @@ pathways pass the threshold. If \code{FALSE}, all pathways are shown. Default
 
 \item{add_to_object}{Logical. If \code{FALSE} (default), returns the enrichment
 scores data frame invisibly and does not modify the Seurat object (scores
-are saved to CSV only — recommended for large datasets to avoid metadata
+are saved to CSV only - recommended for large datasets to avoid metadata
 bloat). If \code{TRUE}, adds one metadata column per gene set to \code{seurat_object@meta.data}
 and returns the modified Seurat object. When \code{downsample} is also set, cells
 not included in the downsampled scoring set receive \code{NA}.}
@@ -185,13 +185,13 @@ metadata column per gene set.
 
 \strong{Files saved to \code{output_dir}:}
 \itemize{
-\item \verb{<prefix> ssGSEA_scores.csv} — per-cell enrichment scores + group
+\item \verb{<prefix> ssGSEA_scores.csv} - per-cell enrichment scores + group
 labels
-\item \verb{<prefix> ssGSEA_significance.csv} — per-pathway significance
+\item \verb{<prefix> ssGSEA_significance.csv} - per-pathway significance
 (pooled across all cells)
-\item \verb{<prefix> ssGSEA_significance_by_<split.by>.csv} — per-pathway
+\item \verb{<prefix> ssGSEA_significance_by_<split.by>.csv} - per-pathway
 significance within each \code{split.by} level (only when \code{split.by} is set)
-\item \verb{<prefix> ssGSEA heatmap.pdf} — ComplexHeatmap of mean z-scored
+\item \verb{<prefix> ssGSEA heatmap.pdf} - ComplexHeatmap of mean z-scored
 enrichment per group
 }
 }
@@ -213,25 +213,25 @@ more rigorous.
 \section{Gene-set input (choose exactly one mode)}{
 
 
-\strong{Mode 1 — pre-built named list}
+\strong{Mode 1 - pre-built named list}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gene_sets = list(SetA = c("GENE1", "GENE2"), SetB = c("GENE3"))
 }\if{html}{\out{</div>}}
 
-\strong{Mode 2 — DEG data frame}\cr
+\strong{Mode 2 - DEG data frame}\cr
 Converts a marker/DEG table into one gene set per group. The \code{deg_group_column}
 argument can name \strong{one column} (simple group, e.g. \code{"celltype"}) or \strong{two
 columns} (e.g. \code{c("celltype", "cytokine")}). When two columns are supplied,
 gene set names are built as \code{"celltype__NKSEP__cytokine"} internally and the
 heatmap rows are automatically split by the first column (celltype).
 
-\strong{Mode 3 — MSigDB collection}
+\strong{Mode 3 - MSigDB collection}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gene_set_library = "H"                        # Hallmark
 gene_set_library = "C2", gene_set_subcategory = "CP:KEGG"
 }\if{html}{\out{</div>}}
 
-\strong{Mode 4 — MSigDB term search} (fetch all gene sets matching a pattern)
+\strong{Mode 4 - MSigDB term search} (fetch all gene sets matching a pattern)
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{search_terms = c("CELL_DEATH", "APOPTOSIS")
 # optionally restrict to a collection:

@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Cell-Cell Communication: RunCellChat & CompareCellChat"
+title: "scSidekick - Cell-Cell Communication: RunCellChat & CompareCellChat"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,10 +19,10 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE, message = FALSE, warning = FALS
 scSidekick wraps CellChat to provide a streamlined, reproducible cell-cell
 communication workflow. Two functions cover the full analysis:
 
-- **`RunCellChat()`** — runs the complete CellChat pipeline for each level of
+- **`RunCellChat()`** - runs the complete CellChat pipeline for each level of
   a grouping variable (e.g. one CellChat object per condition) and saves
   summary figures.
-- **`CompareCellChat()`** — takes a list of pre-computed CellChat objects and
+- **`CompareCellChat()`** - takes a list of pre-computed CellChat objects and
   generates comparative plots (interaction count differences, chord diagrams,
   pathway-level comparisons).
 
@@ -173,6 +173,18 @@ For each level of `group.by`, `RunCellChat()` saves the following files to
 `CompareCellChat()` takes a named list of CellChat objects (one per condition)
 and generates comparative visualizations side by side.
 
+> **Pain point fixed.** Two things go wrong natively. (1) When a signalling
+> pathway is detected in one cohort but absent in another, the per-pathway plot
+> **errors on the cohorts that lack it**, so those panels are silently dropped
+> and the *absence* (often the whole point) becomes invisible. (2) Each object
+> draws its cell groups in its **own colours and order**, so panels aren't
+> comparable position-for-position. `CompareCellChat()` puts **every** cohort on
+> one shared node layout with the **same colours and the same group order in
+> every panel**, for every pathway present in *any* object - so you compare
+> apples to apples. Use `thresh = 1` to also compare pathways that are active at
+> the ligand-receptor level but didn't reach pathway-level significance in some
+> cohorts.
+
 ### 1. Basic comparison
 
 ```{r compare-basic, eval=FALSE}
@@ -240,7 +252,7 @@ CompareCellChat(
 
 ---
 
-## Parameter reference — `RunCellChat`
+## Parameter reference - `RunCellChat`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -254,7 +266,7 @@ CompareCellChat(
 | `resume` | logical | `FALSE` | Skip groups with existing `.rds` files |
 | `run.patterns` | logical | `TRUE` | Run communication pattern NMF analysis |
 
-## Parameter reference — `CompareCellChat`
+## Parameter reference - `CompareCellChat`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -270,9 +282,9 @@ CompareCellChat(
 
 ## See also
 
-- Vignette 01: `PrepObject` — register cell-type colors used in chord diagrams
-- Vignette 06: `CellTypeAssignmentHelper` — assign cell types before CellChat
-- Vignette 08: `RunGSEA` — pathway-level analysis complementary to CellChat
+- Vignette 01: `PrepObject` - register cell-type colors used in chord diagrams
+- Vignette 06: `CellTypeAssignmentHelper` - assign cell types before CellChat
+- Vignette 08: `RunGSEA` - pathway-level analysis complementary to CellChat
 
 ---
 

@@ -49,7 +49,7 @@ or \code{"scale"}.}
 
 \item{pct_cutoff}{For \code{plot_mode = "intersection"}: the fraction of
 the gene list a cell must express to count as co-expressing.  Default
-\code{0.3} (i.e. ≥30 \\% of genes).}
+\code{0.3} (i.e. >= 30\% of genes).}
 
 \item{intersection_label}{Label shown in the legend for co-expressing cells.
 Default \code{"Co-expressing"}.}

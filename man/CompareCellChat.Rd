@@ -35,7 +35,7 @@ broader categories for chord group aggregation. Names must match
 interactions when drawing circle, chord, and heatmap plots. Default \code{0.05}
 (matches CellChat's standard significance filter). Set \code{thresh = 1} to
 display \strong{all} predicted interactions regardless of statistical
-significance — this is essential for comparing pathways that are active
+significance - this is essential for comparing pathways that are active
 in some conditions but did not reach pathway-level significance in others
 (i.e. the pathway is in \code{cc@net$prob} but not in \code{cc@netP$pathways}).
 Internally, all visualisations use the bundled \code{netVisual_aggregate2}-style

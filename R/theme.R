@@ -2,7 +2,7 @@
 # scSidekick custom ggplot2 theme
 # theme_NourMin: clean minimal theme with light panel borders and no gridlines.
 # This is the canonical name for what appears as theme_min2() in analysis
-# scripts — they are identical.
+# scripts - they are identical.
 # =============================================================================
 
 #' scSidekick minimal ggplot2 theme
@@ -10,7 +10,7 @@
 #' A clean, publication-ready theme built on [ggplot2::theme_light()].
 #' Features: no gridlines, light grey panel borders, centered titles,
 #' transparent strip backgrounds, and compact margins. Use this instead of
-#' `theme_min2()` from analysis scripts — they are identical.
+#' `theme_min2()` from analysis scripts - they are identical.
 #'
 #' @param base_size Base font size in points. Default `11`.
 #' @param base_family Base font family. Default `""` (system default).

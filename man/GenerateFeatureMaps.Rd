@@ -12,7 +12,7 @@ GenerateFeatureMaps(
   features,
   layout_method = "auto",
   split.by = NULL,
-  row_var = NULL,
+  row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
   output_dir = NULL,
@@ -20,13 +20,14 @@ GenerateFeatureMaps(
   subset_name = "",
   order = TRUE,
   label = FALSE,
-  label_by = NULL,
+  label.by = NULL,
   label_colors = NULL,
   repel = FALSE,
   label.size = 2,
   pt.size = 0.001,
   add_boxplot = FALSE,
   plot_type = "violin",
+  alpha = 0.7,
   ref_group = NULL,
   comparisons = NULL,
   group_colors = NULL,
@@ -41,7 +42,7 @@ PlotFeaturePlots(
   features,
   layout_method = "auto",
   split.by = NULL,
-  row_var = NULL,
+  row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
   output_dir = NULL,
@@ -49,13 +50,14 @@ PlotFeaturePlots(
   subset_name = "",
   order = TRUE,
   label = FALSE,
-  label_by = NULL,
+  label.by = NULL,
   label_colors = NULL,
   repel = FALSE,
   label.size = 2,
   pt.size = 0.001,
   add_boxplot = FALSE,
   plot_type = "violin",
+  alpha = 0.7,
   ref_group = NULL,
   comparisons = NULL,
   group_colors = NULL,
@@ -74,11 +76,11 @@ PlotFeaturePlots(
 \item{features}{Character vector of gene names to plot.}
 
 \item{layout_method}{Character. \code{"auto"} (default) or \code{"metadata"}. In
-\code{"metadata"} mode \code{row_var} must be specified.}
+\code{"metadata"} mode \code{row.by} must be specified.}
 
 \item{split.by}{Character. Metadata column to split UMAP panels by.}
 
-\item{row_var}{Character or \code{NULL}. In \code{"metadata"} layout, the metadata
+\item{row.by}{Character or \code{NULL}. In \code{"metadata"} layout, the metadata
 column whose levels define the rows of the grid.}
 
 \item{colors}{Character vector. Color gradient from low to high expression.}
@@ -96,9 +98,9 @@ Default \code{""}.}
 \item{label}{Logical. Overlay cell-type / cluster labels on UMAP panels.
 Default \code{FALSE}.}
 
-\item{label_by}{Character. Metadata column to use for labels.  If \code{NULL}
+\item{label.by}{Character. Metadata column to use for labels.  If \code{NULL}
 (default) and \code{label = TRUE}, labels are drawn using \code{Seurat::Idents()}.
-Accepts \strong{any} metadata column — avoids Seurat's ident-order problem and
+Accepts \strong{any} metadata column - avoids Seurat's ident-order problem and
 the error that occurs when a column is literally named \code{"idents"}.}
 
 \item{label_colors}{Named character vector mapping each label value to a
@@ -146,7 +148,7 @@ strips legends from individual panels, and attaches a single shared legend.
 \details{
 When \code{add_boxplot = TRUE} a violin/box plot column is appended to the right
 of the UMAP grid.  In \code{"metadata"} layout each row gets its own boxplot
-(cells from that \code{row_var} level only); in \code{"auto"} layout a single boxplot
+(cells from that \code{row.by} level only); in \code{"auto"} layout a single boxplot
 covers all cells.  Pairwise Wilcoxon tests are computed with BH correction
 and displayed as brackets: significant comparisons in black, \code{ns} in grey.
 

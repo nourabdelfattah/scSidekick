@@ -43,8 +43,8 @@ doublet and miQC barplots (e.g. \code{"orig.ident"}). \code{NULL} uses
 \item{species}{Character. Controls the default mitochondrial and ribosomal
 gene patterns. One of:
 \itemize{
-\item \code{"human"} — \code{mt_pattern = "^MT-"}, \code{ribo_pattern = "^RP[LS]"}
-\item \code{"mouse"} — \code{mt_pattern = "^mt-"}, \code{ribo_pattern = "^Rp[ls]"}
+\item \code{"human"} - \code{mt_pattern = "^MT-"}, \code{ribo_pattern = "^RP[LS]"}
+\item \code{"mouse"} - \code{mt_pattern = "^mt-"}, \code{ribo_pattern = "^Rp[ls]"}
 }}
 
 \item{mt_pattern}{Character or \code{NULL}. Override the mitochondrial gene
@@ -79,12 +79,12 @@ The modified Seurat object with \code{mitoRatio}, \code{riboRatio}, and
 Adds \code{mitoRatio}, \code{riboRatio}, and \code{log10GenesPerUMI} to the object, then
 saves four PDFs:
 \enumerate{
-\item \strong{Doublet barplot} — cells per sample coloured by \code{DoubletStatus}
+\item \strong{Doublet barplot} - cells per sample coloured by \code{DoubletStatus}
 (only if that column exists from \code{SCP::db_scDblFinder}).
-\item \strong{miQC keep barplot} — cells per sample coloured by \code{miQC.keep}
+\item \strong{miQC keep barplot} - cells per sample coloured by \code{miQC.keep}
 (only if that column exists from \code{SeuratWrappers::RunMiQC}).
-\item \strong{QC density + violin plots} — four metrics side-by-side with
+\item \strong{QC density + violin plots} - four metrics side-by-side with
 user-defined cutoff guidelines.
-\item \strong{Cell count barplot} — cells per sample before any filtering.
+\item \strong{Cell count barplot} - cells per sample before any filtering.
 }
 }

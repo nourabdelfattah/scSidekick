@@ -1,0 +1,212 @@
+---
+title: "scSidekick - Large Datasets: BPCells, Sketch & Pseudobulk"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{scSidekick - Large Datasets: BPCells, Sketch & Pseudobulk}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 8,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Atlas-scale objects (hundreds of thousands to millions of cells) break the
+usual "load everything into memory" assumption. scSidekick is built to scale in
+two complementary ways:
+
+1. **Streaming heavy functions** - feature plots, pseudobulk aggregation, and
+   pathway scoring read [BPCells](https://bnprks.github.io/BPCells/) /
+   on-disk and `Sketch` assays *lazily*. Only the genes (or cells) you ask for
+   are pulled off disk, so the same one-liners run on a 2-million-cell object
+   without materialising it.
+2. **Aggregating to a tractable unit** - collapse millions of cells to
+   per-sample pseudobulk profiles, then analyse those with fast, robust,
+   sample-level statistics.
+
+```{r pkgs}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+```
+
+```{r data, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- NormalizeData(bmcite, verbose = FALSE)
+bmcite <- FindVariableFeatures(bmcite, verbose = FALSE)
+bmcite <- PrepObject(bmcite,
+  variables   = c("donor", "celltype.l1"),
+  group.by    = "celltype.l1",
+  object_name = "bmcite")
+```
+
+---
+
+## 1. BPCells & on-disk assays
+
+With a BPCells-backed object the count matrix lives on disk, not in RAM.
+scSidekick's plotting and aggregation functions detect the lazy matrix and
+**stream** through it - they subset the requested rows *before* materialising,
+so memory stays flat regardless of object size.
+
+```{r bpcells, eval=FALSE}
+library(BPCells)
+
+# Write a 10x matrix to a BPCells on-disk directory (once):
+mat <- open_matrix_10x_hdf5("filtered_feature_bc_matrix.h5")
+write_matrix_dir(mat, dir = "bp_counts")
+
+# Build a Seurat object whose counts are the on-disk matrix:
+counts <- open_matrix_dir("bp_counts")
+obj    <- CreateSeuratObject(counts) |>
+  NormalizeData() |>
+  FindVariableFeatures() |>
+  ScaleData() |>
+  RunPCA() |>
+  RunUMAP(dims = 1:30)
+
+obj <- PrepObject(obj,
+  variables  = c("Sample", "Group", "seurat_clusters"),
+  group.by   = "seurat_clusters",
+  output_dir = "./Figures")
+
+# These behave exactly as on an in-memory object - but only the requested
+# genes are read off disk for each panel:
+PlotFeaturePlots(obj, features = c("CD3E", "LYZ", "NKG7"), split.by = "Sample")
+GroupHeatmap(obj, features = marker_genes)
+```
+
+## 2. The Sketch workflow
+
+For interactive work on millions of cells, Seurat v5's `SketchData()` keeps a
+representative subset "in memory" while the full data stays on disk. scSidekick
+functions work on either assay - sketch for fast iteration, full for the final
+figure.
+
+```{r sketch, eval=FALSE}
+obj <- SketchData(obj, ncells = 50000, method = "LeverageScore",
+                  sketched.assay = "sketch")
+
+# Iterate fast on the sketch assay ...
+DefaultAssay(obj) <- "sketch"
+PlotFeaturePlots(obj, features = "CD3E", split.by = "Sample")
+
+# ... then project back to the full dataset for the publication figure.
+# (For pseudobulk / pathway analysis on sketched objects, pass assay = "RNA"
+#  explicitly so aggregation uses the full data, not the sketch.)
+```
+
+---
+
+## 3. Pseudobulk: collapse cells to samples
+
+Pseudobulk is the most robust way to analyse large multi-sample studies: sum
+(or average) each gene within each sample, then treat samples as replicates.
+`ComputePseudobulk()` streams the matrix once (BPCells-safe) and caches the
+result in the object; `PlotPseudoBulk()` draws per-gene, per-group profiles
+with one point per donor.
+
+```{r pseudobulk-compute}
+bmcite <- ComputePseudobulk(bmcite,
+  group.by = c("donor", "celltype.l1"),
+  genes    = c("LYZ", "CD3D", "NKG7", "CD79A", "S100A8"),
+  verbose  = FALSE)
+```
+
+```{r pseudobulk-plot, fig.width=8, fig.height=4}
+PlotPseudoBulk(bmcite,
+  features = c("LYZ", "CD3D"),
+  group.by = "celltype.l1",
+  donor.by = "donor")
+```
+
+With more samples you can add cross-group statistics directly:
+
+```{r pseudobulk-stats, eval=FALSE}
+PlotPseudoBulk(obj,
+  features    = "APOE",
+  group.by = "Cognitive.Status",
+  donor.by = "Donor.ID",
+  split.by = "CellType",
+  exclude     = list(Cognitive.Status = "Reference"),
+  add_stats   = TRUE,
+  ref_group   = "No dementia",
+  min_cells   = 10)
+```
+
+---
+
+## 4. Pathway analysis at scale
+
+Two routes, both designed for big objects:
+
+### Donor-level GSEA - `RunGSEA_pseudobulk()`
+
+Pseudobulk -> per-contrast differential expression -> GSEA against Hallmark /
+KEGG / Reactome / WikiPathways, plus optional ssGSEA. Sample-level statistics
+mean the result isn't inflated by cell count.
+
+```{r gsea-pb, eval=FALSE}
+RunGSEA_pseudobulk(obj,
+  identity_column = "CellType",
+  sample_column   = "Donor.ID",
+  group_column    = "Cognitive.Status",
+  contrasts       = list(c("Dementia", "No dementia")),
+  species         = "human",
+  output_dir      = "./Figures/Pathways_pseudobulk")
+```
+
+### Per-cell ssGSEA - `RunSCssGSEA()`
+
+When you want a pathway *score per cell* (e.g. to overlay on the UMAP),
+`RunSCssGSEA()` computes single-cell ssGSEA and is BPCells/sketch-aware (use
+`assay = "RNA"` / `"sketch"` as appropriate).
+
+```{r ssgsea, eval=FALSE}
+RunSCssGSEA(obj,
+  group.by         = "CellType",
+  gene_set_library = "H",          # MSigDB Hallmark
+  output_dir       = "./Figures/ssGSEA")
+```
+
+---
+
+## Tips for big objects
+
+- Keep counts on disk with **BPCells**; scSidekick streams them.
+- Use a **sketch** assay for interactive iteration, the full assay for final
+  figures - and pass `assay = "RNA"` explicitly to pseudobulk/pathway
+  functions so aggregation uses the full data.
+- Prefer **pseudobulk** (`ComputePseudobulk` -> `PlotPseudoBulk`,
+  `RunGSEA_pseudobulk`) for differential and pathway analysis across samples -
+  it's both faster and statistically sounder than per-cell tests.
+
+---
+
+## See also
+
+- Vignette 08: standard `RunGSEA()` pathway analysis (+ keyword search and
+  leading-edge visualisation)
+- Vignette 11: `PlotMetaSummary()` donor-level summaries for large cohorts
+- Vignette 04: `PlotFeaturePlots()` - the streaming feature-map function
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

@@ -6,7 +6,7 @@ template:
     primary: '#2f4b7c'
     link-color: '#227ed4'
 home:
-  title: scSidekick — Single-Cell & Spatial Transcriptomics Toolkit
+  title: scSidekick - Single-Cell & Spatial Transcriptomics Toolkit
   description: |
     A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
   links:
@@ -28,32 +28,40 @@ navbar:
       text: Vignettes
       menu:
       - text: Setup
-      - text: 01 — Getting Started
+      - text: 01 - Getting Started
         href: articles/01_getting_started.html
-      - text: 02 — Dimensionality Reduction
+      - text: 02 - Dimensionality Reduction
         href: articles/02_dim_reduction.html
       - text: ─────────────────
       - text: Visualization
-      - text: 03 — UMAP Visualization
+      - text: 03 - UMAP Visualization
         href: articles/03_umap_visualization.html
-      - text: 04 — Feature Expression
+      - text: 04 - Feature Expression
         href: articles/04_feature_expression.html
-      - text: 05 — Heatmaps & Dot Plots
+      - text: 05 - Heatmaps & Dot Plots
         href: articles/05_heatmaps_dotplots.html
+      - text: 11 - Metadata & Composition
+        href: articles/11_metadata_composition.html
       - text: ─────────────────
       - text: Analysis
-      - text: 06 — Cell Annotation
+      - text: 06 - Cell Annotation
         href: articles/06_cell_annotation.html
-      - text: 07 — Spatial Transcriptomics
+      - text: 07 - Spatial Transcriptomics
         href: articles/07_spatial.html
-      - text: 08 — Pathway Analysis
+      - text: 08 - Pathway Analysis
         href: articles/08_pathway_analysis.html
-      - text: 09 — Cell-Cell Communication
+      - text: 09 - Cell-Cell Communication
         href: articles/09_cellchat.html
+      - text: 12 - Large Datasets
+        href: articles/12_large_data.html
       - text: ─────────────────
       - text: Reporting
-      - text: 10 — Reporting & Utilities
+      - text: 10 - Reporting & Utilities
         href: articles/10_reporting_utilities.html
+      - text: ─────────────────
+      - text: Examples
+      - text: Full scRNA-seq Workflow
+        href: articles/example_workflow.html
     github:
       icon: fab fa-github
       href: https://github.com/nourabdelfattah/scSidekick
@@ -62,9 +70,16 @@ reference:
 - title: Setup & Colors
   desc: Prepare objects and manage color palettes
   contents:
+  - GenerateDirectories
   - PrepObject
   - ShowColors
   - GetColors
+  - SelectColors
+  - SetLevels
+  - RenameClusters
+  - NumberLabels
+  - SummarizeMetadata
+  - PlotMetaSummary
   - Nour_pal
   - Nour_cols
   - Nour_cols20
@@ -85,9 +100,16 @@ reference:
   - PlotTrendLabeled
   - PlotComposition
   - PlotPieUMAP
+  - PlotAlluvial
+  - PlotRose
+  - PlotChord
+  - PlotAtlasWheel
 - title: Feature Expression
   desc: Gene expression overlay on embeddings
   contents:
+  - PlotFeature
+  - PlotPseudoBulk
+  - ComputePseudobulk
   - PlotFeaturePlots
   - GenerateFeatureMaps
   - PlotMultiFeature
@@ -100,6 +122,10 @@ reference:
   - FastDotPlot
   - FastDotPlot2
   - StackedVlnPlot
+- title: Marker Discovery
+  desc: Fast per-cluster Wilcoxon rank-sum tests compatible with BPCells and Seurat v5
+  contents:
+  - RunWilcoxAUC
 - title: Differential Expression
   desc: Volcano plots, enrichment visualization, leading edge
   contents:
@@ -109,7 +135,9 @@ reference:
   - VisualizeLeadingEdge
 - title: Cell Annotation
   desc: Automated cell-type assignment
-  contents: CellTypeAssignmentHelper
+  contents:
+  - AssignCellTypes
+  - CellTypeAssignmentHelper
 - title: Spatial Transcriptomics
   desc: Visualize spatial gene expression and cell-type distributions
   contents:
@@ -141,6 +169,7 @@ reference:
 - title: Reporting & Utilities
   desc: Methods text, PPTX builder, theme, and session tools
   contents:
+  - ChartBuilder
   - ExtractMethods
   - InspectPlot
   - create_analysis_pptx
@@ -167,6 +196,7 @@ articles:
   - 03_umap_visualization
   - 04_feature_expression
   - 05_heatmaps_dotplots
+  - 11_metadata_composition
 - title: Analysis
   navbar: Analysis
   contents:
@@ -174,7 +204,12 @@ articles:
   - 07_spatial
   - 08_pathway_analysis
   - 09_cellchat
+  - 12_large_data
 - title: Reporting
   navbar: Reporting
   contents: 10_reporting_utilities
+- title: Examples
+  navbar: Examples
+  contents:
+  - example_workflow
 

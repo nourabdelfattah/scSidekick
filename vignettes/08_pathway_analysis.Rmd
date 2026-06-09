@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Pathway Analysis: RunGSEA"
+title: "scSidekick - Pathway Analysis: RunGSEA"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -24,7 +24,7 @@ It handles the full pipeline internally:
 3. Run `fgsea` against one or more MSigDB collections
 4. Save lollipop plots (top/bottom 10 pathways per group) and NES heatmaps
 
-No pre-computed DE table is needed — just pass the Seurat object.
+No pre-computed DE table is needed - just pass the Seurat object.
 
 ---
 
@@ -173,6 +173,61 @@ res$all$Hallmark$top_pathways
 
 ---
 
+## 8. Finding pathways by keyword - `PlotGSEAEnrichment()`
+
+A GSEA run returns hundreds of pathways with long, exact MSigDB names. You
+shouldn't have to know that the apoptosis pathway is called
+`HALLMARK_APOPTOSIS`. `PlotGSEAEnrichment()` auto-discovers the result CSVs and
+selects pathways by **keyword search** instead.
+
+> **Pain point fixed.** Describe the biology, not the exact string. Pass a
+> **character vector for OR** logic, or a **list of vectors for AND-groups**
+> (which are then OR'd) - all case-insensitive regex.
+
+```{r gsea-keyword, eval=FALSE}
+# OR: any pathway mentioning "apoptosis" OR "cell_death"
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = c("apoptosis", "cell_death"))
+
+# AND-group: pathways mentioning BOTH "interferon" AND "response"
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = list(c("interferon", "response")))
+
+# Mixed: (T_cell AND activation) OR inflammation
+PlotGSEAEnrichment(
+  output_dir   = "./Figures/Pathways",
+  search_terms = list(c("t_cell", "activation"), "inflammation"))
+```
+
+---
+
+## 9. Which genes drive a pathway? - `VisualizeLeadingEdge()`
+
+A significant NES tells you a pathway is enriched, but not *which genes* are
+responsible. `VisualizeLeadingEdge()` pulls the **leading-edge genes** for the
+pathways you select (by the same keyword search), then draws a per-cell
+expression heatmap - and, optionally, a dotplot, stacked violins, and boxplots,
+intersected with your DEGs.
+
+> **Pain point fixed.** Go from "this pathway is up" to "these specific genes
+> are driving it, in these cells" - visually, in one call.
+
+```{r leading-edge, eval=FALSE}
+VisualizeLeadingEdge(bmcite,
+  gsea_files   = "./Figures/Pathways",     # a dir of GSEA CSVs, or file paths
+  search_terms = c("interferon"),
+  group.by     = "celltype.l1",
+  split.by     = "donor",
+  output_dir   = "./Figures/LeadingEdge")
+```
+
+Supply a DEG table via `deg_df` to intersect leading-edge genes with your
+significant differentially expressed genes for a focused, defensible gene set.
+
+---
+
 ## Parameter reference
 
 | Parameter | Type | Default | Description |
@@ -194,9 +249,9 @@ res$all$Hallmark$top_pathways
 
 ## See also
 
-- Vignette 05: `GroupHeatmap` — gene-level expression heatmap
-- Vignette 06: `CellTypeAssignmentHelper` — annotate clusters before pathway analysis
-- Vignette 09: `RunCellChat` — pathway-level cell-cell communication
+- Vignette 05: `GroupHeatmap` - gene-level expression heatmap
+- Vignette 06: `CellTypeAssignmentHelper` - annotate clusters before pathway analysis
+- Vignette 09: `RunCellChat` - pathway-level cell-cell communication
 
 ---
 

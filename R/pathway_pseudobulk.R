@@ -17,12 +17,12 @@
 #' @param identity_column Character. Metadata column holding cell-type identities.
 #'   One independent GSEA is run for each level (e.g. `"Assignment"`).
 #' @param sample_column Character. Metadata column identifying the biological
-#'   replicate (donor / patient ID). This is the statistical unit — samples
+#'   replicate (donor / patient ID). This is the statistical unit - samples
 #'   are the replicates in the limma-voom model. (e.g. `"Sample"`, `"Donor.ID"`).
 #' @param group_column Character. Metadata column holding the comparison group
 #'   label (e.g. `"Group"` where levels are `"Dementia.Female"`,
 #'   `"Dementia.Male"`, `"Reference.Female"`, …). Cells with `NA` in this
-#'   column are dropped before aggregation — use `NA` to exclude groups you
+#'   column are dropped before aggregation - use `NA` to exclude groups you
 #'   do not want to compare (e.g. a Reference group that is not part of any
 #'   contrast).
 #' @param pseudobulk Optional precomputed pseudobulk. A list with elements
@@ -42,7 +42,7 @@
 #'   automatically: Female-vs-Male within each disease, Disease-vs-control
 #'   within each sex, and the Sex × Disease interaction term.
 #' @param pathway_sets Named list of MSigDB databases. Same structure as in
-#'   [RunGSEA()] — see that function's documentation for a full list of valid
+#'   [RunGSEA()] - see that function's documentation for a full list of valid
 #'   collections. Default: Hallmark (`"H"`), KEGG, Reactome, WikiPathways.
 #' @param species Character. `"human"` (default) or `"mouse"`. Passed to
 #'   [msigdbr::msigdbr()]. See `msigdbr::msigdbr_species()` for all options.
@@ -51,7 +51,7 @@
 #' @param assay Character or `NULL`. Seurat assay containing raw counts to
 #'   aggregate. `NULL` uses `SeuratObject::DefaultAssay()`. For BPCells
 #'   sketch workflows always specify `"RNA"` explicitly (do not use the sketch
-#'   assay — pseudobulk aggregation requires raw counts for all cells).
+#'   assay - pseudobulk aggregation requires raw counts for all cells).
 #' @param min.cells Integer. Minimum cells a sample must contribute to a given
 #'   cell-type to be included in the pseudobulk for that cell type. Samples
 #'   below this threshold are dropped to avoid noisy pseudo-replicates.
@@ -252,7 +252,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   # RunGSEA and RunGSEA_pseudobulk are fundamentally different methods:
   # RunGSEA uses cell-level Wilcoxon (AUC pre-ranking via presto), while
   # RunGSEA_pseudobulk aggregates to donor/sample pseudobulk and uses
-  # limma-voom moderated t-statistics as the ranking statistic — matching
+  # limma-voom moderated t-statistics as the ranking statistic - matching
   # standard bulk RNA-seq GSEA practice and respecting sample as the
   # statistical unit.
   {
@@ -281,8 +281,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
         "each cell-type subset ('", identity_column, "'), retaining only ",
         "sample × cell-type combinations with ≥ ", min.cells,
         " cells and groups with ≥ ", min.samples.per.group,
-        " samples. Pseudobulk libraries were normalised using edgeR ",
-        "(TMM normalisation) and precision weights were estimated with ",
+        " samples. Pseudobulk libraries were normalized using edgeR ",
+        "(TMM normalization) and precision weights were estimated with ",
         "limma-voom. A group-means design was fitted and the following ",
         "contrasts were tested: ", contrast_str,
         if (!is.null(covariates) && length(covariates) > 0)
@@ -305,9 +305,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   ## ---- gene sets (query once) ----
   fgsea_dbs <- lapply(names(pathway_sets), function(db) {
     ps <- pathway_sets[[db]]
-    mdf <- if (!is.null(ps$subcategory))
-      msigdbr::msigdbr(species = species, category = ps$category, subcategory = ps$subcategory)
-    else msigdbr::msigdbr(species = species, category = ps$category)
+    mdf <- .msigdbr_get(species = species, category = ps$category,
+                        subcategory = ps$subcategory)
     split(mdf$gene_symbol, mdf$gs_name)
   })
   names(fgsea_dbs) <- names(pathway_sets)
@@ -533,7 +532,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     "Heatmap of pseudobulk GSEA Normalised Enrichment Scores (", db,
     ") for contrast ", cn, " across cell types. ",
     "Rows = top ", nrow(m), " gene sets by max |NES| across cell types. ",
-    "Method: donor-level pseudobulk, edgeR TMM normalisation, ",
+    "Method: donor-level pseudobulk, edgeR TMM normalization, ",
     "limma-voom moderated t-statistic pre-ranking, fgsea. ",
     "NES > 0 = enriched in the first term of the contrast. ",
     "Overlaid significance stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
@@ -592,7 +591,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
         file.path(db_dir, paste0("ssGSEA ", db, " ", make.names(ct), " scores.csv")),
         row.names = FALSE)
 
-      # ── Limma contrasts first — results determine which pathways to show ─
+      # ── Limma contrasts first - results determine which pathways to show ─
       # Running contrasts before the heatmap lets both figures show the same
       # pathway set (significant pathways, or top-by-variance as fallback).
       res    <- NULL
@@ -639,10 +638,10 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           seq_len(min(top_n, nrow(sc)))]
         if (!is.null(res))
           message("    No significant ssGSEA pathways for ", ct, "/", db,
-                  " — heatmap shows top by variance.")
+                  " - heatmap shows top by variance.")
       }
 
-      # ── Heatmap and boxplot — same pathway set ───────────────────────────
+      # ── Heatmap and boxplot - same pathway set ───────────────────────────
       .ssgsea_heatmap(sc, s, db, ct, db_dir,
                       pathways       = show_pws,
                       group_colors   = group_colors,
@@ -660,7 +659,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 }
 
 # ---------------------------------------------------------------------------
-# .ssgsea_heatmap  — pathways × samples heatmap for ssGSEA scores
+# .ssgsea_heatmap  - pathways × samples heatmap for ssGSEA scores
 # ---------------------------------------------------------------------------
 #' @keywords internal
 .ssgsea_heatmap <- function(sc, samp_meta, db, ct, db_dir,
@@ -682,7 +681,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   if (length(top_pws) == 0) return(invisible())
   m <- sc[top_pws, , drop = FALSE]
 
-  # Row z-score: normalise each pathway across samples so that pathways with
+  # Row z-score: normalize each pathway across samples so that pathways with
   # different absolute score magnitudes are comparable on a shared colour scale.
   # Without this, high-variance pathways dominate and subtle group differences
   # in other pathways are invisible.
@@ -698,7 +697,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   m          <- m[, col_order, drop = FALSE]
   samp_meta  <- samp_meta[col_order, , drop = FALSE]
 
-  # Colour for group annotation — group_colors is always pre-resolved by the
+  # Colour for group annotation - group_colors is always pre-resolved by the
   # caller (.pb_ssgsea) so it is never NULL here and always covers all levels.
   grp_lvls <- levels(droplevels(samp_meta$group))
   col_ann <- ComplexHeatmap::HeatmapAnnotation(
@@ -734,7 +733,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     row_names_gp      = grid::gpar(fontsize = rn_fs),
     column_names_gp   = grid::gpar(fontsize = 7),
     column_names_rot  = 90,
-    column_title      = paste("ssGSEA scores —", db, ct),
+    column_title      = paste("ssGSEA scores -", db, ct),
     column_title_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
     border            = FALSE,
     use_raster        = n_rows > 100 || n_cols > 50,
@@ -768,7 +767,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 }
 
 # ---------------------------------------------------------------------------
-# .ssgsea_boxplot  — per-contrast boxplot of top significant pathways
+# .ssgsea_boxplot  - per-contrast boxplot of top significant pathways
 # ---------------------------------------------------------------------------
 #' @keywords internal
 .ssgsea_boxplot <- function(sc, res, samp_meta, db, ct, db_dir,
@@ -816,7 +815,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       strip.text   = ggplot2::element_text(size  = 7),
       legend.position = "none"
     ) +
-    ggplot2::labs(title = paste("ssGSEA scores —", db, ct,
+    ggplot2::labs(title = paste("ssGSEA scores -", db, ct,
                                 "(significant pathways)"),
                   x = NULL, y = "ssGSEA score")
 

@@ -9,6 +9,8 @@ GroupHeatmap(
   group.by,
   features,
   feature_split = NULL,
+  feature_column = NULL,
+  feature_group_column = NULL,
   column_split_by = NULL,
   assay = "RNA",
   layer = "data",
@@ -28,15 +30,17 @@ GroupHeatmap(
   cluster_row_slices = FALSE,
   cluster_columns = FALSE,
   heatmap_params = list(show_row_names = TRUE, row_names_side = "right", row_names_gp =
-    grid::gpar(fontsize = 8), show_row_dend = FALSE, show_column_names = TRUE,
-    column_names_side = "top", row_title = NULL, column_title = NULL),
+    grid::gpar(fontsize = 8), show_row_dend = FALSE, column_names_side = "top", row_title
+    = NULL, column_title = NULL),
   auto_draw = TRUE,
   legend_side = "right",
   width = grid::unit(5, "in"),
   height = grid::unit(7, "in"),
+  auto_size = TRUE,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  subset_name = "",
+  file_name = NULL
 )
 }
 \arguments{
@@ -46,11 +50,25 @@ GroupHeatmap(
 combinations become the heatmap columns (e.g.
 \code{c("CellTypes", "Treatment")}).}
 
-\item{features}{Character vector of gene names to plot.}
+\item{features}{Either a character vector of gene names, \strong{or} a
+\code{data.frame}.  When a data.frame, the gene column is taken from
+\code{feature_column} and (if given) row groups from
+\code{feature_group_column} - so a marker table can be passed directly.}
 
-\item{feature_split}{Named character or factor vector (names = gene
-symbols, values = row-group labels).  When supplied, rows are split
-and labelled.}
+\item{feature_split}{Row-group labels.  Either a \strong{named} vector
+(names = gene symbols, values = group labels), or an \strong{unnamed}
+vector the same length as \code{features} (matched by position).  When
+supplied, rows are split and labelled.  Ignored when \code{features} is a
+data.frame with \code{feature_group_column} set.}
+
+\item{feature_column}{Character or \code{NULL}.  When \code{features} is a
+data.frame, the column holding gene names.  \code{NULL} auto-detects
+(\code{gene}/\code{feature}/\code{Genes}/...) or uses the first column.}
+
+\item{feature_group_column}{Character or \code{NULL}.  When \code{features}
+is a data.frame, the column holding row-group labels (becomes
+\code{feature_split}).  \code{NULL} auto-detects
+(\code{group}/\code{cluster}/\code{CellType}/...) if present.}
 
 \item{column_split_by}{Optional metadata column used to \emph{facet}
 (visually split) the columns into panels.  May be one of the
@@ -72,7 +90,7 @@ against dark expression colours.  Default \code{TRUE}.}
 \item{dot_size}{Base dot size as a \code{grid::unit} object. Default
 \code{grid::unit(4, "mm")}.}
 
-\item{pct_cutoff}{Minimum fraction expressing (0–1) to draw a dot.
+\item{pct_cutoff}{Minimum fraction expressing (0-1) to draw a dot.
 Default \code{0}.}
 
 \item{palette}{RColorBrewer diverging palette for the expression colour
@@ -91,7 +109,7 @@ vector for one \code{group.by} variable, e.g.
 \code{list(CellType = ct_cols, Treatment = tx_cols)}.
 \item A \strong{named vector} when \code{group.by} has length 1
 (backward-compatible).
-\item \code{NULL} (default) — auto-assigned from PrepObject or
+\item \code{NULL} (default) - auto-assigned from PrepObject or
 \code{Nour_pal}.
 }}
 
@@ -121,16 +139,32 @@ Default \code{FALSE}.}
 
 \item{legend_side}{Where to place the legend.  Default \code{"right"}.}
 
-\item{width}{Heatmap body width as a \code{grid::unit}. Default
-\code{grid::unit(5, "in")}.}
+\item{width}{Heatmap body width, as a \code{grid::unit} \emph{or} a bare
+numeric (interpreted as inches).  When left at the default and
+\code{auto_size = TRUE}, the body width is derived from the number of
+columns. Default \code{grid::unit(5, "in")}.}
 
-\item{height}{Heatmap body height.  Default \code{grid::unit(7, "in")}.}
+\item{height}{Heatmap body height (\code{grid::unit} or numeric inches).
+Auto-derived from the number of rows when left at the default and
+\code{auto_size = TRUE}. Default \code{grid::unit(7, "in")}.}
+
+\item{auto_size}{Logical.  When \code{TRUE} (default) and \code{width} /
+\code{height} are not explicitly supplied, size the heatmap body from the
+number of genes and column groups.  The saved PDF is \emph{always} sized to
+fit the longest row and column names regardless of this setting.}
 
 \item{output_dir}{Directory to save a PDF.  \code{NULL} = no file.}
 
-\item{object_name}{Prefix for output file names.}
+\item{object_name}{Prefix for output file names. Falls back to the
+\code{object_name} stored by \code{\link{PrepObject}}.}
 
-\item{subset_name}{Optional subset label.}
+\item{subset_name}{Optional subset label inserted into the file name. Falls
+back to the \code{subset_name} stored by \code{\link{PrepObject}}.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces the name from
+\code{object_name}, \code{subset_name}, the \code{features} variable name,
+and the \code{group.by} / \code{column_split_by} variables.}
 }
 \value{
 Invisibly, a named list:
@@ -150,14 +184,14 @@ supplied \code{features}, scales across groups (z-score by default), and
 draws a \code{ComplexHeatmap} with:
 \itemize{
 \item \strong{Colour fill} = scaled mean expression
-\item \strong{Dot overlay} (optional) — dots sized by \\% of cells
+\item \strong{Dot overlay} (optional) - dots sized by \\% of cells
 expressing each gene within each column group
-\item \strong{Row split + textbox labels} — rows grouped and annotated
+\item \strong{Row split + textbox labels} - rows grouped and annotated
 by \code{feature_split} categories
-\item \strong{Column faceting} — each level of \code{column_split_by}
+\item \strong{Column faceting} - each level of \code{column_split_by}
 forms a panel; within every panel \emph{all} \code{group.by}
 combinations are shown
-\item \strong{Column annotation} — one colour bar per \code{group.by}
+\item \strong{Column annotation} - one colour bar per \code{group.by}
 variable (analogous to ComplexHeatmap's multi-bar top annotation)
 }
 }

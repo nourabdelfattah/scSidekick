@@ -4,7 +4,7 @@
 \alias{ExtractMethods}
 \title{Extract analysis parameters and generate a methods text from a Seurat object}
 \usage{
-ExtractMethods(seurat_object, cite_seurat = TRUE)
+ExtractMethods(seurat_object, cite_seurat = TRUE, modality = NULL)
 }
 \arguments{
 \item{seurat_object}{A Seurat object with commands recorded (i.e., the standard
@@ -18,7 +18,7 @@ of the methods paragraph. Default \code{TRUE}.}
 A named list with two elements:
 \describe{
 \item{\code{summary}}{Named list of extracted parameter values.}
-\item{\code{methods_text}}{Character string — a draft methods paragraph
+\item{\code{methods_text}}{Character string - a draft methods paragraph
 ready to paste into a manuscript.}
 }
 }

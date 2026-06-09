@@ -1,5 +1,5 @@
 # =============================================================================
-# scSidekick — PlotMultiFeature  (viz_multifeature.R)
+# scSidekick - PlotMultiFeature  (viz_multifeature.R)
 #
 # Modernised from the classic Seurat v2 MultiFeaturePlot helper.
 # Supports Seurat v3/v5 and BPCells via .get_layer_data().
@@ -36,7 +36,7 @@
 #'   or \code{"scale"}.
 #' @param pct_cutoff For \code{plot_mode = "intersection"}: the fraction of
 #'   the gene list a cell must express to count as co-expressing.  Default
-#'   \code{0.3} (i.e. ≥30 \% of genes).
+#'   \code{0.3} (i.e. >= 30% of genes).
 #' @param intersection_label Label shown in the legend for co-expressing cells.
 #'   Default \code{"Co-expressing"}.
 #' @param assay Assay to pull expression from.  Default \code{"RNA"}.
@@ -142,7 +142,7 @@ PlotMultiFeature <- function(
   common_cells <- intersect(rownames(frame), colnames(expr_mat))
   if (length(common_cells) == 0L) {
     message("scSidekick: Cell names don't overlap between the embedding and the ",
-            "expression matrix — aligning by position.")
+            "expression matrix - aligning by position.")
     n_use    <- min(nrow(frame), ncol(expr_mat))
     frame    <- frame[seq_len(n_use), , drop = FALSE]
     expr_mat <- expr_mat[, seq_len(n_use), drop = FALSE]
@@ -243,7 +243,7 @@ PlotMultiFeature <- function(
   } else {
     # ---- "gene" mode: color by last expressed gene ------------------------
     # Iterating features in order means the last gene overwrites earlier
-    # assignments for multi-expressing cells — intentional "last wins" logic
+    # assignments for multi-expressing cells - intentional "last wins" logic
     # that makes cells unique to the rarest gene most visible.
     frame$Plot.Status <- "None"
     for (g in features) {

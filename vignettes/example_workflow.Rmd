@@ -1,0 +1,318 @@
+---
+title: "YAP Project — scRNA-seq Analysis"
+output: html_notebook
+editor_options:
+  chunk_output_type: console
+---
+
+## 0. Setup
+
+```{r setup, message=FALSE, warning=FALSE,eval=F}
+library(easypackages)
+libraries(c(
+  "dplyr", "ggplot2", "ggpubr", "patchwork", "stringr",
+  "BPCells", "Seurat", "ComplexHeatmap", "SingleCellExperiment",
+  "RColorBrewer", "viridis", "BiocParallel"
+))
+register(MulticoreParam(workers = 8, progressbar = TRUE))
+library(scSidekick)
+
+dirs <- GenerateDirectories(
+  base_dir       = "/dir/",
+  subset         = "AllClusters",
+  object_name    = "YAP",
+  resolution     = 1,
+  output_subdirs = c("Featuremaps", "DotPlots", "Pathways", "CellChat")
+)
+```
+
+---
+
+## 1. Load Samples
+
+```{r load-samples,eval=F}
+basedir <- "/basedir/"
+
+sample_meta <- data.frame(
+  sample_id = c("YSGm", "YSGf", "SGm", "SGf"),
+  Sample    = c("YSGm", "YSGf", "SGm", "SGf"),
+  run_id    = paste0("MYSC", 25:28),
+  Genotype  = c("YSG", "YSG", "SG", "SG"),
+  sex       = c("M", "F", "M", "F"),
+  batch     = 1L
+)
+
+SeuratObj <- LoadSamplesRNA(
+  sample_ids       = sample_meta$Sample,
+  run_ids          = sample_meta$run_id,
+  metadata         = sample_meta,
+  input_type       = "10x_dir",
+  base_dir         = basedir,
+  robj_dir         = dirs$robj_dir,
+  merged_filename  = "unfilteredAllClusters.rds",
+  merge_samples    = TRUE,
+  modality         = "scRNA-seq",
+  mt_pattern       = "^mt-",
+  save_individual  = TRUE,   # cache per-sample .rds so you can resume if interrupted
+  resume           = TRUE,
+  output_dir       = dirs$output_dir
+)
+```
+
+---
+
+## 2. QC
+
+```{r qc,eval=F}
+PlotQCMetrics(SeuratObj,
+  sample_col = "Sample",
+  species    = "mouse",
+  output_dir = dirs$output_dir
+)
+```
+
+---
+
+## 3. Filter & Summarise
+
+```{r filter,eval=F}
+SeuratObj <- subset(SeuratObj,
+  subset = DoubletStatus == "singlet" & miQC.keep == "keep"
+)
+
+PlotMetaSummary(SeuratObj,
+  variables     = "Genotype",
+  fill_variable = "Sample",
+  row_variable  = "sex",
+  count_unit    = "cells",
+  percent       = FALSE,
+  output_dir    = dirs$output_dir
+)
+```
+
+---
+
+## 4. Prepare Object (colors + defaults)
+
+```{r prep-object,eval=F}
+SeuratObj <- PrepObject(SeuratObj,
+  variables     = c("Sample", "sex", "Genotype"),
+  palettes      = c(Sample = "spectrum", sex = "all", Genotype = "auto"),
+  custom_colors = list(sex = c("F" = "#F37388", "M" = "#003F5C")),
+  force         = TRUE,
+  output_dir    = dirs$output_dir,
+  object_name   = dirs$object_name
+)
+```
+
+---
+
+## 5. Normalise, Reduce, Cluster
+
+```{r process,eval=F}
+SeuratObj <- SeuratObj %>%
+  NormalizeData() %>%
+  FindVariableFeatures(nfeatures = 2000) %>%
+  ScaleData() %>%
+  RunPCA(npcs = 50)
+
+SeuratObj <- harmony::RunHarmony(SeuratObj, group.by.vars = "Sample")
+
+dims <- Determine_nDims(SeuratObj, reduction = "harmony")
+
+SeuratObj <- SeuratObj %>%
+  RunUMAP(dims = 1:dims$n_dims, reduction = "harmony") %>%
+  FindNeighbors(dims = 1:dims$n_dims, reduction = "harmony") %>%
+  FindClusters(resolution = 0.5)
+
+CellInfo <- SeuratObj@meta.data
+CellInfo$Cluster <- RenameClusters(SeuratObj$seurat_clusters)
+SeuratObj@meta.data <- CellInfo
+
+saveRDS(SeuratObj, file.path(dirs$robj_dir, "clustered.rds"))
+```
+
+---
+
+## 6. Initial Cluster UMAPs
+
+```{r cluster-umaps,eval=F}
+SeuratObj <- PrepObject(SeuratObj,
+  variables  = c("Cluster"),
+  group.by   = "Genotype",
+  split.by   = "sex"
+)
+ShowColors(SeuratObj)
+
+PlotDimPlots(SeuratObj,
+  group.by   = c("Cluster", "Sample", "Genotype", "sex"),
+  split.by   = NULL,
+  show_trend = FALSE,
+  join_plots = TRUE,
+  join_nrow  = 1,
+  join_ncol  = 4,
+  width      = 12,
+  height     = 5
+)
+```
+
+---
+
+## 7. Marker Discovery & Heatmap
+
+```{r markers,eval=F}
+de <- RunWilcoxAUC(SeuratObj, group.by = "Cluster")
+
+det <- de %>%
+  filter(padj < 0.05) %>%
+  group_by(group) %>%
+  top_n(10, wt = logFC)
+
+GroupHeatmap(SeuratObj,
+  features       = det$feature,
+  feature_split  = det$group,     # unnamed vector — matched positionally
+  group.by       = c("Sample", "sex", "Genotype"),
+  column_split_by = "Cluster"
+)
+```
+
+---
+
+## 8. Automated Cell-Type Annotation
+
+```{r annotate,eval=F}
+SeuratObj <- CellTypeAssignmentHelper(SeuratObj,
+  singler_ref    = "celldex::ImmGenData()",
+  markers        = de,
+  cluster_column = "Cluster",
+  species        = "mouse",
+  sctype_tissues = c("Immune system", "Brain"),
+  marker_groups  = list(
+    "Brain"  = c("Tumor", "Brain Stroma"),
+    "Immune" = c("Lymphocytes", "Monocytes", "Macrophages",
+                 "Granulocytes", "Bone Marrow Derived", "All")
+  ),
+  output_dir     = dirs$output_dir
+)
+```
+
+---
+
+## 9. Manual Assignment
+
+```{r assign,eval=F}
+Assign <- list(
+  CyclingTumor = c("C03", "C07", "C05"),
+  Astrocytes   = "C11",
+  Oligos       = "C12",
+  Immune       = "C13"
+)
+
+SeuratObj <- AssignCellTypes(SeuratObj, Assign,
+  cluster_col = "Cluster",
+  new_col     = "GlobalAssignment",
+  other       = "Tumor"
+)
+
+SeuratObj <- PrepObject(SeuratObj,
+  variables = "GlobalAssignment"
+)
+ShowColors(SeuratObj)
+
+saveRDS(SeuratObj, file.path(dirs$robj_dir, "annotated.rds"))
+```
+
+---
+
+## 10. Annotation UMAPs & Composition
+
+```{r annotation-umaps,eval=F}
+PlotDimPlots(SeuratObj,
+  group.by    = c("Cluster", "rcellmarker_CellType", "GlobalAssignment"),
+  show_labels = TRUE,
+  split.by    = NULL,
+  show_trend  = FALSE,
+  join_plots  = TRUE,
+  legendnrow  = 5,
+  join_nrow   = 1,
+  join_ncol   = 3,
+  width       = 9,
+  height      = 5
+)
+
+PlotTrendLabeled(SeuratObj,
+  stat.by  = "GlobalAssignment",
+  group.by = "Genotype",
+  split.by = "sex",
+  ncol     = 1
+)
+```
+
+---
+
+## 11. Feature Plots (top markers per cluster)
+
+```{r feature-plots,eval=F}
+TopDE <- de %>%
+  filter(padj < 0.05) %>%
+  group_by(group) %>%
+  top_n(3, wt = logFC)
+
+PlotFeaturePlots(SeuratObj,
+  features       = TopDE$feature,
+  split.by       = "Genotype",
+  row.by         = "sex",
+  layout_method  = "metadata",
+  output_dir     = dirs$featuremaps
+)
+```
+
+---
+
+## 12. Pathway Analysis
+
+```{r gsea,eval=F}
+RunGSEA(SeuratObj,
+  group.by   = "Sample",
+  species    = "Mus musculus",
+  split.by   = "GlobalAssignment",
+  output_dir = dirs$pathways
+)
+```
+
+---
+
+## 13. Cell-Cell Communication
+
+```{r cellchat,eval=F}
+cc_results <- RunCellChat(SeuratObj,
+  cell.by    = "GlobalAssignment",
+  group.by   = "Genotype",
+  species    = "mouse",
+  output_dir = dirs$cellchat
+)
+
+CompareCellChat(
+  cellchat_list = cc_results,
+  output_dir    = file.path(dirs$cellchat, "Comparison")
+)
+```
+
+---
+
+## 14. Methods Log & Report
+
+```{r report,eval=F}
+log_analysis_params(
+  obj         = SeuratObj,
+  assay_type  = "scRNAseq",
+  output_dir  = dirs$output_dir,
+  dataset     = dirs$object_name,
+  subset_name = dirs$subset
+)
+
+create_analysis_pptx(
+  output_dir  = dirs$output_dir,
+  object_name = dirs$object_name
+)
+```

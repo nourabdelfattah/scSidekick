@@ -1,15 +1,15 @@
 # =============================================================================
 # scSidekick sample loading helpers
 #
-# LoadSamplesRNA()  — per-sample 10X loading, QC (doublets + miQC), and merge
+# LoadSamplesRNA()  - per-sample 10X loading, QC (doublets + miQC), and merge
 #                     for scRNA-seq / snRNA-seq datasets.
-# PlotQCMetrics()   — QC visualisation for the merged (pre-filtration) object:
+# PlotQCMetrics()   - QC visualisation for the merged (pre-filtration) object:
 #                     mito/ribo ratios, density plots, violin plots, barplots.
 #
 # Supports two metadata styles:
-#   1. data.frame (recommended) — one row per sample; every column is added to
+#   1. data.frame (recommended) - one row per sample; every column is added to
 #      Seurat @meta.data automatically.
-#   2. named lists / NULL — legacy parallel-vector style.
+#   2. named lists / NULL - legacy parallel-vector style.
 #
 # Path construction uses {placeholder} templates so the function works with
 # any Cellranger output layout.
@@ -32,12 +32,30 @@
 
 #' Load, QC, and merge 10X scRNA-seq samples
 #'
-#' Iterates over a list of samples, reads Cellranger h5 files, optionally
+#' Iterates over a list of samples, reads the 10X count data, optionally
 #' adds per-cell annotation CSVs, attaches per-sample metadata, runs
 #' DoubletFinder and miQC quality control, saves per-sample QC plots,
 #' and finally merges all objects into a single Seurat object.
 #'
-#' @section Metadata (recommended — `metadata` data.frame):
+#' @section Input methods:
+#' Three ways to point the function at your data:
+#' \enumerate{
+#'   \item \strong{h5 files via templates} (default, \code{input_type = "h5"}):
+#'     paths built from \code{base_dir} + \code{h5_template} using
+#'     \code{Read10X_h5()}. Matches Cellranger-multi output.
+#'   \item \strong{10X matrix folders via templates}
+#'     (\code{input_type = "10x_dir"}): paths built from \code{base_dir} +
+#'     \code{matrix_dir_template} and read with \code{Read10X()}. Each folder
+#'     must contain \code{barcodes.tsv(.gz)}, \code{features.tsv(.gz)}, and
+#'     \code{matrix.mtx(.gz)} (the Cellranger \code{filtered_feature_bc_matrix/}
+#'     directory).
+#'   \item \strong{Explicit paths} (\code{data_paths = ...}): a character vector
+#'     of exact h5 files or matrix folders, one per sample, used verbatim.
+#'     Use this when your samples are not organised in a consistent layout.
+#'     \code{base_dir} and the templates are then ignored for path building.
+#' }
+#'
+#' @section Metadata (recommended - `metadata` data.frame):
 #' Pass a `data.frame` with one row per sample.  The column named by
 #' `sample_id_col` must match `sample_ids` exactly.  Every other column is
 #' added to `@@meta.data` automatically.
@@ -66,7 +84,18 @@
 #'   (e.g. `c("HC1","HC2","AD1")`). Used as Seurat project names and as the
 #'   key column when matching `metadata`.
 #' @param run_ids Character vector of Cellranger run IDs corresponding to
-#'   `sample_ids` (e.g. `paste0("MYSC", 220:223)`). Used to build h5 paths.
+#'   `sample_ids` (e.g. `paste0("MYSC", 220:223)`). Used to build h5 / matrix
+#'   paths and as cell-id prefixes on merge. `NULL` (allowed only when
+#'   `data_paths` is supplied) falls back to `sample_ids`.
+#' @param input_type Character. How to read each sample's counts:
+#'   `"h5"` (default) uses `Seurat::Read10X_h5()`; `"10x_dir"` uses
+#'   `Seurat::Read10X()` on a matrix folder. Ignored if `data_paths` already
+#'   points at the right kind of source (the type is still used to pick the
+#'   reader, so set it to match your `data_paths`).
+#' @param data_paths Character vector or `NULL`. Exact path to each sample's
+#'   data source (an h5 file when `input_type = "h5"`, or a matrix folder when
+#'   `input_type = "10x_dir"`), one entry per `sample_ids`. When supplied,
+#'   `base_dir` and the path templates are bypassed entirely. Default `NULL`.
 #' @param run_ids_x Character vector or `NULL`. The "underscored" form of
 #'   `run_ids` used in `per_sample_outs/` subdirectory names
 #'   (e.g. `paste0("MYSC_", 220:223)`). `NULL` auto-generates by inserting
@@ -77,21 +106,35 @@
 #'   afterwards).
 #' @param sample_id_col Character. Name of the column in `metadata` that
 #'   matches `sample_ids`. Default `"sample_id"`.
-#' @param base_dir Character. Root directory containing the Cellranger run
-#'   folders (one subfolder per `run_id`).
-#' @param h5_template Character. Path template for the h5 file. Available
-#'   placeholders: `{base_dir}`, `{run_id}`, `{run_id_x}`. Default matches
-#'   Cellranger-multi per-sample output layout.
+#' @param base_dir Character or `NULL`. Root directory containing the
+#'   Cellranger run folders (one subfolder per `run_id`). Required unless
+#'   `data_paths` is supplied.
+#' @param h5_template Character. Path template for the h5 file
+#'   (`input_type = "h5"`). Available placeholders: `{base_dir}`, `{run_id}`,
+#'   `{run_id_x}`. Default matches Cellranger-multi per-sample output layout.
+#' @param matrix_dir_template Character. Path template for the 10X matrix
+#'   folder (`input_type = "10x_dir"`). Same placeholders as `h5_template`.
+#'   Default `"{base_dir}/{run_id}/filtered_feature_bc_matrix"`.
 #' @param cellanno_template Character or `NULL`. Path template for the
 #'   per-cell annotation CSV (e.g. from Cellranger cell-type calling).
 #'   `NULL` disables cell annotation loading. Files that do not exist are
-#'   silently skipped per sample — it is safe to provide a template even when
+#'   silently skipped per sample - it is safe to provide a template even when
 #'   only some samples have the file.
 #' @param output_dir Character. Directory for per-sample QC PDF plots.
 #' @param robj_dir Character or `NULL`. Directory for saving the final merged
 #'   Seurat object. `NULL` skips saving.
 #' @param merged_filename Character. Filename for the saved merged object.
 #'   Default `"merged_object.rds"`.
+#' @param save_individual Logical. Save each fully-processed sample as its own
+#'   `<sample_id>.rds` in `individual_dir` as it finishes. Combined with
+#'   `resume = TRUE`, this lets a long load survive interruptions. Default
+#'   `FALSE`.
+#' @param resume Logical. Before processing a sample, check `individual_dir`
+#'   for an existing `<sample_id>.rds`; if found, load it and skip all
+#'   re-processing (read, QC, doublets, miQC) for that sample. Default `FALSE`.
+#' @param individual_dir Character or `NULL`. Directory for the per-sample
+#'   `.rds` files used by `save_individual` / `resume`. `NULL` defaults to
+#'   `<robj_dir or output_dir>/Individual_Samples`.
 #' @param min.features Integer. Minimum features per cell for
 #'   `CreateSeuratObject()`. Default `100`.
 #' @param mt_pattern Character. Regex pattern for mitochondrial genes.
@@ -116,20 +159,26 @@
 #' @export
 LoadSamplesRNA <- function(
     sample_ids,
-    run_ids,
+    run_ids            = NULL,
     run_ids_x          = NULL,
+    input_type         = c("h5", "10x_dir"),
+    data_paths         = NULL,
     metadata           = NULL,
     sample_id_col      = "sample_id",
-    base_dir,
+    base_dir           = NULL,
     h5_template        = paste0("{base_dir}/{run_id}/per_sample_outs/",
                                 "{run_id_x}/count/",
                                 "sample_filtered_feature_bc_matrix.h5"),
+    matrix_dir_template = "{base_dir}/{run_id}/filtered_feature_bc_matrix",
     cellanno_template  = paste0("{base_dir}/{run_id}/per_sample_outs/",
                                 "{run_id_x}/count/",
                                 "cell_types/cell_types.csv"),
     output_dir,
     robj_dir           = NULL,
     merged_filename    = "merged_object.rds",
+    save_individual    = FALSE,
+    resume             = FALSE,
+    individual_dir     = NULL,
     min.features       = 100L,
     mt_pattern         = "^MT-",
     run_doublet        = TRUE,
@@ -138,11 +187,31 @@ LoadSamplesRNA <- function(
     miqc_posterior     = 0.95,
     force_assay_v3     = TRUE,
     merge_samples      = TRUE,
-    add_cell_ids       = NULL
+    add_cell_ids       = NULL,
+    modality           = c("scRNA-seq", "snRNA-seq")
 ) {
+  modality   <- match.arg(modality)
+  input_type <- match.arg(input_type)
 
   # ── Validate / prepare ──────────────────────────────────────────────────────
+  # run_ids are optional when explicit data_paths are supplied (fall back to
+  # the human-readable sample_ids for cell-id prefixes etc.).
+  if (is.null(run_ids)) {
+    if (is.null(data_paths))
+      stop("`run_ids` is required unless you supply explicit `data_paths`.")
+    run_ids <- sample_ids
+  }
   stopifnot(length(sample_ids) == length(run_ids))
+
+  # Explicit paths bypass templates; otherwise base_dir is required.
+  use_explicit_paths <- !is.null(data_paths)
+  if (use_explicit_paths) {
+    if (length(data_paths) != length(sample_ids))
+      stop("`data_paths` must have one entry per sample (",
+           length(sample_ids), " expected, got ", length(data_paths), ").")
+  } else if (is.null(base_dir)) {
+    stop("`base_dir` is required unless you supply explicit `data_paths`.")
+  }
 
   if (is.null(run_ids_x))
     run_ids_x <- .auto_run_id_x(run_ids)
@@ -151,6 +220,13 @@ LoadSamplesRNA <- function(
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   if (!is.null(robj_dir))
     dir.create(robj_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Per-sample RDS directory for save_individual / resume
+  if (save_individual || resume) {
+    if (is.null(individual_dir))
+      individual_dir <- file.path(robj_dir %||% output_dir, "Individual_Samples")
+    dir.create(individual_dir, recursive = TRUE, showWarnings = FALSE)
+  }
 
   # Pre-process metadata data.frame (keyed by sample_id_col)
   meta_df <- if (!is.null(metadata) && is.data.frame(metadata)) {
@@ -165,13 +241,13 @@ LoadSamplesRNA <- function(
 
   # Check optional packages
   if (run_doublet && !requireNamespace("SCP", quietly = TRUE)) {
-    warning("Package 'SCP' not installed — skipping doublet detection.")
+    warning("Package 'SCP' not installed - skipping doublet detection.")
     run_doublet <- FALSE
   }
   if (run_miqc &&
       (!requireNamespace("SeuratWrappers", quietly = TRUE) ||
        !requireNamespace("flexmix",        quietly = TRUE))) {
-    warning("Package 'SeuratWrappers' / 'flexmix' not installed — skipping miQC.")
+    warning("Package 'SeuratWrappers' / 'flexmix' not installed - skipping miQC.")
     run_miqc <- FALSE
   }
 
@@ -186,18 +262,47 @@ LoadSamplesRNA <- function(
 
     message("\n========== ", sid, " (", rid, ") ==========")
 
-    # ── 1. Read 10X h5 ────────────────────────────────────────────────────────
-    h5_path <- .fill_path(h5_template, base_dir = base_dir,
-                          run_id = rid, run_id_x = ridx)
-    if (!file.exists(h5_path)) {
-      warning("h5 file not found — skipping ", sid, ":\n  ", h5_path)
+    # ── 0. Resume: load cached per-sample object and skip re-processing ───────
+    ind_path <- if (save_individual || resume)
+      file.path(individual_dir, paste0(sid, ".rds")) else NULL
+    if (resume && !is.null(ind_path) && file.exists(ind_path)) {
+      message("  Resuming - loading cached object: ", basename(ind_path))
+      objects_list[[sid]] <- tryCatch(
+        readRDS(ind_path),
+        error = function(e) {
+          warning("Cached object for ", sid, " is unreadable, reprocessing: ",
+                  conditionMessage(e)); NULL
+        }
+      )
+      if (!is.null(objects_list[[sid]])) next   # only skip if the load succeeded
+    }
+
+    # ── 1. Read 10X counts (h5 file or matrix folder) ─────────────────────────
+    # Resolve the path: explicit data_paths win; otherwise build from template.
+    data_path <- if (use_explicit_paths) {
+      data_paths[i]
+    } else if (input_type == "h5") {
+      .fill_path(h5_template, base_dir = base_dir,
+                 run_id = rid, run_id_x = ridx)
+    } else {
+      .fill_path(matrix_dir_template, base_dir = base_dir,
+                 run_id = rid, run_id_x = ridx)
+    }
+
+    # file.exists() is TRUE for both files and directories
+    if (!file.exists(data_path)) {
+      warning(if (input_type == "h5") "h5 file" else "matrix folder",
+              " not found - skipping ", sid, ":\n  ", data_path)
       next
     }
 
     mat <- tryCatch(
-      Seurat::Read10X_h5(h5_path),
+      if (input_type == "h5")
+        Seurat::Read10X_h5(data_path)
+      else
+        Seurat::Read10X(data.dir = data_path),
       error = function(e) {
-        warning("Failed to read h5 for ", sid, ": ", conditionMessage(e))
+        warning("Failed to read counts for ", sid, ": ", conditionMessage(e))
         NULL
       }
     )
@@ -206,7 +311,7 @@ LoadSamplesRNA <- function(
     # Read10X_h5 may return a list (e.g. multiome); take the Gene Expression slot
     if (is.list(mat)) {
       if ("Gene Expression" %in% names(mat)) {
-        message("  h5 contains multiple modalities — using 'Gene Expression'.")
+        message("  h5 contains multiple modalities - using 'Gene Expression'.")
         mat <- mat[["Gene Expression"]]
       } else {
         mat <- mat[[1]]
@@ -219,7 +324,8 @@ LoadSamplesRNA <- function(
     message("  Cells loaded: ", ncol(seurat_object))
 
     # ── 2. Cell annotation CSV (optional) ─────────────────────────────────────
-    if (!is.null(cellanno_template)) {
+    # Skipped in explicit-paths mode (no base_dir to build the template from).
+    if (!is.null(cellanno_template) && !is.null(base_dir)) {
       ca_path <- .fill_path(cellanno_template, base_dir = base_dir,
                             run_id = rid, run_id_x = ridx)
       if (file.exists(ca_path)) {
@@ -234,7 +340,7 @@ LoadSamplesRNA <- function(
         if (!is.null(ca))
           seurat_object <- Seurat::AddMetaData(seurat_object, metadata = ca)
       }
-      # silently skip if file absent — per-sample annotations are optional
+      # silently skip if file absent - per-sample annotations are optional
     }
 
     # ── 3. Per-sample metadata ─────────────────────────────────────────────────
@@ -289,15 +395,48 @@ LoadSamplesRNA <- function(
                                   order = TRUE, shuffle = TRUE)),
             silent = TRUE)
         grDevices::dev.off()
+        .write_legend_sidecar(f_dbl, paste0(
+          "UMAP of sample ", sid, " split by doublet classification from ",
+          "SCP::db_scDblFinder. Each panel shows the cells assigned to one ",
+          "DoubletStatus class (singlet vs. doublet); points are colour-",
+          "matched to the active cluster identity and plotted in shuffled ",
+          "order so neither class is occluded."
+        ))
         message("  Saved: ", f_dbl)
       }
     }
 
     # ── 6. Mitochondrial % + miQC ─────────────────────────────────────────────
+    n_mt_genes <- sum(grepl(mt_pattern, rownames(seurat_object)))
     seurat_object[["percent.mt"]] <- Seurat::PercentageFeatureSet(seurat_object, pattern = mt_pattern)
 
-    if (run_miqc) {
-      message("  Running miQC...")
+    # Guard: if mt_pattern matches no genes, percent.mt is all zero. miQC's
+    # flexmix model then cannot fit (Log-likelihood: NaN) and silently falls
+    # back to a percentile, producing a meaningless miQC.keep column. The usual
+    # cause is a species mismatch: human mito genes are "^MT-" (uppercase),
+    # mouse are "^mt-" (lowercase). Warn clearly and skip miQC for this sample.
+    run_miqc_sample <- run_miqc
+    if (n_mt_genes == 0) {
+      # Detect whether a case-flipped pattern would have matched, so we can name
+      # the correct one (human "^MT-" vs mouse "^mt-").
+      alt <- if (grepl("MT", mt_pattern)) sub("MT", "mt", mt_pattern)
+             else sub("mt", "MT", mt_pattern)
+      alt_n  <- sum(grepl(alt, rownames(seurat_object)))
+      suggest <- if (alt_n > 0)
+        paste0(" Use mt_pattern = '", alt, "' (matches ", alt_n,
+               " genes in this object).")
+      else " No mitochondrial genes found under either case."
+      warning("mt_pattern '", mt_pattern, "' matched 0 genes in ", sid,
+              " - percent.mt is all zero, so miQC cannot fit and is skipped.",
+              suggest, call. = FALSE)
+      message("  [skip] miQC for ", sid, ": mt_pattern '", mt_pattern,
+              "' matched 0 genes.",
+              if (alt_n > 0) paste0(" Try mt_pattern = '", alt, "'.") else "")
+      run_miqc_sample <- FALSE
+    }
+
+    if (run_miqc_sample) {
+      message("  Running miQC (", n_mt_genes, " mito genes)...")
       seurat_object <- tryCatch(
         SeuratWrappers::RunMiQC(seurat_object,
                                 percent.mt    = "percent.mt",
@@ -311,6 +450,12 @@ LoadSamplesRNA <- function(
       )
     }
 
+    # ── 7. Save per-sample object (so resume can skip it next time) ───────────
+    if (save_individual && !is.null(ind_path)) {
+      saveRDS(seurat_object, ind_path)
+      message("  Saved per-sample object: ", ind_path)
+    }
+
     objects_list[[sid]] <- seurat_object
     message("  Done: ", sid)
   }
@@ -322,7 +467,7 @@ LoadSamplesRNA <- function(
           " samples loaded successfully.")
 
   if (n_ok == 0) {
-    warning("No samples loaded — returning NULL.")
+    warning("No samples loaded - returning NULL.")
     return(invisible(NULL))
   }
 
@@ -339,13 +484,23 @@ LoadSamplesRNA <- function(
   merged <- if (n_ok == 1) {
     objects_list[[1]]
   } else {
-    Seurat::merge(
+    # merge() is a base S3 generic; the Seurat method (merge.Seurat) lives in
+    # SeuratObject and is dispatched via the generic - there is no exported
+    # Seurat::merge. Call the generic so dispatch picks merge.Seurat.
+    merge(
       objects_list[[1]],
-      y         = objects_list[-1],
+      y            = objects_list[-1],
       add.cell.ids = ids_for_merge
     )
   }
   message("Merged object: ", ncol(merged), " cells, ", nrow(merged), " genes.")
+
+  # ── Store modality ─────────────────────────────────────────────────────────
+  merged$modality <- modality
+  merged@misc$scSidekick_params <- c(
+    merged@misc$scSidekick_params,
+    list(modality = modality)
+  )
 
   # ── Save ───────────────────────────────────────────────────────────────────
   if (!is.null(robj_dir)) {
@@ -367,13 +522,13 @@ LoadSamplesRNA <- function(
 #' Adds `mitoRatio`, `riboRatio`, and `log10GenesPerUMI` to the object, then
 #' saves four PDFs:
 #' \enumerate{
-#'   \item **Doublet barplot** — cells per sample coloured by `DoubletStatus`
+#'   \item **Doublet barplot** - cells per sample coloured by `DoubletStatus`
 #'     (only if that column exists from `SCP::db_scDblFinder`).
-#'   \item **miQC keep barplot** — cells per sample coloured by `miQC.keep`
+#'   \item **miQC keep barplot** - cells per sample coloured by `miQC.keep`
 #'     (only if that column exists from `SeuratWrappers::RunMiQC`).
-#'   \item **QC density + violin plots** — four metrics side-by-side with
+#'   \item **QC density + violin plots** - four metrics side-by-side with
 #'     user-defined cutoff guidelines.
-#'   \item **Cell count barplot** — cells per sample before any filtering.
+#'   \item **Cell count barplot** - cells per sample before any filtering.
 #' }
 #'
 #' @param seurat_object Seurat object (merged, unfiltered).
@@ -389,8 +544,8 @@ LoadSamplesRNA <- function(
 #' @param species Character. Controls the default mitochondrial and ribosomal
 #'   gene patterns. One of:
 #'   \itemize{
-#'     \item `"human"` — `mt_pattern = "^MT-"`, `ribo_pattern = "^RP[LS]"`
-#'     \item `"mouse"` — `mt_pattern = "^mt-"`, `ribo_pattern = "^Rp[ls]"`
+#'     \item `"human"` - `mt_pattern = "^MT-"`, `ribo_pattern = "^RP[LS]"`
+#'     \item `"mouse"` - `mt_pattern = "^mt-"`, `ribo_pattern = "^Rp[ls]"`
 #'   }
 #' @param mt_pattern Character or `NULL`. Override the mitochondrial gene
 #'   regex. `NULL` derives from `species`.

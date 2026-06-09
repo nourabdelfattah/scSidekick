@@ -51,8 +51,8 @@ Produces one panel per group.}
 \item{color_by}{What drives fill/color. One of \code{"padj"} (default) or
 \code{"gene_count"}.}
 
-\item{colors}{Character vector of 2–5 colours for the gradient (low padj →
-high padj, i.e. significant → not). Default diverging red–blue.}
+\item{colors}{Character vector of 2-5 colours for the gradient (low padj →
+high padj, i.e. significant → not). Default diverging red-blue.}
 
 \item{max_term_length}{Maximum characters for term label before wrapping.
 Default \code{50}.}

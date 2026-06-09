@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Reporting & Utilities"
+title: "scSidekick - Reporting & Utilities"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,15 +23,22 @@ options(cli.width = 80)
 
 ## Overview
 
-Utility and reporting functions in scSidekick:
+scSidekick is built so that **the write-up writes itself**. As you analyse, the
+package captures the provenance you'll need months later at paper time:
 
-- **`GetColors()`** — retrieve a stored color vector by variable name
-- **`ShowColors()`** — visual swatch grid of all registered palettes
-- **`theme_NourMin()`** — minimal ggplot2 theme consistent with scSidekick figures
-- **`PlotTrendLabeled()`** — standalone composition bar chart for manuscripts
-- **`PlotComposition()`** — composition bar chart without trend direction
-- **`ExtractMethods()`** — auto-generate a methods paragraph from the Seurat command log
-- **`create_analysis_pptx()`** — assemble a PowerPoint deck from saved figures
+- **Auto-logged figure legends** - every figure-saving function drops a
+  plain-text `.legend` sidecar next to the figure, describing exactly what was
+  plotted.
+- **`ExtractMethods()`** - turns the Seurat command log into a ready-to-paste
+  methods paragraph.
+- **Passive session logging** - `start_session_logger()` records your commands
+  and plots; `summarize_r_session()` turns a messy session into a clean report
+  and a tidy R script.
+- **`create_analysis_pptx()`** - assembles all your saved figures into a
+  sectioned PowerPoint deck in one call.
+
+Plus the everyday utilities: `GetColors()`, `ShowColors()`, `theme_NourMin()`,
+`Nour_pal()`, `PlotTrendLabeled()`, and `PlotComposition()`.
 
 ---
 
@@ -63,123 +70,82 @@ bmcite <- FindClusters(bmcite, resolution = 0.5)
 bmcite <- PrepObject(bmcite, variables = "seurat_clusters", force = TRUE)
 ```
 
-## 1. `GetColors()` — retrieve stored colors
-
-`GetColors()` returns the named color vector for a variable, ready to pass into
-`scale_color_manual()` or any scSidekick `colors` argument.
-
-```{r get-colors}
-# Single variable
-ct_cols <- GetColors(bmcite, "celltype.l1")
-ct_cols
-```
-
-```{r get-all-colors}
-# All registered variables at once
-all_cols <- GetColors(bmcite)
-names(all_cols)
-```
-
----
-
-## 2. `ShowColors()` — visual swatch grid
-
-`ShowColors()` renders a color tile for every registered variable and level.
-
-```{r show-colors, fig.height=7}
-ShowColors(bmcite)
-```
-
----
-
-## 3. `theme_NourMin()` — minimal ggplot2 theme
-
-`theme_NourMin()` removes excess chart junk while keeping axis labels, titles,
-and a clean panel border. Layer it after any standard `theme_*()` call.
-
-```{r theme-demo, fig.height=4, fig.width=6}
-VlnPlot(bmcite, features = "CD3E", group.by = "celltype.l1", pt.size = 0) +
-  theme_NourMin() +
-  scale_fill_manual(values = GetColors(bmcite, "celltype.l1")) +
-  theme(legend.position = "none")
-```
-
----
-
-## 4. `PlotTrendLabeled()` — composition bar chart
-
-`PlotTrendLabeled()` is a standalone composition figure: one stacked bar per
-`group.by` level within each `split.by` panel, with percentage labels on each
-segment. Use this for publications; use `PlotDimPlots(show_trend=TRUE)` for
-exploratory talks.
-
-```{r trend-labeled, fig.height=5, fig.width=10}
-PlotTrendLabeled(bmcite,
-  stat.by    = "celltype.l1",
-  group.by   = "donor",
-  split.by   = "lane",
-  label.side = "right")
-```
-
----
-
-## 5. `PlotComposition()` — composition without trend direction
-
-`PlotComposition()` shows proportional composition as a straightforward stacked
-bar chart without the directional label emphasis. Good for summarizing
-multi-sample distributions.
-
-```{r composition, fig.height=4}
-PlotComposition(bmcite,
-  group.by = "celltype.l1",
-  split.by = "donor")
-```
-
----
-
-## 6. `ExtractMethods()` — auto-generate a methods paragraph
+## 1. `ExtractMethods()` - a methods paragraph for free
 
 `ExtractMethods()` reads the Seurat command log (`bmcite@commands`) and
-reconstructs key analysis steps as a prose paragraph and a structured summary.
+reconstructs the key analysis steps as a prose paragraph *and* a structured
+summary - no more reverse-engineering your own pipeline at submission time.
 
-```{r extract-methods, eval=FALSE}
+```{r extract-methods}
 methods_out <- ExtractMethods(bmcite, cite_seurat = TRUE)
-
-# Paste into a manuscript
 cat(methods_out$methods_text)
-
-# Step-by-step summary (data frame)
-print(methods_out$summary)
 ```
+
+The companion `$summary` is a structured list of the detected steps and their
+parameters, handy for a supplementary table.
 
 ---
 
-## 7. `Nour_pal()` — the built-in palette system
+## 2. Auto-logged figure legends
 
-scSidekick ships with `Nour18` (18 qualitative colors) and `Nour20` (20-color
-full-spectrum). Both plug into `Nour_pal()`.
+Every scSidekick function that *saves* a figure also writes a `.legend` text
+file beside it, generated from the exact arguments used. You never have to
+remember what a figure showed.
 
-```{r palette-demo, fig.width=9, fig.height=3}
-# Display all 18 colors
-scales::show_col(Nour18, cex_label = 0.6)
+```{r legend-demo}
+fig_dir <- file.path(tempdir(), "figs")
+dir.create(fig_dir, showWarnings = FALSE)
+
+# Save a feature map; a PDF and a matching .legend are written:
+invisible(GenerateFeatureMaps(bmcite,
+  features    = "CD3E",
+  output_dir  = fig_dir,
+  object_name = "bmcite"))
+
+list.files(fig_dir)
 ```
 
-```{r palette-ggplot, fig.width=6, fig.height=3}
-# Use in a custom ggplot
-df <- data.frame(x = 1:8, y = 1, grp = LETTERS[1:8])
-ggplot(df, aes(x, y, color = grp)) +
-  geom_point(size = 6) +
-  scale_color_manual(values = Nour_pal("main")(8)) +
-  theme_NourMin()
+```{r legend-read}
+# Read back the auto-generated legend:
+legend_file <- list.files(fig_dir, pattern = "\\.legend$", full.names = TRUE)
+cat(readLines(legend_file), sep = "\n")
 ```
+
+You can also log legends or analysis parameters yourself with
+`log_figure_legend()` and `log_analysis_params()` when you build a custom
+figure outside the package.
 
 ---
 
-## 8. `create_analysis_pptx()` — auto-assemble a slide deck
+## 3. Passive session logging
 
-`create_analysis_pptx()` scans `output_dir` for saved PDF/PNG figures from
-scSidekick functions, groups them into sections by filename keyword, and writes
-a `.pptx` file.
+`start_session_logger()` installs a lightweight hook that records the commands
+you run and the plots you draw for the rest of the session. Afterwards,
+`summarize_r_session()` distills the log into a Markdown report and a clean,
+runnable R script - turning an exploratory session into reproducible output.
+
+```{r logger, eval=FALSE}
+# At the top of an analysis session:
+start_session_logger()
+
+# ... do your analysis (every command and plot is captured) ...
+
+# At the end, generate a report + a tidy script:
+summarize_r_session(
+  output_md = "analysis_report.md",
+  output_r  = "analysis_clean.R")
+```
+
+`logger_log_file()` and `logger_plot_dir()` tell you where the active log and
+captured plots live.
+
+---
+
+## 4. `create_analysis_pptx()` - auto-assemble a slide deck
+
+`create_analysis_pptx()` scans `output_dir` for saved PDF/PNG figures, groups
+them into sections by filename keyword, and writes a `.pptx` - your whole
+analysis as a deck, in one call.
 
 ```{r pptx, eval=FALSE}
 create_analysis_pptx(
@@ -187,7 +153,7 @@ create_analysis_pptx(
   object_name = "bmcite")
 ```
 
-Section grouping rules (keyword in filename → section label):
+Section grouping rules (keyword in filename -> section label):
 
 | Keyword | Section |
 |---------|---------|
@@ -211,22 +177,126 @@ create_analysis_pptx(
 
 ---
 
-## When to use `show_trend` vs `PlotTrendLabeled`
+## 5. `GetColors()` - retrieve stored colors
 
-| | `PlotDimPlots(show_trend=TRUE)` | `PlotTrendLabeled()` |
-|---|---|---|
-| Primary figure | UMAP scatter | Bar chart |
-| Trend panel | Appended right of UMAPs | Standalone |
-| Labels | None by default | Percentage labels |
-| Best for | Talks, exploratory | Manuscripts |
+`GetColors()` returns the named color vector for a variable, ready to pass into
+`scale_color_manual()` or any scSidekick `colors` argument.
+
+```{r get-colors}
+ct_cols <- GetColors(bmcite, "celltype.l1")
+ct_cols
+```
+
+```{r get-all-colors}
+all_cols <- GetColors(bmcite)
+names(all_cols)
+```
+
+---
+
+## 6. `ShowColors()` - visual swatch grid
+
+```{r show-colors, fig.height=7}
+ShowColors(bmcite)
+```
+
+---
+
+## 7. `PlotTrendLabeled()` & `PlotComposition()` - composition figures
+
+`PlotTrendLabeled()` is a publication-ready composition figure with percentage
+labels; `PlotComposition()` is the same idea without the directional labels.
+
+```{r trend-labeled, fig.height=5, fig.width=10}
+PlotTrendLabeled(bmcite,
+  stat.by    = "celltype.l1",
+  group.by   = "lane",
+  split.by   = "donor",
+  label.side = "right")
+```
+
+```{r composition, fig.height=4}
+PlotComposition(bmcite,
+  group.by = "celltype.l1",
+  split.by = "donor")
+```
+
+---
+
+## 8. `Nour_pal()` - the built-in palette system
+
+scSidekick ships two hand-curated palettes and a unified accessor:
+
+- **`Nour18`** - 18 qualitative colors (blues, purples, pinks, reds, oranges,
+  greens). Best for datasets with up to 18 cell types.
+- **`Nour20`** - 20 colors sweeping the full visible spectrum. Better for
+  atlases with many fine-grained subtypes.
+- **`Nour_pal()`** - returns a color-function (like `scale_color_brewer` does
+  internally), so you can pull any number of colors from either palette by name.
+
+```{r palette-nour18, fig.width=9, fig.height=3}
+# Nour18 - 18 qualitative colors
+scales::show_col(Nour18, cex_label = 0.6)
+```
+
+```{r palette-nour20, fig.width=10, fig.height=3}
+# Nour20 - full-spectrum 20-color palette
+scales::show_col(Nour20, cex_label = 0.6)
+```
+
+`Nour_pal()` pulls a subset of either palette by name and plugs straight into
+`scale_color_manual()` / `scale_fill_manual()`:
+
+```{r palette-ggplot, fig.width=6, fig.height=3}
+df <- data.frame(x = 1:8, y = 1, grp = LETTERS[1:8])
+ggplot(df, aes(x, y, color = grp)) +
+  geom_point(size = 6) +
+  scale_color_manual(values = Nour_pal("main")(8)) +
+  theme_NourMin()
+```
+
+`SelectColors()` lets you interactively pick a subset of colors by name from
+`Nour18` - useful when you want to hand-pick specific hues for a figure:
+
+```{r select-colors, eval=FALSE}
+# Returns the hex codes for just the colors you name
+SelectColors("blue1", "teal", "pink2", "orange")
+```
+
+---
+
+## 9. `RenameClusters()` - clean cluster labels
+
+Seurat clusters come out as `0, 1, 2, ...`. `RenameClusters()` converts them
+to zero-padded, prefixed labels (`C01`, `C02`, ...) so axes sort correctly and
+look publication-ready.
+
+```{r rename-clusters}
+# Simulate raw Seurat cluster IDs
+raw_clusters <- factor(c(0, 1, 2, 0, 3, 1, 2))
+
+RenameClusters(raw_clusters, prefix = "C", start = 1)
+```
+
+Common usage right after `FindClusters()`:
+
+```{r rename-clusters-seurat, eval=FALSE}
+bmcite$Cluster <- RenameClusters(bmcite$seurat_clusters, prefix = "C", start = 1)
+# seurat cluster 0 -> "C01", cluster 1 -> "C02", etc.
+# factor levels are in cluster order, so ggplot axes always sort correctly.
+
+bmcite <- PrepObject(bmcite, variables = "Cluster", group.by = "Cluster")
+PlotDimPlots(bmcite, group.by = "Cluster")
+```
 
 ---
 
 ## See also
 
-- Vignette 01: `PrepObject`, `ShowColors`, `GetColors` — color management
-- Vignette 03: `PlotDimPlots` — UMAP with optional trend panel
-- All other vignettes save to `output_dir`, which feeds into `create_analysis_pptx`
+- Vignette 01: `PrepObject`, `ShowColors`, `GetColors` - color management
+- Vignette 11: `PlotMetaSummary()` and the composition chart family
+- Every analysis vignette saves to `output_dir` - which feeds straight into
+  `create_analysis_pptx()` and produces `.legend` sidecars automatically.
 
 ---
 

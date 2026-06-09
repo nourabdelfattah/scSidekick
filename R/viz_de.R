@@ -1,10 +1,10 @@
 # =============================================================================
-# scSidekick — Differential Expression & Pathway Visualizations  (viz_de.R)
+# scSidekick - Differential Expression & Pathway Visualizations  (viz_de.R)
 #
 # Exported:
-#   PlotVolcano()          — volcano plot from presto / FindMarkers output
-#   PlotGSEAEnrichment()   — 3-panel running-score mountain plot from fgsea
-#   PlotEnrichment()       — ORA bar / dot / lollipop from enrichR / clusterProfiler
+#   PlotVolcano()          - volcano plot from presto / FindMarkers output
+#   PlotGSEAEnrichment()   - 3-panel running-score mountain plot from fgsea
+#   PlotEnrichment()       - ORA bar / dot / lollipop from enrichR / clusterProfiler
 # =============================================================================
 
 
@@ -255,7 +255,7 @@ PlotVolcano <- function(
     top_n_labels
   )
 
-  # Simpler approach — top by score per direction
+  # Simpler approach - top by score per direction
   if (!is.null(group_column) && group_column %in% colnames(df)) {
     label_genes <- do.call(rbind, lapply(
       split(df, df[[group_column]]),
@@ -353,7 +353,7 @@ PlotVolcano <- function(
 
 
 # =============================================================================
-# PlotGSEAEnrichment — internal mountain-plot builder
+# PlotGSEAEnrichment - internal mountain-plot builder
 # =============================================================================
 
 # Build one 3-panel mountain-plot stack for a single pathway.
@@ -449,24 +449,24 @@ PlotVolcano <- function(
 # PlotGSEAEnrichment
 # =============================================================================
 
-#' GSEA Running Score Mountain Plots — Direct or from RunGSEA Output Directory
+#' GSEA Running Score Mountain Plots - Direct or from RunGSEA Output Directory
 #'
 #' @description
 #' Two operating modes:
 #'
-#' \strong{Direct mode} — pass \code{fgsea_result} and \code{ranked_stats}
+#' \strong{Direct mode} - pass \code{fgsea_result} and \code{ranked_stats}
 #' directly (e.g. from an ad-hoc fgsea run or a single CSV).
 #'
-#' \strong{RunGSEA directory mode} — point to the \code{output_dir} of a
+#' \strong{RunGSEA directory mode} - point to the \code{output_dir} of a
 #' completed \code{\link{RunGSEA}} run via \code{gsea_dir}.  The function
 #' auto-discovers all CSV files, searches pathway names with keyword search
 #' (same AND/OR logic as \code{\link{RunSCssGSEA}}), loads the ranked AUC
 #' vectors from the cached DE RDS files, and produces a grid layout:
 #' \itemize{
-#'   \item \strong{One PDF per split.by level} (cell type) — each PDF may have
+#'   \item \strong{One PDF per split.by level} (cell type) - each PDF may have
 #'     multiple pages when there are more groups than \code{max_cols}
 #'   \item \strong{Columns} = group.by levels (comparison groups, e.g. Male / Female)
-#'     — up to \code{max_cols} per page; additional groups wrap to new pages
+#'     - up to \code{max_cols} per page; additional groups wrap to new pages
 #'   \item \strong{Rows} = matched pathways (one 3-panel mountain stack per pathway)
 #' }
 #'
@@ -479,7 +479,7 @@ PlotVolcano <- function(
 #'   used in \code{\link{RunGSEA}}.
 #' @param database Database subfolder name (e.g. \code{"Hallmark"},
 #'   \code{"C2"}). \code{NULL} uses the first database found.
-#' @param search_terms Keyword search for pathways — same AND/OR logic as
+#' @param search_terms Keyword search for pathways - same AND/OR logic as
 #'   \code{\link{RunSCssGSEA}}: a character vector applies OR; a list of
 #'   character vectors applies AND within each element, OR across elements.
 #'   Case-insensitive.
@@ -588,12 +588,12 @@ PlotGSEAEnrichment <- function(
             if (length(matched_pws) > 5) " ..." else "")
 
     # Layout:
-    #   Page    = split.by level (cell type)     — one PDF per cell type
-    #   Columns = group.by levels (Male/Female)  — up to max_cols per page
-    #   Rows    = matched pathways               — all on the same page
+    #   Page    = split.by level (cell type)     - one PDF per cell type
+    #   Columns = group.by levels (Male/Female)  - up to max_cols per page
+    #   Rows    = matched pathways               - all on the same page
     #
     # When n_groups > max_cols the groups are chunked: each chunk becomes a
-    # separate page in the PDF titled "CellType [Lab] — groups 1-6 of 32".
+    # separate page in the PDF titled "CellType [Lab] - groups 1-6 of 32".
 
     labs_found <- unique(sapply(file_map, `[[`, "lab"))
 
@@ -688,8 +688,8 @@ PlotGSEAEnrichment <- function(
           if (length(page_cols) == 0) next
 
           batch_lbl <- if (n_batches > 1)
-            paste0(" — groups ", min(which(cls_lab %in% cls_batch)),
-                   "–", max(which(cls_lab %in% cls_batch)),
+            paste0(" - groups ", min(which(cls_lab %in% cls_batch)),
+                   "-", max(which(cls_lab %in% cls_batch)),
                    " of ", length(cls_lab))
           else ""
 
@@ -723,7 +723,7 @@ PlotGSEAEnrichment <- function(
   }
 
   # ════════════════════════════════════════════════════════════════════════════
-  # MODE 2: Direct — fgsea_result + ranked_stats
+  # MODE 2: Direct - fgsea_result + ranked_stats
   # ════════════════════════════════════════════════════════════════════════════
   if (is.null(fgsea_result) || is.null(ranked_stats))
     stop("Provide either 'gsea_dir' (RunGSEA directory mode) or ",
@@ -807,8 +807,8 @@ PlotGSEAEnrichment <- function(
 #'   \code{"gene_ratio"} (default), \code{"gene_count"}, or \code{"-log10padj"}.
 #' @param color_by What drives fill/color. One of \code{"padj"} (default) or
 #'   \code{"gene_count"}.
-#' @param colors Character vector of 2–5 colours for the gradient (low padj →
-#'   high padj, i.e. significant → not). Default diverging red–blue.
+#' @param colors Character vector of 2-5 colours for the gradient (low padj →
+#'   high padj, i.e. significant → not). Default diverging red-blue.
 #' @param max_term_length Maximum characters for term label before wrapping.
 #'   Default \code{50}.
 #' @param output_dir Directory to save a PDF. \code{NULL} = no save.
@@ -1116,10 +1116,10 @@ RunEnrichment <- function(
 
   for (grp in names(gene_lists)) {
     genes <- gene_lists[[grp]]
-    message("\nGroup: ", grp, " — ", length(genes), " gene(s)")
+    message("\nGroup: ", grp, " - ", length(genes), " gene(s)")
 
     if (length(genes) == 0) {
-      message("  No genes after filtering — skipping.")
+      message("  No genes after filtering - skipping.")
       next
     }
 

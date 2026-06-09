@@ -5,16 +5,22 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>scSidekick — Single-Cell &amp; Spatial Transcriptomics Toolkit • scSidekick</title>
+<title>scSidekick - Single-Cell &amp; Spatial Transcriptomics Toolkit • scSidekick</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" sizes="any" href="favicon.ico">
+<link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="scSidekick — Single-Cell &amp; Spatial Transcriptomics Toolkit">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="scSidekick - Single-Cell &amp; Spatial Transcriptomics Toolkit">
 <meta name="description" content="A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
 ">
 <meta property="og:description" content="A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
 ">
+<meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -39,22 +45,27 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-vignettes" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Vignettes</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-vignettes">
 <li><h6 class="dropdown-header" data-toc-skip>Setup</h6></li>
-    <li><a class="dropdown-item" href="articles/01_getting_started.html">01 — Getting Started</a></li>
-    <li><a class="dropdown-item" href="articles/02_dim_reduction.html">02 — Dimensionality Reduction</a></li>
+    <li><a class="dropdown-item" href="articles/01_getting_started.html">01 - Getting Started</a></li>
+    <li><a class="dropdown-item" href="articles/02_dim_reduction.html">02 - Dimensionality Reduction</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Visualization</h6></li>
-    <li><a class="dropdown-item" href="articles/03_umap_visualization.html">03 — UMAP Visualization</a></li>
-    <li><a class="dropdown-item" href="articles/04_feature_expression.html">04 — Feature Expression</a></li>
-    <li><a class="dropdown-item" href="articles/05_heatmaps_dotplots.html">05 — Heatmaps &amp; Dot Plots</a></li>
+    <li><a class="dropdown-item" href="articles/03_umap_visualization.html">03 - UMAP Visualization</a></li>
+    <li><a class="dropdown-item" href="articles/04_feature_expression.html">04 - Feature Expression</a></li>
+    <li><a class="dropdown-item" href="articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
+    <li><a class="dropdown-item" href="articles/11_metadata_composition.html">11 - Metadata &amp; Composition</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
-    <li><a class="dropdown-item" href="articles/06_cell_annotation.html">06 — Cell Annotation</a></li>
-    <li><a class="dropdown-item" href="articles/07_spatial.html">07 — Spatial Transcriptomics</a></li>
-    <li><a class="dropdown-item" href="articles/08_pathway_analysis.html">08 — Pathway Analysis</a></li>
-    <li><a class="dropdown-item" href="articles/09_cellchat.html">09 — Cell-Cell Communication</a></li>
+    <li><a class="dropdown-item" href="articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
+    <li><a class="dropdown-item" href="articles/07_spatial.html">07 - Spatial Transcriptomics</a></li>
+    <li><a class="dropdown-item" href="articles/08_pathway_analysis.html">08 - Pathway Analysis</a></li>
+    <li><a class="dropdown-item" href="articles/09_cellchat.html">09 - Cell-Cell Communication</a></li>
+    <li><a class="dropdown-item" href="articles/12_large_data.html">12 - Large Datasets</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
-    <li><a class="dropdown-item" href="articles/10_reporting_utilities.html">10 — Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="articles/10_reporting_utilities.html">10 - Reporting &amp; Utilities</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
+    <li><a class="dropdown-item" href="articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul>
 </li>
       </ul>
@@ -67,18 +78,21 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><pre><code>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  <main id="main" class="col-md-9"><p><img src="reference/figures/logo.png" align="right" height="140" alt="scSidekick logo"></p>
+<p><strong>scSidekick</strong> is a single-cell RNA-seq and spatial transcriptomics toolkit built on top of <a href="https://satijalab.org/seurat/" class="external-link">Seurat</a>. It extends the ecosystem in four specific directions that existing companion packages don’t fully cover: honest-by-default comparison plots with shared scales, one consistent faceting grammar spanning both visualization <em>and</em> downstream analysis, project-wide color and layout consistency registered once on the object, and the same calls scaling without modification from a pilot study to a multi-million-cell atlas via <a href="https://bnprks.github.io/BPCells/" class="external-link">BPCells</a> streaming.</p>
+<p>It is fully interoperable with scCustomize, SCpubr, and dittoSeq; the functions here are not alternatives to those packages but additions targeted at gaps they leave.</p>
+<pre><code>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
            ___   _      _         _  __  _        _
  ___  __  / __| (_)  __| |  ___  | |/ / (_)  __  | |__
 (_-&lt; / _| \__ \ | | / _` | / -_) | ' &lt;  | | / _| | / /
 /__/ \__| |___/ |_| \__,_| \___| |_|\_\ |_| \__| |_\_\
 
- v0.1.0  ·  Your New Best Friend in Visualization
+     Your New Best Friend in Visualization
 
  ✨  It's a good day to make pretty figures!  ✨
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</code></pre>
-<p><strong>scSidekick</strong> is a personal single-cell RNA-seq and spatial transcriptomics toolkit built on top of <a href="https://satijalab.org/seurat/" class="external-link">Seurat</a>. It wraps repetitive boilerplate into one-liners, enforces consistent colors and layouts across an entire project, and automates the last mile from analysis to slide deck.</p>
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+</code></pre>
 <hr>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -86,6 +100,259 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"nourabdelfattah/scSidekick"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="sparkles-what-scsidekick-provides">✨ What scSidekick Provides<a class="anchor" aria-label="anchor" href="#sparkles-what-scsidekick-provides"></a>
+</h2>
+<p>Every example below is reproducible from public data (<a href="data-raw/make_readme_figures.R"><code>data-raw/make_readme_figures.R</code></a>).</p>
+<div class="section level3">
+<h3 id="id_1--shared-accurate-colour-scales-across-split-feature-panels">1 · Shared, accurate colour scales across split feature panels<a class="anchor" aria-label="anchor" href="#id_1--shared-accurate-colour-scales-across-split-feature-panels"></a>
+</h3>
+<p>Splitting a feature plot by a condition is the single most common comparison in single-cell work — and by default a single legend is placed ambiguously across panels, and that shared scale can be lost when a custom palette is supplied. <code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> locks <strong>one shared, labelled colour scale</strong> across every panel so the comparison is honest. No per-call workarounds needed.</p>
+<p><strong>Panel A — split by a single variable:</strong></p>
+<table class="table">
+<tr>
+<td width="50%" align="center">
+<b>Without shared scale — ambiguous comparison</b>
+</td>
+<td width="50%" align="center">
+<b>PlotFeaturePlots — one shared, labelled scale</b>
+</td>
+</tr>
+<tr>
+<td>
+<img src="reference/figures/pain_feature_before.png" width="100%">
+</td>
+<td>
+<img src="reference/figures/pain_feature_after.png" width="100%">
+</td>
+</tr>
+</table>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Panel A: split by donor — one shared colour bar</span></span>
+<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>, split.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Panel B — split by lane, arranged in rows by donor (metadata layout):</strong></p>
+<p>When samples cross two variables (e.g., lane × donor), <code>row.by</code> adds a second faceting dimension and <code>layout_method = "metadata"</code> aligns panels by their actual metadata coordinates rather than wrapping them in arbitrary order — so the grid itself tells the story.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Panel B: lane on columns, donor on rows, positionally aligned</span></span>
+<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
+<span>                 split.by <span class="op">=</span> <span class="st">"lane"</span>, row.by <span class="op">=</span> <span class="st">"donor"</span>,</span>
+<span>                 layout_method <span class="op">=</span> <span class="st">"metadata"</span><span class="op">)</span></span></code></pre></div>
+<p align="center">
+<img src="reference/figures/pain_feature_panel_b.png" width="90%"></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_2--gene-expression-dot-plots-organized-for-comparison">2 · Gene-expression dot plots, organized for comparison<a class="anchor" aria-label="anchor" href="#id_2--gene-expression-dot-plots-organized-for-comparison"></a>
+</h3>
+<div class="section level4">
+<h4 id="splitdotplot--expression-first-organized-by-gene-group">
+<code>SplitDotPlot()</code> — expression first, organized by gene group<a class="anchor" aria-label="anchor" href="#splitdotplot--expression-first-organized-by-gene-group"></a>
+</h4>
+<p>Standard Seurat split dot plots color each dot by the split identity rather than by expression and interleave rows, making it hard to read expression magnitude. <code><a href="reference/SplitDotPlot.html">SplitDotPlot()</a></code> keeps <strong>colour = expression, size = % expressed</strong>, organizes genes into labelled cell-type blocks, and facets cleanly by condition so every cluster is comparable across conditions at a glance.</p>
+<table class="table">
+<tr>
+<td width="50%" align="center">
+<b>Standard split dot plot — expression not directly visible</b>
+</td>
+<td width="50%" align="center">
+<b>SplitDotPlot — blocks, facets, one expression scale</b>
+</td>
+</tr>
+<tr>
+<td>
+<img src="reference/figures/pain_splitdot_before.png" width="100%">
+</td>
+<td>
+<img src="reference/figures/pain_splitdot_after.png" width="100%">
+</td>
+</tr>
+</table>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/SplitDotPlot.html">SplitDotPlot</a></span><span class="op">(</span><span class="va">bmcite</span>, markers_df <span class="op">=</span> <span class="va">markers_df</span>,</span>
+<span>             group.by <span class="op">=</span> <span class="st">"celltype.l1"</span>, split.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="fastdotplot--find-gene-programs-without-knowing-gene-names">
+<code>FastDotPlot()</code> — find gene programs without knowing gene names<a class="anchor" aria-label="anchor" href="#fastdotplot--find-gene-programs-without-knowing-gene-names"></a>
+</h4>
+<p><code><a href="reference/FastDotPlot.html">FastDotPlot()</a></code> adds two capabilities that matter when exploring large gene sets: a <strong>regex pattern</strong> selects all matching genes automatically (no manual list required), and <code>k_genes</code> slices the gene dendrogram into labelled programs so co-regulated blocks become visible immediately.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># All CD1x/CD2x genes, automatically split into 3 co-expression patterns</span></span>
+<span><span class="fu"><a href="reference/FastDotPlot.html">FastDotPlot</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
+<span>            pattern  <span class="op">=</span> <span class="st">"^CD[1-2]"</span>,</span>
+<span>            group.by <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<span>            k_genes  <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p align="center">
+<img src="reference/figures/pain_fastdotplot.png" width="85%"></p>
+<p>Pair with <code><a href="reference/FastDotPlot2.html">FastDotPlot2()</a></code> to add an automatic <strong>EnrichR annotation header</strong> above each gene-pattern panel — pattern → pathway in one call:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/FastDotPlot2.html">FastDotPlot2</a></span><span class="op">(</span><span class="va">bmcite</span>, pattern <span class="op">=</span> <span class="st">"^CD[1-2]"</span>, group.by <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<span>             k_genes <span class="op">=</span> <span class="fl">3</span>, EnrichR_DB <span class="op">=</span> <span class="st">"CellMarker_2024"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="id_3--multi-cohort-cell-cell-communication--keep-every-cohort-visible">3 · Multi-cohort cell-cell communication — keep every cohort visible<a class="anchor" aria-label="anchor" href="#id_3--multi-cohort-cell-cell-communication--keep-every-cohort-visible"></a>
+</h3>
+<p><code><a href="reference/CompareCellChat.html">CompareCellChat()</a></code> places every cohort on <strong>one shared layout</strong> with the same node colours and group order in every panel, so you compare presence <em>and</em> absence side by side. Cohorts where a pathway is absent get a blank panel rather than being silently dropped — absence is often the finding.</p>
+<p align="center">
+<b>Standard comparison — cohorts lacking a pathway are silently omitted</b><br><img src="reference/figures/pain_cellchat_before.png" width="100%"></p>
+<p align="center">
+<b>CompareCellChat — every cohort shown; same colours, same order, absence visible</b><br><img src="reference/figures/pain_cellchat_after.png" width="100%"></p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/CompareCellChat.html">CompareCellChat</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>SGm <span class="op">=</span> <span class="st">"SGmCellChat.rds"</span>,  SGf <span class="op">=</span> <span class="st">"SGfCellChat.rds"</span>,</span>
+<span>       YSGm <span class="op">=</span> <span class="st">"YSGmCellChat.rds"</span>, YSGf <span class="op">=</span> <span class="st">"YSGfCellChat.rds"</span><span class="op">)</span>,</span>
+<span>  output_dir <span class="op">=</span> <span class="st">"./Figures/CellChat"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_4--atlas-scale-metadata-summarized-in-one-line">4 · Atlas-scale metadata, summarized in one line<a class="anchor" aria-label="anchor" href="#id_4--atlas-scale-metadata-summarized-in-one-line"></a>
+</h3>
+<p><code><a href="reference/PlotMetaSummary.html">PlotMetaSummary()</a></code> computes cell-type composition across multiple grouping levels — counts <em>and</em> percentages — in a single expression:</p>
+<p align="center">
+<img src="reference/figures/pain_meta_everyday.png" width="85%"></p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>, variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"celltype.l1"</span>, <span class="st">"celltype.l2"</span><span class="op">)</span>,</span>
+<span>                fill_variable <span class="op">=</span> <span class="st">"donor"</span>, count_unit <span class="op">=</span> <span class="st">"cells"</span><span class="op">)</span> <span class="op">+</span></span>
+<span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>, variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"celltype.l1"</span>, <span class="st">"celltype.l2"</span><span class="op">)</span>,</span>
+<span>                fill_variable <span class="op">=</span> <span class="st">"donor"</span>, count_unit <span class="op">=</span> <span class="st">"cells"</span>, percent <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>The same function handles a 1.78M-cell, 153-column clinical atlas: point it at a data frame with <code>id_column = "Donor.ID"</code> and it collapses cells to donors and lays out the clinical variables — no manual aggregation:</p>
+<table class="table">
+<tr>
+<td width="42%" align="center">
+<b>153 raw metadata columns — hard to interpret at scale</b>
+</td>
+<td width="58%" align="center">
+<b>83 donors summarised in one line</b>
+</td>
+</tr>
+<tr>
+<td>
+<img src="reference/figures/pain_meta_before.png" width="100%">
+</td>
+<td>
+<img src="reference/figures/pain_meta_after.png" width="100%">
+</td>
+</tr>
+</table>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">md</span>, id_column <span class="op">=</span> <span class="st">"Donor.ID"</span>,</span>
+<span>                variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Braak"</span>, <span class="st">"APOE.Genotype"</span>, <span class="st">"CERAD.score"</span><span class="op">)</span>,</span>
+<span>                fill_variable <span class="op">=</span> <span class="st">"Cognitive.Status"</span>, row_variable <span class="op">=</span> <span class="st">"Sex"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_5--methods-paragraph--figure-legends-written-as-you-go">5 · Methods paragraph + figure legends, written as you go<a class="anchor" aria-label="anchor" href="#id_5--methods-paragraph--figure-legends-written-as-you-go"></a>
+</h3>
+<p>Every figure-writing function drops a plain-text <strong>legend sidecar</strong> (<code>.legend</code>) next to the figure file as it’s saved. <code><a href="reference/ExtractMethods.html">ExtractMethods()</a></code> reads the Seurat command history into a <strong>ready-to-paste methods paragraph</strong>. Nothing to reconstruct months later.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Auto-written next to every figure, e.g. "LYZ_donor featuremap bmcite.legend":</span></span>
+<span><span class="co">#   UMAP feature plot showing expression of LYZ in bmcite, split by donor.</span></span>
+<span><span class="co">#   Colour scale: low (dark blue) to high (dark red), capped at the per-gene</span></span>
+<span><span class="co">#   maximum (6.46). Each panel represents one donor level; legend shows the</span></span>
+<span><span class="co">#   shared colour bar.</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/ExtractMethods.html">ExtractMethods</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span><span class="op">$</span><span class="va">methods_text</span></span>
+<span><span class="co">#&gt; Single-cell RNA-seq (scRNA-seq) data (30,672 cells, 17,009 genes; assay: RNA)</span></span>
+<span><span class="co">#&gt; were analyzed using Seurat. Gene expression counts were normalized using</span></span>
+<span><span class="co">#&gt; LogNormalize (scale factor 10,000) and 2,000 highly variable genes were</span></span>
+<span><span class="co">#&gt; identified using the vst method. PCA was performed (30 PCs computed). ...</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_6--analysis-to-slides-in-one-call">6 · Analysis to slides in one call<a class="anchor" aria-label="anchor" href="#id_6--analysis-to-slides-in-one-call"></a>
+</h3>
+<p><code><a href="reference/create_analysis_pptx.html">create_analysis_pptx()</a></code> walks a figures directory (including per-subfolder parameters) and assembles a PowerPoint deck — aspect-ratio-preserving figure placement, section ordering, the works:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/create_analysis_pptx.html">create_analysis_pptx</a></span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"./Figures"</span>, object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_7--gene-set-enrichment-with-keyword-pathway-search">7 · Gene-set enrichment, with keyword pathway search<a class="anchor" aria-label="anchor" href="#id_7--gene-set-enrichment-with-keyword-pathway-search"></a>
+</h3>
+<p>One call runs the ranking, GSEA against Hallmark / KEGG / Reactome / WikiPathways, and the enrichment plots:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>, group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span>, output_dir <span class="op">=</span> <span class="st">"./Figures/Pathways"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Nested comparisons are two arguments.</strong> <code>split.by</code> runs an independent GSEA per level — one per major lineage, comparing subtypes within it:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>,</span>
+<span>        group.by   <span class="op">=</span> <span class="st">"celltype.l2"</span>,   <span class="co"># subtypes compared</span></span>
+<span>        split.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,   <span class="co"># nested: one run per lineage</span></span>
+<span>        output_dir <span class="op">=</span> <span class="st">"./Figures/Pathways"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>No need to know exact pathway names.</strong> Pull pathways by keyword, then see which genes drive them:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/PlotGSEAEnrichment.html">PlotGSEAEnrichment</a></span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"./Figures/Pathways"</span>,</span>
+<span>                   search_terms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"interferon"</span>, <span class="st">"response"</span><span class="op">)</span>, <span class="st">"apoptosis"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/VisualizeLeadingEdge.html">VisualizeLeadingEdge</a></span><span class="op">(</span><span class="va">obj</span>, gsea_files <span class="op">=</span> <span class="st">"./Figures/Pathways"</span>,</span>
+<span>                     search_terms <span class="op">=</span> <span class="st">"interferon"</span>, group.by <span class="op">=</span> <span class="st">"celltype.l1"</span><span class="op">)</span></span></code></pre></div>
+<p>For sample-level robustness or per-cell scores on a large object, <code><a href="reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code> and <code><a href="reference/RunSCssGSEA.html">RunSCssGSEA()</a></code> stream BPCells / sketched assays.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="one-faceting-vocabulary-everywhere">One faceting vocabulary, everywhere<a class="anchor" aria-label="anchor" href="#one-faceting-vocabulary-everywhere"></a>
+</h2>
+<p>The same three arguments work across every function — plots <em>and</em> analyses:</p>
+<ul>
+<li>
+<strong><code>group.by</code></strong> — what defines a group (colour, x-axis, the comparison)</li>
+<li>
+<strong><code>split.by</code></strong> — make one panel / one independent run per level</li>
+<li>
+<strong><code>row.by</code></strong> — arrange panels along a second dimension</li>
+</ul>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/PlotDimPlots.html">PlotDimPlots</a></span><span class="op">(</span><span class="va">obj</span>,        group.by <span class="op">=</span> <span class="st">"CellType"</span>, split.by <span class="op">=</span> <span class="st">"Sample"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>,    features <span class="op">=</span> <span class="st">"CD3E"</span>,     split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/SplitDotPlot.html">SplitDotPlot</a></span><span class="op">(</span><span class="va">obj</span>,        markers_df <span class="op">=</span> <span class="va">m</span>, group.by <span class="op">=</span> <span class="st">"CellType"</span>, split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>,     variables <span class="op">=</span> <span class="st">"CellType"</span>, fill_variable <span class="op">=</span> <span class="st">"Group"</span>, row_variable <span class="op">=</span> <span class="st">"Sex"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>,             group.by <span class="op">=</span> <span class="st">"celltype.l2"</span>, split.by <span class="op">=</span> <span class="st">"celltype.l1"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/RunCellChat.html">RunCellChat</a></span><span class="op">(</span><span class="va">obj</span>,         group.by <span class="op">=</span> <span class="st">"CellType"</span>,    split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span></code></pre></div>
+<p>Same words whether you are drawing a UMAP, a dot plot, or running GSEA and CellChat. Learn the grammar once; it carries over to every step.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="why-scsidekick">Why scSidekick<a class="anchor" aria-label="anchor" href="#why-scsidekick"></a>
+</h2>
+<ul>
+<li>
+<strong>Honest-by-default plots</strong> — shared scales and kept legends by design, so comparisons are valid without per-call workarounds.</li>
+<li>
+<strong>Consistency for free</strong> — register colours, factor levels, and defaults once with <code><a href="reference/PrepObject.html">PrepObject()</a></code>; every downstream function reads them, so an entire project shares one palette and layout.</li>
+<li>
+<strong>Reproducibility captured passively</strong> — a legend sidecar for every figure, an auto-drafted methods paragraph, a one-call PPTX builder, and a session logger that turns a working session into a clean script.</li>
+<li>
+<strong>Scales to big data</strong> — feature plots, pseudobulk, and pathway scoring stream BPCells / on-disk / Sketch assays; the same one-liners work on a 2M-cell atlas.</li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+</h2>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nourabdelfattah.github.io/scSidekick/">scSidekick</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Register colours, levels, and defaults once:</span></span>
+<span><span class="va">obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/PrepObject.html">PrepObject</a></span><span class="op">(</span><span class="va">obj</span>,</span>
+<span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Sample"</span>, <span class="st">"Group"</span>, <span class="st">"seurat_clusters"</span><span class="op">)</span>,</span>
+<span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
+<span>  split.by    <span class="op">=</span> <span class="st">"Sample"</span>,</span>
+<span>  output_dir  <span class="op">=</span> <span class="st">"./Figures"</span>,</span>
+<span>  object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Every downstream function reads those defaults automatically:</span></span>
+<span><span class="fu"><a href="reference/PlotDimPlots.html">PlotDimPlots</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span>                                   <span class="co"># UMAP split by Sample</span></span>
+<span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>, variables <span class="op">=</span> <span class="st">"seurat_clusters"</span>, <span class="co"># composition at a glance</span></span>
+<span>                fill_variable <span class="op">=</span> <span class="st">"Group"</span>, count_unit <span class="op">=</span> <span class="st">"cells"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>, features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CD3E"</span>, <span class="st">"CD79A"</span>, <span class="st">"LYZ"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/GroupHeatmap.html">GroupHeatmap</a></span><span class="op">(</span><span class="va">obj</span>, features <span class="op">=</span> <span class="va">marker_genes</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>, group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/create_analysis_pptx.html">create_analysis_pptx</a></span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"./Figures"</span>, object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -102,35 +369,75 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><strong>Setup &amp; Colors</strong></td>
+<td><strong>Setup &amp; Colours</strong></td>
 <td>
-<code><a href="reference/PrepObject.html">PrepObject()</a></code>, <code><a href="reference/ShowColors.html">ShowColors()</a></code>, <code><a href="reference/GetColors.html">GetColors()</a></code>, <code><a href="reference/Nour_pal.html">Nour_pal()</a></code>
+<code><a href="reference/GenerateDirectories.html">GenerateDirectories()</a></code>, <code><a href="reference/PrepObject.html">PrepObject()</a></code>, <code><a href="reference/ShowColors.html">ShowColors()</a></code>, <code><a href="reference/GetColors.html">GetColors()</a></code>, <code><a href="reference/SetLevels.html">SetLevels()</a></code>, <code><a href="reference/RenameClusters.html">RenameClusters()</a></code>, <code><a href="reference/Nour_pal.html">Nour_pal()</a></code>, <code><a href="reference/scale_color_Nour.html">scale_color_Nour()</a></code>
 </td>
 </tr>
 <tr>
-<td><strong>Dimensionality Reduction</strong></td>
+<td><strong>Metadata</strong></td>
+<td>
+<code><a href="reference/SummarizeMetadata.html">SummarizeMetadata()</a></code>, <code><a href="reference/PlotMetaSummary.html">PlotMetaSummary()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Dim. reduction</strong></td>
 <td><code><a href="reference/Determine_nDims.html">Determine_nDims()</a></code></td>
 </tr>
 <tr>
-<td><strong>UMAP &amp; Composition</strong></td>
+<td><strong>UMAP &amp; composition</strong></td>
 <td>
-<code><a href="reference/PlotDimPlots.html">PlotDimPlots()</a></code>, <code><a href="reference/PlotTrendLabeled.html">PlotTrendLabeled()</a></code>, <code><a href="reference/PlotComposition.html">PlotComposition()</a></code>
+<code><a href="reference/PlotDimPlots.html">PlotDimPlots()</a></code>, <code><a href="reference/PlotDimPlots.html">PlotTrendAndUMAP()</a></code>, <code><a href="reference/PlotComposition.html">PlotComposition()</a></code>, <code><a href="reference/PlotPieUMAP.html">PlotPieUMAP()</a></code>, <code><a href="reference/PlotTrendLabeled.html">PlotTrendLabeled()</a></code>
 </td>
 </tr>
 <tr>
-<td><strong>Feature Expression</strong></td>
+<td><strong>Composition charts</strong></td>
 <td>
-<code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code>, <code><a href="reference/PlotMultiFeature.html">PlotMultiFeature()</a></code>
+<code><a href="reference/PlotAlluvial.html">PlotAlluvial()</a></code>, <code><a href="reference/PlotRose.html">PlotRose()</a></code>, <code><a href="reference/PlotChord.html">PlotChord()</a></code>, <code><a href="reference/PlotAtlasWheel.html">PlotAtlasWheel()</a></code>
 </td>
 </tr>
 <tr>
-<td><strong>Heatmaps &amp; Dot Plots</strong></td>
+<td><strong>Feature expression</strong></td>
 <td>
-<code><a href="reference/GroupHeatmap.html">GroupHeatmap()</a></code>, <code><a href="reference/SplitDotPlot.html">SplitDotPlot()</a></code>, <code><a href="reference/FastDotPlot.html">FastDotPlot()</a></code>
+<code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code>, <code><a href="reference/PlotFeature.html">PlotFeature()</a></code>, <code><a href="reference/PlotMultiFeature.html">PlotMultiFeature()</a></code>
 </td>
 </tr>
 <tr>
-<td><strong>Cell Annotation</strong></td>
+<td><strong>Heatmaps &amp; dot plots</strong></td>
+<td>
+<code><a href="reference/GroupHeatmap.html">GroupHeatmap()</a></code>, <code><a href="reference/SplitDotPlot.html">SplitDotPlot()</a></code>, <code><a href="reference/SplitDotPlot2.html">SplitDotPlot2()</a></code>, <code><a href="reference/FastDotPlot.html">FastDotPlot()</a></code>, <code><a href="reference/FastDotPlot2.html">FastDotPlot2()</a></code>, <code><a href="reference/StackedVlnPlot.html">StackedVlnPlot()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Marker discovery</strong></td>
+<td><code><a href="reference/RunWilcoxAUC.html">RunWilcoxAUC()</a></code></td>
+</tr>
+<tr>
+<td><strong>Differential expression</strong></td>
+<td>
+<code><a href="reference/PlotVolcano.html">PlotVolcano()</a></code>, <code><a href="reference/PlotEnrichment.html">PlotEnrichment()</a></code>, <code><a href="reference/PlotGSEAEnrichment.html">PlotGSEAEnrichment()</a></code>, <code><a href="reference/VisualizeLeadingEdge.html">VisualizeLeadingEdge()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Pseudobulk (large data)</strong></td>
+<td>
+<code><a href="reference/ComputePseudobulk.html">ComputePseudobulk()</a></code>, <code><a href="reference/PlotPseudoBulk.html">PlotPseudoBulk()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Pathway analysis</strong></td>
+<td>
+<code><a href="reference/RunGSEA.html">RunGSEA()</a></code>, <code><a href="reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code>, <code><a href="reference/RunSCssGSEA.html">RunSCssGSEA()</a></code>, <code><a href="reference/RunEnrichment.html">RunEnrichment()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Cell-cell communication</strong></td>
+<td>
+<code><a href="reference/RunCellChat.html">RunCellChat()</a></code>, <code><a href="reference/CompareCellChat.html">CompareCellChat()</a></code>, <code><a href="reference/RankCellChatPathways.html">RankCellChatPathways()</a></code>
+</td>
+</tr>
+<tr>
+<td><strong>Cell annotation</strong></td>
 <td><code><a href="reference/CellTypeAssignmentHelper.html">CellTypeAssignmentHelper()</a></code></td>
 </tr>
 <tr>
@@ -140,52 +447,19 @@
 </td>
 </tr>
 <tr>
-<td><strong>Pathway Analysis</strong></td>
-<td><code><a href="reference/RunGSEA.html">RunGSEA()</a></code></td>
-</tr>
-<tr>
-<td><strong>Cell-Cell Communication</strong></td>
-<td>
-<code><a href="reference/RunCellChat.html">RunCellChat()</a></code>, <code><a href="reference/CompareCellChat.html">CompareCellChat()</a></code>
-</td>
-</tr>
-<tr>
-<td><strong>QC &amp; Loading</strong></td>
+<td><strong>QC &amp; loading</strong></td>
 <td>
 <code><a href="reference/PlotQCMetrics.html">PlotQCMetrics()</a></code>, <code><a href="reference/LoadSamplesRNA.html">LoadSamplesRNA()</a></code>
 </td>
 </tr>
 <tr>
-<td><strong>Reporting</strong></td>
+<td><strong>Reporting &amp; logging</strong></td>
 <td>
-<code><a href="reference/create_analysis_pptx.html">create_analysis_pptx()</a></code>, <code><a href="reference/ExtractMethods.html">ExtractMethods()</a></code>, <code><a href="reference/theme_NourMin.html">theme_NourMin()</a></code>
+<code><a href="reference/create_analysis_pptx.html">create_analysis_pptx()</a></code>, <code><a href="reference/ExtractMethods.html">ExtractMethods()</a></code>, <code><a href="reference/log_figure_legend.html">log_figure_legend()</a></code>, <code><a href="reference/start_session_logger.html">start_session_logger()</a></code>, <code><a href="reference/summarize_r_session.html">summarize_r_session()</a></code>, <code><a href="reference/theme_NourMin.html">theme_NourMin()</a></code>
 </td>
 </tr>
 </tbody>
 </table>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
-</h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nourabdelfattah.github.io/scSidekick/">scSidekick</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># After clustering, register colors and defaults once:</span></span>
-<span><span class="va">SeuratObj</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/PrepObject.html">PrepObject</a></span><span class="op">(</span><span class="va">SeuratObj</span>,</span>
-<span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Sample"</span>, <span class="st">"Group"</span>, <span class="st">"seurat_clusters"</span><span class="op">)</span>,</span>
-<span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
-<span>  split.by    <span class="op">=</span> <span class="st">"Sample"</span>,</span>
-<span>  output_dir  <span class="op">=</span> <span class="st">"./Figures"</span>,</span>
-<span>  object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Every downstream function reads those defaults automatically:</span></span>
-<span><span class="fu"><a href="reference/PlotDimPlots.html">PlotDimPlots</a></span><span class="op">(</span><span class="va">SeuratObj</span><span class="op">)</span>               <span class="co"># UMAP split by Sample, colored by cluster</span></span>
-<span><span class="fu"><a href="reference/GroupHeatmap.html">GroupHeatmap</a></span><span class="op">(</span><span class="va">SeuratObj</span>, features <span class="op">=</span> <span class="va">marker_genes</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">SeuratObj</span>, features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CD3E"</span>, <span class="st">"CD79A"</span>, <span class="st">"LYZ"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">SeuratObj</span>, group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span>, output_dir <span class="op">=</span> <span class="st">"./Figures/Pathways"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/create_analysis_pptx.html">create_analysis_pptx</a></span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"./Figures"</span>, object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -200,27 +474,27 @@
 <tbody>
 <tr>
 <td>01</td>
-<td>PrepObject, ShowColors, GetColors</td>
+<td>Getting started — <code>PrepObject</code>, colours, metadata</td>
 </tr>
 <tr>
 <td>02</td>
-<td>Determine_nDims</td>
+<td>Dimensionality reduction</td>
 </tr>
 <tr>
 <td>03</td>
-<td>PlotDimPlots — UMAP visualization</td>
+<td>UMAP visualization</td>
 </tr>
 <tr>
 <td>04</td>
-<td>PlotFeaturePlots, PlotMultiFeature</td>
+<td>Feature expression</td>
 </tr>
 <tr>
 <td>05</td>
-<td>GroupHeatmap, SplitDotPlot, FastDotPlot</td>
+<td>Heatmaps &amp; dot plots</td>
 </tr>
 <tr>
 <td>06</td>
-<td>CellTypeAssignmentHelper</td>
+<td>Cell annotation</td>
 </tr>
 <tr>
 <td>07</td>
@@ -228,15 +502,23 @@
 </tr>
 <tr>
 <td>08</td>
-<td>RunGSEA — pathway analysis</td>
+<td>Pathway analysis</td>
 </tr>
 <tr>
 <td>09</td>
-<td>RunCellChat, CompareCellChat</td>
+<td>Cell-cell communication</td>
 </tr>
 <tr>
 <td>10</td>
-<td>Reporting utilities</td>
+<td>Reporting &amp; utilities</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Metadata &amp; composition</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Large datasets</td>
 </tr>
 </tbody>
 </table>

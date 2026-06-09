@@ -1,15 +1,15 @@
 # =============================================================================
-# scSidekick — single-cell ssGSEA  (pathway_sc.R)
+# scSidekick - single-cell ssGSEA  (pathway_sc.R)
 #
 # Exported:
-#   RunSCssGSEA()          — per-cell ssGSEA via GSVA, significance testing,
+#   RunSCssGSEA()          - per-cell ssGSEA via GSVA, significance testing,
 #                            ComplexHeatmap visualisation
 #
 # Internal helpers:
-#   .build_gene_sets_sc()  — gene-set preparation (4 input modes)
-#   .run_gsva_ssgsea()     — GSVA v1 / v2 version-aware wrapper
-#   .sc_significance()     — ANOVA or Kruskal-Wallis per pathway
-#   .sc_ssgsea_heatmap()   — ComplexHeatmap mean z-score heatmap
+#   .build_gene_sets_sc()  - gene-set preparation (4 input modes)
+#   .run_gsva_ssgsea()     - GSVA v1 / v2 version-aware wrapper
+#   .sc_significance()     - ANOVA or Kruskal-Wallis per pathway
+#   .sc_ssgsea_heatmap()   - ComplexHeatmap mean z-score heatmap
 #
 # Gene-set input modes
 #   1. Named list          gene_sets = list(SetA = c("G1","G2"), ...)
@@ -22,7 +22,7 @@
 #
 # When deg_group_column has TWO columns the two values are joined internally
 # with "__NKSEP__" so the first column can be recovered as a heatmap row-split
-# category.  This is transparent to the user — just pass
+# category.  This is transparent to the user - just pass
 #   deg_group_column = c("celltype", "cytokine")
 # and the heatmap rows will automatically be grouped by celltype.
 # =============================================================================
@@ -53,7 +53,7 @@
   }
 
   if (is.character(search_terms)) {
-    # Simple OR — each term is an independent OR element
+    # Simple OR - each term is an independent OR element
     Reduce(`|`, lapply(search_terms, function(t) .match_one(t, gs_names)))
   } else if (is.list(search_terms)) {
     # Union of AND-groups
@@ -89,7 +89,7 @@
 # -----------------------------------------------------------------------------
 # .build_gene_sets_sc()
 # Returns list(gene_sets = <named list>, feature_cats = <data.frame or NULL>)
-# feature_cats has columns "pathway" and "category" — used for heatmap row split
+# feature_cats has columns "pathway" and "category" - used for heatmap row split
 # -----------------------------------------------------------------------------
 .build_gene_sets_sc <- function(
     gene_sets            = NULL,
@@ -182,7 +182,7 @@
                        paste0("/", gene_set_subcategory) else "",
                      ")") else " (all collections)",
             "...")
-    m_df <- msigdbr::msigdbr(
+    m_df <- .msigdbr_get(
       species     = species,
       category    = gene_set_library,
       subcategory = gene_set_subcategory
@@ -222,7 +222,7 @@
     stop("Package 'GSVA' is required.\n",
          "Install with: BiocManager::install('GSVA')")
 
-  # BiocParallel backend — progressbar = TRUE gives per-gene-set progress in GSVA v2
+  # BiocParallel backend - progressbar = TRUE gives per-gene-set progress in GSVA v2
   BPPARAM <- tryCatch({
     if (!requireNamespace("BiocParallel", quietly = TRUE))
       return(NULL)
@@ -301,7 +301,7 @@
   )
   if (!is.null(BPPARAM)) args$BPPARAM <- BPPARAM
 
-  # UCell returns cells × pathways — transpose to pathways × cells (GSVA convention)
+  # UCell returns cells × pathways - transpose to pathways × cells (GSVA convention)
   t(do.call(UCell::ScoreSignatures_UCell, args))
 }
 
@@ -356,7 +356,7 @@
 # ComplexHeatmap of row-z-scored mean ssGSEA enrichment scores per group.
 # Columns = group.by levels; optional column split by split.by.
 # Row split by feature_cats$category if provided.
-# heatmap_params merged via modifyList — any Heatmap() arg can be overridden.
+# heatmap_params merged via modifyList - any Heatmap() arg can be overridden.
 # split_levels preserves user-defined factor order for split.by columns.
 # -----------------------------------------------------------------------------
 .sc_ssgsea_heatmap <- function(scores_mat, meta_df, group_by,
@@ -372,13 +372,13 @@
 
   pws_use <- show_pws[show_pws %in% rownames(scores_mat)]
   if (length(pws_use) == 0) {
-    message("  No pathways to display in heatmap — skipping.")
+    message("  No pathways to display in heatmap - skipping.")
     return(invisible(NULL))
   }
 
   cells_use <- intersect(colnames(scores_mat), rownames(meta_df))
   if (length(cells_use) == 0) {
-    message("  No overlapping cells between scores and metadata — skipping heatmap.")
+    message("  No overlapping cells between scores and metadata - skipping heatmap.")
     return(invisible(NULL))
   }
 
@@ -523,7 +523,7 @@
                                  pdf_path) {
   pws_use <- show_pws[show_pws %in% colnames(scores_df)]
   if (length(pws_use) == 0) {
-    message("  No pathways to plot — skipping boxplots.")
+    message("  No pathways to plot - skipping boxplots.")
     return(invisible(NULL))
   }
 
@@ -531,7 +531,7 @@
   has_ggpubr  <- requireNamespace("ggpubr", quietly = TRUE)
 
   if (add_pvalues && !has_ggpubr)
-    message("  Note: ggpubr not installed — p-values skipped. ",
+    message("  Note: ggpubr not installed - p-values skipped. ",
             "Install with: install.packages('ggpubr')")
 
   # Auto PDF dimensions
@@ -654,7 +654,7 @@
 
 
 # =============================================================================
-# RunSCssGSEA — main exported function
+# RunSCssGSEA - main exported function
 # =============================================================================
 
 #' Single-cell ssGSEA with significance testing and heatmap visualisation
@@ -674,25 +674,25 @@
 #'
 #' @section Gene-set input (choose exactly one mode):
 #'
-#' **Mode 1 — pre-built named list**
+#' **Mode 1 - pre-built named list**
 #' ```r
 #' gene_sets = list(SetA = c("GENE1", "GENE2"), SetB = c("GENE3"))
 #' ```
 #'
-#' **Mode 2 — DEG data frame**\cr
+#' **Mode 2 - DEG data frame**\cr
 #' Converts a marker/DEG table into one gene set per group. The `deg_group_column`
 #' argument can name **one column** (simple group, e.g. `"celltype"`) or **two
 #' columns** (e.g. `c("celltype", "cytokine")`). When two columns are supplied,
 #' gene set names are built as `"celltype__NKSEP__cytokine"` internally and the
 #' heatmap rows are automatically split by the first column (celltype).
 #'
-#' **Mode 3 — MSigDB collection**
+#' **Mode 3 - MSigDB collection**
 #' ```r
 #' gene_set_library = "H"                        # Hallmark
 #' gene_set_library = "C2", gene_set_subcategory = "CP:KEGG"
 #' ```
 #'
-#' **Mode 4 — MSigDB term search** (fetch all gene sets matching a pattern)
+#' **Mode 4 - MSigDB term search** (fetch all gene sets matching a pattern)
 #' ```r
 #' search_terms = c("CELL_DEATH", "APOPTOSIS")
 #' # optionally restrict to a collection:
@@ -732,15 +732,15 @@
 #' @param gene_set_library Character or `NULL`. MSigDB collection code (Mode 3
 #'   or 4). Common options:
 #'   \itemize{
-#'     \item `"H"` — Hallmark (50 coherent biological processes)
-#'     \item `"C2"` — Curated: canonical pathways (combine with
+#'     \item `"H"` - Hallmark (50 coherent biological processes)
+#'     \item `"C2"` - Curated: canonical pathways (combine with
 #'       `gene_set_subcategory = "CP:KEGG"`, `"CP:REACTOME"`,
 #'       `"CP:WIKIPATHWAYS"`, `"CP:BIOCARTA"`, `"CP:PID"`)
-#'     \item `"C5"` — Gene Ontology (`subcategory = "GO:BP"`,
+#'     \item `"C5"` - Gene Ontology (`subcategory = "GO:BP"`,
 #'       `"GO:MF"`, `"GO:CC"`)
-#'     \item `"C6"` — Oncogenic signatures
-#'     \item `"C7"` — Immunologic signatures (IMMUNESIGDB)
-#'     \item `"C8"` — Cell-type signatures
+#'     \item `"C6"` - Oncogenic signatures
+#'     \item `"C7"` - Immunologic signatures (IMMUNESIGDB)
+#'     \item `"C8"` - Cell-type signatures
 #'   }
 #'   `NULL` fetches all collections (slow; use with `search_terms`).
 #' @param gene_set_subcategory Character or `NULL`. MSigDB sub-collection code.
@@ -748,18 +748,18 @@
 #' @param search_terms Search filter applied to MSigDB gene-set names (case-
 #'   insensitive, regex). Accepts two forms:
 #'
-#'   **Character vector — OR search.** Any gene set whose name matches at least
+#'   **Character vector - OR search.** Any gene set whose name matches at least
 #'   one term is kept: \code{search_terms = c("APOPTOSIS", "CELL_DEATH")}.
 #'
-#'   **List of character vectors — AND/OR search.** Each list element is an
+#'   **List of character vectors - AND/OR search.** Each list element is an
 #'   AND-group: all terms in that element must appear in the same pathway name
 #'   (order and separation do not matter). Results are the union (OR) across
 #'   AND-groups. Examples:
 #'   \itemize{
-#'     \item \code{list(c("T_CELL", "ACTIVATION"))} — both words in same name
-#'     \item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} — previous OR APOPTOSIS
+#'     \item \code{list(c("T_CELL", "ACTIVATION"))} - both words in same name
+#'     \item \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")} - previous OR APOPTOSIS
 #'     \item \code{list(c("T_CELL","ACTIVATION"), c("B_CELL","DIFFERENTIATION"))}
-#'       — two independent AND-groups, union of results
+#'       - two independent AND-groups, union of results
 #'   }
 #'   \code{NULL} (default) keeps all gene sets in the fetched collection.
 #' @param species Character. Species for MSigDB fetching. Passed to
@@ -767,8 +767,8 @@
 #'   mouse datasets. See `msigdbr::msigdbr_species()` for all supported species.
 #'
 #' @param downsample Integer or `NULL`. Maximum cells per `group.by` identity
-#'   to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} — downsampling to
-#'   500–2000 cells per group dramatically reduces runtime with minimal loss of
+#'   to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} - downsampling to
+#'   500-2000 cells per group dramatically reduces runtime with minimal loss of
 #'   group-level signal. `NULL` uses all cells. Default `NULL`.
 #' @param min.size Integer. Minimum gene-set size after intersecting with the
 #'   expression matrix. Gene sets below this threshold are silently dropped.
@@ -795,7 +795,7 @@
 #'
 #' @param add_to_object Logical. If `FALSE` (default), returns the enrichment
 #'   scores data frame invisibly and does not modify the Seurat object (scores
-#'   are saved to CSV only — recommended for large datasets to avoid metadata
+#'   are saved to CSV only - recommended for large datasets to avoid metadata
 #'   bloat). If `TRUE`, adds one metadata column per gene set to `seurat_object@meta.data`
 #'   and returns the modified Seurat object. When `downsample` is also set, cells
 #'   not included in the downsampled scoring set receive `NA`.
@@ -815,13 +815,13 @@
 #'
 #' **Files saved to `output_dir`:**
 #' \itemize{
-#'   \item `<prefix> ssGSEA_scores.csv` — per-cell enrichment scores + group
+#'   \item `<prefix> ssGSEA_scores.csv` - per-cell enrichment scores + group
 #'     labels
-#'   \item `<prefix> ssGSEA_significance.csv` — per-pathway significance
+#'   \item `<prefix> ssGSEA_significance.csv` - per-pathway significance
 #'     (pooled across all cells)
-#'   \item `<prefix> ssGSEA_significance_by_<split.by>.csv` — per-pathway
+#'   \item `<prefix> ssGSEA_significance_by_<split.by>.csv` - per-pathway
 #'     significance within each `split.by` level (only when `split.by` is set)
-#'   \item `<prefix> ssGSEA heatmap.pdf` — ComplexHeatmap of mean z-scored
+#'   \item `<prefix> ssGSEA heatmap.pdf` - ComplexHeatmap of mean z-scored
 #'     enrichment per group
 #' }
 #'
@@ -856,7 +856,7 @@ RunSCssGSEA <- function(
     method                 = "gsva",  # "gsva" (ssGSEA, default) or "ucell" (U statistic, faster)
     downsample             = NULL,
     min.size               = 5,
-    ssgsea.norm            = TRUE,    # GSVA only: normalise scores to [0,1]
+    ssgsea.norm            = TRUE,    # GSVA only: normalize scores to [0,1]
     ucell_max_rank         = 1500L,   # UCell only: consider only top N ranked genes per cell
     cores                  = 1,
     chunk_size             = 1000L,   # UCell only: cells per parallel chunk
@@ -905,12 +905,12 @@ RunSCssGSEA <- function(
         as.character(seurat_object@meta.data[[subset_by]]) %in% as.character(subset_values)
       ]
       message("Subsetting by '", subset_by, "' (",
-              paste(subset_values, collapse = ", "), ") — keeping ",
+              paste(subset_values, collapse = ", "), ") - keeping ",
               length(keep_cells), " / ", ncol(seurat_object), " cells.")
     } else {
       # subset_values are treated as cell barcodes directly
       keep_cells <- intersect(as.character(subset_values), colnames(seurat_object))
-      message("Subsetting by cell barcodes — keeping ",
+      message("Subsetting by cell barcodes - keeping ",
               length(keep_cells), " / ", ncol(seurat_object), " cells.")
     }
 
@@ -989,10 +989,10 @@ RunSCssGSEA <- function(
             feature_cats <- feature_cats[
               feature_cats$pathway %in% names(gene_sets_use), , drop = FALSE]
         } else {
-          message("  ", n_keep, " >= total (", n_gs, ") — keeping all.")
+          message("  ", n_keep, " >= total (", n_gs, ") - keeping all.")
         }
       } else if (!grepl("^[Yy]", ans)) {
-        stop("Unrecognised input — enter y, n, or a number.", call. = FALSE)
+        stop("Unrecognized input - enter y, n, or a number.", call. = FALSE)
       }
       # y → fall through, use all
     }
@@ -1020,10 +1020,10 @@ RunSCssGSEA <- function(
       # Mode 2: group column name(s) from the DEG data frame
       .clean(paste(deg_group_column, collapse = "_"))
     } else {
-      # Mode 1: user-supplied named list — label as "custom"
+      # Mode 1: user-supplied named list - label as "custom"
       "custom"
     }
-    # Create a dedicated subfolder — each gene-set run gets its own directory
+    # Create a dedicated subfolder - each gene-set run gets its own directory
     # so reruns with different terms never overwrite previous results.
     sc_ssgsea_dir <- file.path(output_dir, paste0("SC ssGSEA ", gs_label))
     dir.create(sc_ssgsea_dir, recursive = TRUE, showWarnings = FALSE)
@@ -1045,20 +1045,20 @@ RunSCssGSEA <- function(
     obj_use <- seurat_object
   }
 
-  # ── 4. Extract normalised expression ────────────────────────────────────────
+  # ── 4. Extract normalized expression ────────────────────────────────────────
   # .get_layer_data() handles Seurat v3 (slot=) / v5 (layer=) / BPCells lazy
   # matrices (subsets rows first, then materialises to dgCMatrix).
-  message("Extracting RNA normalised counts (data layer)...")
+  message("Extracting RNA normalized counts (data layer)...")
   expr_mat <- .get_layer_data(obj_use, assay = "RNA", layer = "data")
 
   # ── 5. Score cells ────────────────────────────────────────────────────────────
   #
   # Two backends:
-  #   "gsva"  — full ssGSEA via GSVA.  Ranks ALL genes per cell once per call,
+  #   "gsva"  - full ssGSEA via GSVA.  Ranks ALL genes per cell once per call,
   #             then scores all gene sets against that ranking.  Slow on large
   #             objects but gives true ssGSEA scores.  BiocParallel progress bar
   #             shows per-gene-set progress.
-  #   "ucell" — U statistic (AUC of top-maxRank recovery curve).  Only partially
+  #   "ucell" - U statistic (AUC of top-maxRank recovery curve).  Only partially
   #             sorts each cell (top ucell_max_rank genes), chunks by CELLS
   #             (not gene sets), and scores all gene sets per cell-chunk.
   #             ~15-30x faster on typical scRNA-seq data; scores in [0,1].
@@ -1156,7 +1156,7 @@ RunSCssGSEA <- function(
 
   sig_df <- if (length(valid_grps) < 2) {
     warning("Fewer than 2 groups with ≥2 cells in '", sig_col,
-            "' — significance testing skipped.")
+            "' - significance testing skipped.")
     data.frame(pathway   = rownames(scores),
                statistic = NA_real_,
                p_value   = NA_real_,
@@ -1217,7 +1217,7 @@ RunSCssGSEA <- function(
   }
 
   # ── 9. Resolve group / split colours ────────────────────────────────────────
-  # Factor levels preserved; user-supplied colors take priority — only
+  # Factor levels preserved; user-supplied colors take priority - only
   # auto-generate what the user did not provide.
   .lvls <- function(col) if (is.factor(col)) levels(col) else unique(as.character(col))
   grp_lvls <- .lvls(seurat_object@meta.data[[group.by]])
@@ -1329,7 +1329,7 @@ RunSCssGSEA <- function(
       " using ", length(gene_sets_use), " gene set(s) (", gs_desc, "). ",
       "Per-cell enrichment scores were computed using GSVA ",
       "(ssGSEA method",
-      if (ssgsea.norm) ", normalised" else "",
+      if (ssgsea.norm) ", normalized" else "",
       "; minimum gene-set size: ", min.size, "). ",
       "Differential enrichment across ", group.by, " groups",
       if (!is.null(split.by))

@@ -14,7 +14,7 @@ RenameCellTypeInCC(cc, old_name, new_name)
 \item{new_name}{Character. The replacement label.}
 }
 \value{
-The modified CellChat object (the original is not changed in place —
+The modified CellChat object (the original is not changed in place -
 assign the result back).
 }
 \description{
@@ -24,7 +24,7 @@ that downstream visualisation functions and \code{CompareCellChat} /
 \code{RankCellChatPathways} see the new name.
 }
 \details{
-The communication probability matrices are \strong{not} recomputed — only labels
+The communication probability matrices are \strong{not} recomputed - only labels
 change. This is safe because the underlying values are invariant to what the
 cell type is called.
 
@@ -37,13 +37,13 @@ for (f in rds_files) \{
   saveRDS(cc, f)
 \}
 
-# 2. Re-run comparison figures (fast — pure plotting)
+# 2. Re-run comparison figures (fast - pure plotting)
 cclist <- setNames(lapply(rds_files, readRDS),
                    sub("CellChat\\\\.rds$", "", basename(rds_files)))
 CompareCellChat(cclist, output_dir = ...)
 RankCellChatPathways(cclist, output_dir = ...)
 
 # 3. Per-group RunCellChat PDFs: delete old PDFs and re-run RunCellChat with
-#    resume = TRUE — the pipeline checkpoint means only plots are regenerated.
+#    resume = TRUE - the pipeline checkpoint means only plots are regenerated.
 }\if{html}{\out{</div>}}
 }

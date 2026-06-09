@@ -55,7 +55,7 @@ Extracts per-pathway information flow and sender/receiver cell-type marginals
 from a named list of CellChat objects, ranks pathways by differential
 activity, and produces four outputs:
 \enumerate{
-\item A \strong{flow heatmap}: top \code{top_n} pathways × conditions, row-normalised
+\item A \strong{flow heatmap}: top \code{top_n} pathways × conditions, row-normalized
 so colour reflects which condition has higher activity.
 \item \strong{Sender and receiver tile plots}: faceted by top pathway, showing
 how much each cell type sends/receives per condition.

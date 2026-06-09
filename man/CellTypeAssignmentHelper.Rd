@@ -71,23 +71,23 @@ Requires the \code{rcellmarker} package. Default \code{TRUE}.}
 bundled \code{ScTypeDB_full.xlsx}. Combine multiple types for broader coverage.
 All valid values (from the bundled database):
 \itemize{
-\item \code{"Adrenal"} — adrenal gland
-\item \code{"Brain"} — cerebral cortex, broad neuronal/glial types
-\item \code{"Eye"} — retinal and eye-specific cell types
-\item \code{"Heart"} — cardiac cell types
-\item \code{"Hippocampus"} — hippocampal-specific subtypes (use with \code{"Brain"}
+\item \code{"Adrenal"} - adrenal gland
+\item \code{"Brain"} - cerebral cortex, broad neuronal/glial types
+\item \code{"Eye"} - retinal and eye-specific cell types
+\item \code{"Heart"} - cardiac cell types
+\item \code{"Hippocampus"} - hippocampal-specific subtypes (use with \code{"Brain"}
 for combined brain data)
-\item \code{"Immune system"} — broad immune cells: T, B, NK, myeloid, etc.
-\item \code{"Intestine"} — intestinal epithelial and stromal types
-\item \code{"Kidney"} — renal cell types
-\item \code{"Liver"} — hepatocytes, Kupffer cells, stellate cells
-\item \code{"Lung"} — airway epithelium, alveolar cells, immune
-\item \code{"Muscle"} — skeletal and smooth muscle
-\item \code{"Pancreas"} — islet and exocrine types
-\item \code{"Placenta"} — trophoblast and decidual types
-\item \code{"Spleen"} — splenic immune populations
-\item \code{"Stomach"} — gastric epithelial types
-\item \code{"Thymus"} — thymocyte and thymic stromal types
+\item \code{"Immune system"} - broad immune cells: T, B, NK, myeloid, etc.
+\item \code{"Intestine"} - intestinal epithelial and stromal types
+\item \code{"Kidney"} - renal cell types
+\item \code{"Liver"} - hepatocytes, Kupffer cells, stellate cells
+\item \code{"Lung"} - airway epithelium, alveolar cells, immune
+\item \code{"Muscle"} - skeletal and smooth muscle
+\item \code{"Pancreas"} - islet and exocrine types
+\item \code{"Placenta"} - trophoblast and decidual types
+\item \code{"Spleen"} - splenic immune populations
+\item \code{"Stomach"} - gastric epithelial types
+\item \code{"Thymus"} - thymocyte and thymic stromal types
 }
 Recommended combinations: \code{c("Brain", "Hippocampus")} for brain snRNAseq;
 \code{c("Immune system", "Spleen")} for immune-rich tissues;
@@ -96,14 +96,14 @@ Recommended combinations: \code{c("Brain", "Hippocampus")} for brain snRNAseq;
 \item{sctype_assay}{Character. Seurat assay to use for scoring.
 Must contain a \code{scale.data} (scaled) layer. Common choices:
 \itemize{
-\item \code{"RNA"} — standard full assay (default); use \code{sctype_layer = "scale.data"}
-\item \code{"sketch"} — BPCells sketch assay for large datasets; use
+\item \code{"RNA"} - standard full assay (default); use \code{sctype_layer = "scale.data"}
+\item \code{"sketch"} - BPCells sketch assay for large datasets; use
 \code{sctype_layer = "scale.data"} after \code{ScaleData()} on the sketch
 }}
 
 \item{sctype_layer}{Character. Layer within \code{sctype_assay} that holds
 scaled expression values. Default \code{"scale.data"}. Must be a scaled
-(mean-centred) matrix — scType scores are not meaningful on raw counts.}
+(mean-centred) matrix - scType scores are not meaningful on raw counts.}
 
 \item{sctype_db}{Character or \code{NULL}. Path to a \code{ScTypeDB_full.xlsx}
 database file. \code{NULL} (default) uses the copy bundled in
@@ -157,18 +157,18 @@ dotplot with all markers combined.
 
 \strong{\code{Type} values in the bundled \code{Markers.csv}:}
 \itemize{
-\item \code{"Brain Stroma"} — Astrocytes, Oligodendrocytes, OPC, Microglia,
+\item \code{"Brain Stroma"} - Astrocytes, Oligodendrocytes, OPC, Microglia,
 Endothelial, Pericytes, Neurons (excitatory, inhibitory, dopaminergic,
 glutamatergic, serotonergic), VLMC, and stem/progenitor types
-\item \code{"Lymphocytes"} — T cells (naive, cytotoxic, Th1/2/17, Treg,
+\item \code{"Lymphocytes"} - T cells (naive, cytotoxic, Th1/2/17, Treg,
 exhausted, MAIT, GDT), B cells, NK cells
-\item \code{"Monocytes"} — CD14/CD16 monocytes, MDSCs
-\item \code{"Macrophages"} — tissue macrophages
-\item \code{"Dendritic cells"} — cDC1, cDC2, pDCs, LAMP3+ DCs
-\item \code{"Granulocytes"} — neutrophils, basophils, mast cells
-\item \code{"Bone Marrow Derived"} — BMD immune cells
-\item \code{"All"} — proliferating cells (Prol)
-\item \code{"Tumor"} — generic tumor marker
+\item \code{"Monocytes"} - CD14/CD16 monocytes, MDSCs
+\item \code{"Macrophages"} - tissue macrophages
+\item \code{"Dendritic cells"} - cDC1, cDC2, pDCs, LAMP3+ DCs
+\item \code{"Granulocytes"} - neutrophils, basophils, mast cells
+\item \code{"Bone Marrow Derived"} - BMD immune cells
+\item \code{"All"} - proliferating cells (Prol)
+\item \code{"Tumor"} - generic tumor marker
 }
 
 Example for brain snRNAseq with separate immune panel:

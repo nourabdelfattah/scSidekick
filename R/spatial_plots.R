@@ -1,9 +1,9 @@
 # =============================================================================
 # scSidekick spatial transcriptomics visualization
 #
-# GenerateSpatialFeatureMaps — batch spatial feature plots (genes OR metadata)
-# GenerateSpatialDimMaps     — batch spatial cell-type/cluster dim plots
-# GenerateMasterGeneMaps     — per-gene 4-column PDF: UMAP + spatial side-by-side
+# GenerateSpatialFeatureMaps - batch spatial feature plots (genes OR metadata)
+# GenerateSpatialDimMaps     - batch spatial cell-type/cluster dim plots
+# GenerateMasterGeneMaps     - per-gene 4-column PDF: UMAP + spatial side-by-side
 #
 # All functions share the same auto-sizing logic for spatial point sizes
 # (median nearest-neighbor distance scaled to plot area) and support both
@@ -41,7 +41,7 @@
     list(coords = as.matrix(cd[, c("imagerow", "imagecol")]),
          cells  = rownames(cd))
   } else {
-    stop("Unrecognised image class: ", class(img_obj))
+    stop("Unrecognized image class: ", class(img_obj))
   }
 }
 
@@ -61,7 +61,7 @@
 #' \describe{
 #'   \item{`"auto"`}{Automatic 1- or 2-row grid.}
 #'   \item{`"metadata"`}{Groups images into rows based on a slide-level
-#'     metadata variable (`row_var`). The variable must have a single
+#'     metadata variable (`row.by`). The variable must have a single
 #'     unique value per image.}
 #' }
 #'
@@ -69,7 +69,7 @@
 #' @param features Character vector of gene names or numeric metadata
 #'   column names.
 #' @param layout_method Character. `"auto"` (default) or `"metadata"`.
-#' @param row_var Character or `NULL`. Slide-level metadata column for
+#' @param row.by Character or `NULL`. Slide-level metadata column for
 #'   grouping images into rows (required when `layout_method = "metadata"`).
 #' @param images_to_plot Character vector or `NULL`. Subset of image names
 #'   to include. `NULL` uses all images.
@@ -92,7 +92,7 @@
 GenerateSpatialFeatureMaps <- function(seurat_object,
                                         features,
                                         layout_method  = "auto",
-                                        row_var        = NULL,
+                                        row.by        = NULL,
                                         images_to_plot = NULL,
                                         remove_outliers = FALSE,
                                         outlier_prob   = 0.01,
@@ -108,11 +108,12 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 
   if (!layout_method %in% c("auto", "metadata"))
     stop("layout_method must be 'auto' or 'metadata'.")
-  if (layout_method == "metadata" && is.null(row_var))
-    stop("'row_var' must be specified for layout_method = 'metadata'.")
+  if (layout_method == "metadata" && is.null(row.by))
+    stop("'row.by' must be specified for layout_method = 'metadata'.")
 
   # Walk up to PrepObject-stored defaults when not explicitly supplied
-  output_dir  <- output_dir  %||% .nk_setting(seurat_object, "output_dir")
+  output_dir  <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
 
@@ -136,7 +137,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       feat_vals        <- seurat_object@meta.data[[feat]]
       is_numeric_feat  <- is.numeric(feat_vals)
     } else {
-      warning("Feature '", feat, "' not found — skipping.")
+      warning("Feature '", feat, "' not found - skipping.")
       next
     }
 
@@ -157,10 +158,10 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       cells    <- ic$cells
 
       if (layout_method == "metadata") {
-        vals <- unique(as.character(seurat_object@meta.data[cells, row_var]))
+        vals <- unique(as.character(seurat_object@meta.data[cells, row.by]))
         if (length(vals) > 1)
-          stop("Image '", img, "': '", row_var, "' has multiple values. ",
-               "row_var must be a slide-level variable.")
+          stop("Image '", img, "': '", row.by, "' has multiple values. ",
+               "row.by must be a slide-level variable.")
       }
 
       if (remove_outliers) {
@@ -221,7 +222,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       row_plot_lists <- list()
       for (img in names(plot_list)) {
         first_cell <- .img_coords(seurat_object@images[[img]])$cells[1]
-        r_val      <- as.character(seurat_object@meta.data[first_cell, row_var])
+        r_val      <- as.character(seurat_object@meta.data[first_cell, row.by])
         row_plot_lists[[r_val]] <- c(row_plot_lists[[r_val]],
                                      list(plot_list[[img]]))
       }
@@ -271,7 +272,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
         if (nchar(object_name) > 0) paste0(" in ", object_name) else "", ". ",
         "Each spot on the tissue section represents a spatial barcode, coloured ",
         "on a continuous scale from low (dark blue) to high (dark red) according ",
-        "to the ", if (feat %in% rownames(seurat_object)) "log-normalised expression"
+        "to the ", if (feat %in% rownames(seurat_object)) "log-normalized expression"
                    else "value", " of ", feat, ".",
         if (remove_outliers) paste0(
           " Outlier spots above the ", round((1 - outlier_prob) * 100),
@@ -281,7 +282,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
     } else {
       last_plot <- CustomPlot
     }
-    message(sprintf("Spatial feature map: %s (%d of %d) — %dx%d",
+    message(sprintf("Spatial feature map: %s (%d of %d) - %dx%d",
                     feat, i, length(features), n_rows, n_cols))
   }
   invisible(last_plot)
@@ -301,7 +302,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 #' @param group_by_vars Character vector. Metadata columns to plot (one PDF
 #'   per variable).
 #' @param layout_method Character. `"auto"` or `"metadata"`. Default `"auto"`.
-#' @param row_var Character or `NULL`. Slide-level metadata column for row
+#' @param row.by Character or `NULL`. Slide-level metadata column for row
 #'   grouping (required for `"metadata"` layout).
 #' @param images_to_plot Character vector or `NULL`. Images to include.
 #' @param remove_outliers Logical. Trim outlier cells. Default `FALSE`.
@@ -313,8 +314,8 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 #' @param output_dir Character or `NULL`. PDF output directory. Returns last
 #'   plot when `NULL`.
 #' @param rowannsize Numeric. Row annotation text size. Default `16`.
-#' @param imgalpha Numeric. Image transparency (0–1). Default `1`.
-#' @param alpha Numeric. Point transparency (0–1). Default `1`.
+#' @param imgalpha Numeric. Image transparency (0-1). Default `1`.
+#' @param alpha Numeric. Point transparency (0-1). Default `1`.
 #' @param uniform_size Logical. When `TRUE` all images receive the same
 #'   auto-computed point size (the median across images), preventing tiny
 #'   tissue fragments from getting huge dots. Default `FALSE`.
@@ -326,13 +327,14 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 GenerateSpatialDimMaps <- function(seurat_object,
                                     group_by_vars  = NULL,
                                     layout_method  = "auto",
-                                    row_var        = NULL,
+                                    row.by        = NULL,
                                     images_to_plot = NULL,
                                     remove_outliers = FALSE,
                                     outlier_prob   = 0.01,
                                     size_override  = NULL,
                                     uniform_size   = FALSE,
                                     colors         = NULL,
+                                    number_labels  = FALSE,
                                     output_dir     = NULL,
                                     rowannsize     = 16,
                                     imgalpha       = 1,
@@ -350,11 +352,12 @@ GenerateSpatialDimMaps <- function(seurat_object,
 
   if (!layout_method %in% c("auto", "metadata"))
     stop("layout_method must be 'auto' or 'metadata'.")
-  if (layout_method == "metadata" && is.null(row_var))
-    stop("'row_var' must be specified for layout_method = 'metadata'.")
+  if (layout_method == "metadata" && is.null(row.by))
+    stop("'row.by' must be specified for layout_method = 'metadata'.")
 
   # Walk up to PrepObject-stored defaults when not explicitly supplied
-  output_dir  <- output_dir  %||% .nk_setting(seurat_object, "output_dir")
+  output_dir  <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
 
@@ -397,20 +400,32 @@ GenerateSpatialDimMaps <- function(seurat_object,
     # ── Build legend from the full color vector (not from a subset plot) ───
     # This guarantees every level appears in the legend regardless of which
     # cell types happen to be present in the first image.
-    lgd_dat   <- data.frame(
-      x     = 1L,
-      y     = seq_along(all_lvls),
-      label = factor(all_lvls, levels = all_lvls)
-    )
     lgd_colors <- if (!is.null(grp_colors)) grp_colors else
       stats::setNames(
         Nour_pal(if (length(all_lvls) <= 8) "all" else "spectrum")(length(all_lvls)),
         all_lvls
       )
+    # number_labels: show "01. Level", "02. Level" in the legend
+    display_lvls <- if (number_labels) {
+      stats::setNames(
+        paste0(sprintf("%02d", seq_along(all_lvls)), ". ", all_lvls),
+        all_lvls
+      )
+    } else {
+      stats::setNames(all_lvls, all_lvls)
+    }
+    lgd_dat <- data.frame(
+      x     = 1L,
+      y     = seq_along(all_lvls),
+      label = factor(display_lvls[all_lvls], levels = display_lvls)
+    )
+    # Map display labels to original colors (colors are keyed by original names)
+    lgd_colors_display <- stats::setNames(lgd_colors, display_lvls[names(lgd_colors)])
+
     lgd_plot <- ggplot2::ggplot(lgd_dat,
         ggplot2::aes(x = x, y = y, fill = label)) +
       ggplot2::geom_point(shape = 21, size = 5) +
-      ggplot2::scale_fill_manual(values = lgd_colors) +
+      ggplot2::scale_fill_manual(values = lgd_colors_display) +
       ggplot2::guides(fill = ggplot2::guide_legend(
         title          = grp,
         override.aes   = list(size = 5),
@@ -432,9 +447,9 @@ GenerateSpatialDimMaps <- function(seurat_object,
       cells   <- ic$cells
 
       if (layout_method == "metadata") {
-        vals <- unique(as.character(seurat_object@meta.data[cells, row_var]))
+        vals <- unique(as.character(seurat_object@meta.data[cells, row.by]))
         if (length(vals) > 1)
-          stop("Image '", img, "': row_var has multiple values.")
+          stop("Image '", img, "': row.by has multiple values.")
       }
 
       if (remove_outliers) {
@@ -485,7 +500,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
       row_plot_lists <- list()
       for (img in names(plot_list)) {
         first_cell <- .img_coords(seurat_object@images[[img]])$cells[1]
-        r_val      <- as.character(seurat_object@meta.data[first_cell, row_var])
+        r_val      <- as.character(seurat_object@meta.data[first_cell, row.by])
         row_plot_lists[[r_val]] <- c(row_plot_lists[[r_val]], list(plot_list[[img]]))
       }
       max_row_len  <- max(lengths(row_plot_lists))
@@ -536,7 +551,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
     } else {
       last_plot <- CustomPlot
     }
-    message(sprintf("Spatial DimMap: %s (%d of %d) — %dx%d",
+    message(sprintf("Spatial DimMap: %s (%d of %d) - %dx%d",
                     grp, i, length(group_by_vars), n_rows, n_cols))
   }
   invisible(last_plot)

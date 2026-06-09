@@ -38,13 +38,13 @@ RunGSEA_pseudobulk(
 One independent GSEA is run for each level (e.g. \code{"Assignment"}).}
 
 \item{sample_column}{Character. Metadata column identifying the biological
-replicate (donor / patient ID). This is the statistical unit — samples
+replicate (donor / patient ID). This is the statistical unit - samples
 are the replicates in the limma-voom model. (e.g. \code{"Sample"}, \code{"Donor.ID"}).}
 
 \item{group_column}{Character. Metadata column holding the comparison group
 label (e.g. \code{"Group"} where levels are \code{"Dementia.Female"},
 \code{"Dementia.Male"}, \code{"Reference.Female"}, …). Cells with \code{NA} in this
-column are dropped before aggregation — use \code{NA} to exclude groups you
+column are dropped before aggregation - use \code{NA} to exclude groups you
 do not want to compare (e.g. a Reference group that is not part of any
 contrast).}
 
@@ -68,7 +68,7 @@ automatically: Female-vs-Male within each disease, Disease-vs-control
 within each sex, and the Sex × Disease interaction term.}
 
 \item{pathway_sets}{Named list of MSigDB databases. Same structure as in
-\code{\link[=RunGSEA]{RunGSEA()}} — see that function's documentation for a full list of valid
+\code{\link[=RunGSEA]{RunGSEA()}} - see that function's documentation for a full list of valid
 collections. Default: Hallmark (\code{"H"}), KEGG, Reactome, WikiPathways.}
 
 \item{species}{Character. \code{"human"} (default) or \code{"mouse"}. Passed to
@@ -80,7 +80,7 @@ Per-contrast and per-database sub-directories are created automatically.}
 \item{assay}{Character or \code{NULL}. Seurat assay containing raw counts to
 aggregate. \code{NULL} uses \code{SeuratObject::DefaultAssay()}. For BPCells
 sketch workflows always specify \code{"RNA"} explicitly (do not use the sketch
-assay — pseudobulk aggregation requires raw counts for all cells).}
+assay - pseudobulk aggregation requires raw counts for all cells).}
 
 \item{min.cells}{Integer. Minimum cells a sample must contribute to a given
 cell-type to be included in the pseudobulk for that cell type. Samples

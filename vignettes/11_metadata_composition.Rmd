@@ -1,0 +1,210 @@
+---
+title: "scSidekick - Exploring Metadata & Composition"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{scSidekick - Exploring Metadata & Composition}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 8,
+  fig.height = 5
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Before any fancy analysis, you usually just want to *understand your object*:
+how many cells per sample, how cell-type composition shifts between conditions,
+which donors carry which clinical features. The base-R answer is a pile of
+nested `table()` calls and a few dozen lines of `dplyr` + `ggplot2`.
+
+scSidekick turns that into one-liners:
+
+- **`SummarizeMetadata()`** - collapse a giant `meta.data` into a tidy
+  per-group summary table (counts, numeric means, categorical breakdowns).
+- **`PlotMetaSummary()`** - composition as bar charts (counts **and**
+  percentages) across one or more grouping levels, in a single call.
+- **`PlotAlluvial()`, `PlotRose()`, `PlotChord()`, `PlotAtlasWheel()`** - a
+  family of "at a glance" composition graphics for flows, proportions,
+  relationships, and whole-atlas overviews.
+
+```{r pkgs}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(ggforce)   # PlotAlluvial uses ggforce's parallel-sets stats
+```
+
+```{r data, include=FALSE}
+data("bmcite")
+bmcite <- UpdateSeuratObject(bmcite)
+bmcite <- PrepObject(bmcite,
+  variables   = c("lane", "donor", "celltype.l1", "celltype.l2"),
+  group.by    = "celltype.l1",
+  split.by    = "donor",
+  object_name = "bmcite")
+
+# Most composition helpers accept either a Seurat object or a plain data frame.
+# We use the metadata frame directly for the chart family below.
+md <- bmcite@meta.data
+```
+
+We use `bmcite`, a bone-marrow CITE-seq dataset (~30 k cells) with rich
+metadata: `lane`, `donor`, `celltype.l1`, and `celltype.l2`.
+
+---
+
+## 1. `SummarizeMetadata()` - one tidy table from messy metadata
+
+Point `SummarizeMetadata()` at one or more **ID columns** and it returns one
+row per ID combination with: an `n_cells` count, the mean of every numeric
+column, and a compact breakdown of every categorical column - all the columns
+you didn't name are summarised automatically.
+
+```{r summarize}
+donor_summary <- SummarizeMetadata(bmcite, id_columns = "donor")
+donor_summary[, 1:5]   # first few summary columns
+```
+
+Numeric columns are aggregated with `numeric_func` (default `mean`; pass
+`median`, `max`, a custom function, ...). Use several ID columns to summarise at
+a finer grain:
+
+```{r summarize-multi}
+ds <- SummarizeMetadata(bmcite,
+                        id_columns   = c("donor", "celltype.l1"),
+                        numeric_func = median)
+head(ds[, c("donor", "celltype.l1", "n_cells", "nFeature_RNA")])
+```
+
+This is the everyday "what's actually in my object?" answer - and it scales: on
+a multi-million-cell atlas you can collapse to one row per donor in seconds.
+
+---
+
+## 2. `PlotMetaSummary()` - composition at a glance
+
+The most common request - *how does cell-type composition differ between
+samples?* - is one call. `variables` is what you're counting, `fill_variable`
+colours the stack, and `count_unit = "cells"` counts cells (vs donors).
+
+```{r meta-counts, fig.width=10, fig.height=4}
+PlotMetaSummary(bmcite,
+  variables     = c("celltype.l1", "celltype.l2"),
+  fill_variable = "donor",
+  count_unit    = "cells")
+```
+
+Add `percent = TRUE` for normalised composition - ideal when group sizes
+differ:
+
+```{r meta-percent, fig.width=10, fig.height=4}
+PlotMetaSummary(bmcite,
+  variables     = c("celltype.l1", "celltype.l2"),
+  fill_variable = "donor",
+  count_unit    = "cells",
+  percent       = TRUE)
+```
+
+### Donor-level summaries with `id_column`
+
+For clinical datasets you usually want **per-donor** counts, not per-cell.
+Setting `id_column` collapses cells to donors first, then lays out the
+variables - and `row_variable` facets into rows. This is exactly how you'd
+summarise a large patient cohort (e.g. Braak / APOE / CERAD by sex):
+
+```{r meta-donor, eval=FALSE}
+# Illustrative - for a clinical atlas `md` with one row per cell:
+PlotMetaSummary(md,
+  id_column     = "Donor.ID",
+  variables     = c("Braak", "APOE.Genotype", "CERAD.score"),
+  fill_variable = "Cognitive.Status",
+  row_variable  = "Sex")
+```
+
+The same function call handles a 30 k-cell demo and a 1.8 M-cell, 150-column
+clinical atlas - it just collapses to the unit you ask for.
+
+---
+
+## 3. Composition chart family
+
+Bar charts aren't always the clearest view. scSidekick ships four
+complementary "at a glance" graphics.
+
+### `PlotAlluvial()` - flows across categories
+
+Alluvial plots show how cells flow between two or more categorical axes -
+great for "which donors contribute to which cell types".
+
+```{r alluvial, fig.width=8, fig.height=6}
+PlotAlluvial(md,
+  axes = c("donor", "celltype.l1"))
+```
+
+### `PlotRose()` - circular composition
+
+A polar/“rose” chart of composition per group - a compact alternative to
+stacked bars.
+
+```{r rose, fig.width=8, fig.height=7}
+PlotRose(md,
+  stat.by = "celltype.l1",
+  group.by = "donor")
+```
+
+### `PlotChord()` - relationships between two variables
+
+Chord diagrams emphasise the *pairing* between two categoricals (here, which
+cell types appear in which donors). `PlotChord()` uses **circlize** under the
+hood.
+
+```{r chord, fig.width=7, fig.height=7}
+PlotChord(md,
+  var1 = "donor",
+  var2 = "celltype.l1")
+```
+
+### `PlotAtlasWheel()` - whole-dataset overview
+
+For multi-study atlases, `PlotAtlasWheel()` draws a single "cover figure"
+summarising cells per group across studies and patients - counts in the
+centre, a wheel of wedges around it. (Shown as a template; it needs
+study/patient columns that `bmcite` doesn't carry.)
+
+```{r atlas, eval=FALSE}
+PlotAtlasWheel(meta,
+  group.by = "CellType",
+  study_by   = "Study",
+  patient_by = "Patient.ID",
+  title      = "My Atlas",
+  cell_label = "Cells")
+```
+
+---
+
+## See also
+
+- Vignette 01: `PrepObject()` - register the colours these charts reuse
+- Vignette 03: `PlotComposition()` / `PlotTrendLabeled()` - composition trends
+  on the UMAP
+- Vignette 12: large-data workflows (BPCells / sketch / pseudobulk) for
+  summarising massive objects
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

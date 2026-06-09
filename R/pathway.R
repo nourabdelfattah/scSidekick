@@ -6,7 +6,7 @@
 # Internal helper: build one ComplexHeatmap NES heatmap with auto-sized PDF.
 #
 # Design choices:
-#   - Diverging colour (blue-white-red) symmetric around 0 — NES sign matters
+#   - Diverging colour (blue-white-red) symmetric around 0 - NES sign matters
 #   - Cell height and font shrink gracefully for large matrices
 #   - PDF dimensions computed from content so pathway names are never clipped
 #   - heatmap_params (named list) are merged via modifyList so the caller can
@@ -21,7 +21,7 @@
   n_rows <- nrow(mat)
   n_cols <- ncol(mat)
 
-  # Diverging colour centred on 0 — matches the biological meaning of NES
+  # Diverging colour centred on 0 - matches the biological meaning of NES
   nes_lim  <- max(1, min(4, max(abs(mat), na.rm = TRUE)))
   col_fun  <- circlize::colorRamp2(
     c(-nes_lim, 0, nes_lim),
@@ -32,11 +32,27 @@
   cell_h_pt <- max(7,  min(14, 400 / max(n_rows, 1)))
   cell_w_pt <- max(12, min(25, 200 / max(n_cols, 1)))
   rn_fs     <- max(5,  min(9,  cell_h_pt * 0.75))   # row-name font size
+  cn_fs     <- 9                                     # column-name font size
+  cn_rot    <- 45                                    # column-name rotation
 
-  # PDF dimensions (inches): body + row names margin + legend + title padding
-  rn_max_in <- max(nchar(rownames(mat)), na.rm = TRUE) * rn_fs * 0.50 / 72
-  pdf_h <- min(40, max(3.5, n_rows * cell_h_pt / 72 + 1.5))
-  pdf_w <- min(40, max(4.5, n_cols * cell_w_pt / 72 + rn_max_in + 2.5))
+  # PDF dimensions: size the device from the body PLUS the longest row name AND
+  # the longest column name, so neither pathway names (rows) nor sample/cluster
+  # names (columns, rotated 45 deg on the bottom) are ever clipped.
+  .dims <- .heatmap_pdf_dims(
+    body_w_in        = n_cols * cell_w_pt / 72,
+    body_h_in        = n_rows * cell_h_pt / 72,
+    row_names        = rownames(mat),
+    col_names        = colnames(mat),
+    row_fontsize     = rn_fs,
+    col_fontsize     = cn_fs,
+    row_names_side   = "right",
+    column_names_side = "bottom",
+    column_names_rot = cn_rot,
+    legend_in        = 1.2,
+    title_in         = 0.4
+  )
+  pdf_h <- .dims$height
+  pdf_w <- .dims$width
 
   default_args <- list(
     mat,
@@ -75,7 +91,7 @@
   invisible(ht)
 }
 #
-# RunGSEA — runs Wilcoxon rank-sum DE (via presto::wilcoxauc), then fgsea
+# RunGSEA - runs Wilcoxon rank-sum DE (via presto::wilcoxauc), then fgsea
 #   against one or more MSigDB collections, and produces per-cluster lollipop
 #   plots and NES heatmaps. Returns a nested results list and optionally writes
 #   CSVs + PDFs to disk.
@@ -123,34 +139,34 @@
 #'   ```
 #'   Other useful collections (pass as additional list elements):
 #'   \itemize{
-#'     \item `list(category = "C2", subcategory = "CP:BIOCARTA")` — BioCarta
-#'     \item `list(category = "C2", subcategory = "CP:PID")` — NCI Pathway
+#'     \item `list(category = "C2", subcategory = "CP:BIOCARTA")` - BioCarta
+#'     \item `list(category = "C2", subcategory = "CP:PID")` - NCI Pathway
 #'       Interaction Database
-#'     \item `list(category = "C5", subcategory = "GO:BP")` — Gene Ontology
+#'     \item `list(category = "C5", subcategory = "GO:BP")` - Gene Ontology
 #'       Biological Process
-#'     \item `list(category = "C5", subcategory = "GO:MF")` — GO Molecular
+#'     \item `list(category = "C5", subcategory = "GO:MF")` - GO Molecular
 #'       Function
-#'     \item `list(category = "C5", subcategory = "GO:CC")` — GO Cellular
+#'     \item `list(category = "C5", subcategory = "GO:CC")` - GO Cellular
 #'       Component
-#'     \item `list(category = "C7", subcategory = "IMMUNESIGDB")` — ImmuneSigDB
+#'     \item `list(category = "C7", subcategory = "IMMUNESIGDB")` - ImmuneSigDB
 #'       (immune gene sets; recommended for immune datasets)
-#'     \item `list(category = "C8")` — Cell-type signature gene sets
+#'     \item `list(category = "C8")` - Cell-type signature gene sets
 #'   }
 #'   See `msigdbr::msigdbr_collections()` for the full catalogue.
 #' @param species Character. Species passed to [msigdbr::msigdbr()]. Must
-#'   match the species names recognised by that function. Common values:
+#'   match the species names recognized by that function. Common values:
 #'   \itemize{
-#'     \item `"Homo sapiens"` — human (default)
-#'     \item `"Mus musculus"` — mouse
-#'     \item `"Rattus norvegicus"` — rat
-#'     \item `"Danio rerio"` — zebrafish
+#'     \item `"Homo sapiens"` - human (default)
+#'     \item `"Mus musculus"` - mouse
+#'     \item `"Rattus norvegicus"` - rat
+#'     \item `"Danio rerio"` - zebrafish
 #'   }
 #'   Run `msigdbr::msigdbr_species()` for the complete list.
 #' @param assay Character. Seurat assay for DE via `presto::wilcoxauc()`.
 #'   Default `"RNA"`. For BPCells sketch workflows use `"sketch"`.
 #' @param min_cells Integer. Skip subsets with fewer cells. Default `20`.
 #'   A separate guard also skips any `(label, split)` combination that has
-#'   fewer than 2 levels of `group.by` after subsetting — this prevents
+#'   fewer than 2 levels of `group.by` after subsetting - this prevents
 #'   `presto::wilcoxauc` from crashing when e.g. one `label.by` level contains
 #'   only one `group.by` category (e.g., a Cognitive.Status group with a single
 #'   Sex). A message is emitted for each skipped combination.
@@ -165,7 +181,7 @@
 #'   only returned as an R list.
 #' @param heatmap_params Named list of additional arguments forwarded to
 #'   [ComplexHeatmap::Heatmap()] for both the full and summary NES heatmaps.
-#'   Any default set by scSidekick can be overridden here — e.g.
+#'   Any default set by scSidekick can be overridden here - e.g.
 #'   ```r
 #'   heatmap_params = list(
 #'     clustering_distance_rows = "pearson",
@@ -218,6 +234,19 @@ RunGSEA <- function(seurat_object,
                                            show_row_dend       = FALSE,
                                            row_names_max_width = grid::unit(15, "cm"))) {
 
+  # Walk up output_dir from PrepObject when not explicitly supplied
+  output_dir <- output_dir %||%
+    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+
+  # Warn early: RunGSEA saves nothing (no CSVs or PDFs) when output_dir is NULL.
+  # Results are still returned as a list, but will be lost if the caller does
+  # not assign them.  Set output_dir or run PrepObject(output_dir = "...").
+  if (is.null(output_dir))
+    warning("RunGSEA: output_dir is NULL — no CSVs or PDF plots will be saved. ",
+            "Assign the return value (results <- RunGSEA(...)) or set ",
+            "output_dir in this call or via PrepObject(output_dir = ...).",
+            call. = FALSE)
+
   # Validate required packages
   for (pkg in c("presto", "fgsea", "msigdbr", "ComplexHeatmap", "circlize")) {
     if (!requireNamespace(pkg, quietly = TRUE))
@@ -228,12 +257,8 @@ RunGSEA <- function(seurat_object,
   message("Loading pathway gene sets from MSigDB...")
   fgsea_dbs <- lapply(names(pathway_sets), function(db_name) {
     ps  <- pathway_sets[[db_name]]
-    mdf <- if (!is.null(ps$subcategory)) {
-      msigdbr::msigdbr(species = species, category = ps$category,
-                       subcategory = ps$subcategory)
-    } else {
-      msigdbr::msigdbr(species = species, category = ps$category)
-    }
+    mdf <- .msigdbr_get(species = species, category = ps$category,
+                        subcategory = ps$subcategory)
     split(mdf$gene_symbol, mdf$gs_name)
   })
   names(fgsea_dbs) <- names(pathway_sets)
@@ -296,7 +321,7 @@ RunGSEA <- function(seurat_object,
       obj_sub <- seurat_object
     }
 
-    # split.by = NULL means "no subsetting — run GSEA on all cells at once".
+    # split.by = NULL means "no subsetting - run GSEA on all cells at once".
     # A single dummy level "All" is used so the loop body executes exactly once.
     use_split  <- !is.null(split.by) && split.by %in% colnames(obj_sub@meta.data)
     split_levels <- if (use_split)
@@ -312,11 +337,11 @@ RunGSEA <- function(seurat_object,
         Seurat::Idents(obj_sub) <- obj_sub@meta.data[[split.by]]
         cells_sp <- Seurat::WhichCells(obj_sub, idents = sp)
       } else {
-        cells_sp <- colnames(obj_sub)   # all cells — no subsetting
+        cells_sp <- colnames(obj_sub)   # all cells - no subsetting
       }
 
       if (length(cells_sp) < min_cells) {
-        message("    Skipping — fewer than ", min_cells, " cells.")
+        message("    Skipping - fewer than ", min_cells, " cells.")
         next
       }
 
@@ -327,10 +352,10 @@ RunGSEA <- function(seurat_object,
 
       # ── Guard: need ≥ 2 group.by levels for DE + fgsea to run ─────────────
       # This fires when label.by subsetting leaves only one level of group.by
-      # in the current split — e.g., one Cognitive.Status group has only one
+      # in the current split - e.g., one Cognitive.Status group has only one
       # Sex, so wilcoxauc cannot compare anything.
       if (length(clusters) < 2) {
-        message("    Skipping ", sp, " [", lab, "] — only ",
+        message("    Skipping ", sp, " [", lab, "] - only ",
                 length(clusters), " level(s) of '", group.by, "' (",
                 paste(clusters, collapse = ", "),
                 "); need ≥ 2 to compare.")
@@ -348,8 +373,13 @@ RunGSEA <- function(seurat_object,
         message("    Loading cached DE: ", basename(de_cache_path))
         de_all <- readRDS(de_cache_path)
       } else {
-        de_all <- presto::wilcoxauc(obj_sp, group_by = group.by,
-                                    seurat_assay = assay)
+        # Use scSidekick's own wrapper instead of presto::wilcoxauc(<Seurat>):
+        # the latter dispatches to wilcoxauc.Seurat, which uses a deprecated
+        # assay/slot extraction that crashes on Seurat v5 / BPCells objects.
+        # RunWilcoxAUC extracts the matrix via .get_layer_data() first, then
+        # calls presto on a plain matrix - same output columns, no crash.
+        de_all <- RunWilcoxAUC(obj_sp, group.by = group.by,
+                               assay = assay, layer = "data")
         if (!is.null(de_cache_path)) {
           dir.create(dirname(de_cache_path), recursive = TRUE,
                      showWarnings = FALSE)
@@ -370,7 +400,7 @@ RunGSEA <- function(seurat_object,
                    " (NES)-Heatmap.pdf")
           )
           if (file.exists(full_hm_check)) {
-            message("      Resuming: heatmap exists — skipping ", db_name)
+            message("      Resuming: heatmap exists - skipping ", db_name)
             results[[lab]][[sp]][[db_name]] <- list(
               de_table       = de_all,
               nes_matrix     = NULL,   # not reconstructed from disk
@@ -381,7 +411,7 @@ RunGSEA <- function(seurat_object,
         }
         fgsea_sets <- fgsea_dbs[[db_name]]
 
-        # db_dir is deterministic — hoist it so the cluster-level resume check
+        # db_dir is deterministic - hoist it so the cluster-level resume check
         # can reference it before the directory is necessarily created.
         db_dir <- if (!is.null(output_dir))
           file.path(output_dir, lab, db_name) else NULL
@@ -396,7 +426,7 @@ RunGSEA <- function(seurat_object,
           cl_safe <- gsub("/", ".", cl)
 
           # ── Resume: skip fgsea if per-cluster CSV already exists ───────────
-          # The CSV is the finest-grained checkpoint — it's written immediately
+          # The CSV is the finest-grained checkpoint - it's written immediately
           # after fgsea() completes.  Loading NES from it is fast and avoids
           # re-running the expensive fgsea call.
           # Note: lollipop plot objects are NOT restored from disk; the PDFs
@@ -406,7 +436,7 @@ RunGSEA <- function(seurat_object,
                                       paste0(db_name, " ", cl_safe, " ",
                                              sp_safe, " ", lab, ".csv"))
             if (file.exists(cl_csv_check)) {
-              message("        Cluster ", cl, ": CSV cached — skipping fgsea")
+              message("        Cluster ", cl, ": CSV cached - skipping fgsea")
               cached <- tryCatch(
                 utils::read.csv(cl_csv_check, row.names = 1,
                                 stringsAsFactors = FALSE),
@@ -514,7 +544,7 @@ RunGSEA <- function(seurat_object,
 
         # Build NES matrix and heatmaps.
         # Convert to a base R *matrix* (not tibble/data.frame) so that
-        # nes_mat[, ci] always returns a *named* vector — dplyr::left_join
+        # nes_mat[, ci] always returns a *named* vector - dplyr::left_join
         # can silently return a tibble that drops row names, which makes
         # names(sort(col_vec)) return NULL and breaks the top_n selection.
         pathway_names     <- nes_mat$pathway
@@ -529,7 +559,7 @@ RunGSEA <- function(seurat_object,
 
         if (!is.null(db_dir) && ncol(nes_mat) > 0) {
 
-          # Full heatmap — ComplexHeatmap with auto-sized PDF so pathway
+          # Full heatmap - ComplexHeatmap with auto-sized PDF so pathway
           # names are never clipped and the matrix is never squished.
           full_hm_path <- file.path(db_dir,
                                     paste0("GSEA ", db_name, " ", sp_safe,
@@ -549,7 +579,7 @@ RunGSEA <- function(seurat_object,
             "and calibrated to the maximum |NES| in this matrix."
           ))
 
-          # Summary heatmap — top/bottom top_n per cluster.
+          # Summary heatmap - top/bottom top_n per cluster.
           summary_rows <- unique(unlist(lapply(seq_len(ncol(nes_mat)), function(ci) {
             col_vec <- nes_mat[, ci]
             c(names(utils::head(sort(col_vec, decreasing = TRUE), top_n)),

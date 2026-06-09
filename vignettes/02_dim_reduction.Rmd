@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Dimensionality Reduction: Determine_nDims"
+title: "scSidekick - Dimensionality Reduction: Determine_nDims"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -28,7 +28,7 @@ the most consequential decisions in a single-cell pipeline. Too few and you lose
 biological signal; too many and you add noise.
 
 `Determine_nDims()` automates this using two complementary heuristics and
-returns the more **conservative** (lower) of the two — a safe default that you
+returns the more **conservative** (lower) of the two - a safe default that you
 can override if the plot suggests otherwise.
 
 ---
@@ -61,7 +61,7 @@ dims <- Determine_nDims(bmcite, reduction = "pca")
 ```
 
 The console output shows both heuristics and the final selection. The plot
-displays every PC as a number — blue = selected, orange = discarded. Vertical
+displays every PC as a number - blue = selected, orange = discarded. Vertical
 lines mark the two cutoffs.
 
 ```{r show-plot}
@@ -76,10 +76,10 @@ dims$plot
 # Recommended number of dimensions
 dims$n_dims
 
-# Heuristic 1 — cumulative variance plateau
+# Heuristic 1 - cumulative variance plateau
 dims$cum_thresh
 
-# Heuristic 2 — elbow
+# Heuristic 2 - elbow
 dims$elbow_thresh
 ```
 
@@ -97,7 +97,7 @@ bmcite <- FindClusters(bmcite,  resolution = 0.5)
 ```
 
 After this, `bmcite` has a UMAP embedding and cluster assignments ready for
-all visualization functions in vignettes 03–05.
+all visualization functions in vignettes 03-05.
 
 ---
 
@@ -124,7 +124,7 @@ dims_loose$n_dims
 
 ## 5. Using with any linear reduction
 
-The function works with any named reduction slot — PCA, LSI (ATAC), ICA, or
+The function works with any named reduction slot - PCA, LSI (ATAC), ICA, or
 Harmony.
 
 ```{r other-reduction, eval=FALSE}
@@ -173,8 +173,8 @@ ggplot2::ggsave(
 
 ## See also
 
-- Vignette 01: `PrepObject` — run after clustering to register colors
-- Vignette 03: `PlotDimPlots` — UMAP visualization after `RunUMAP(dims = 1:dims$n_dims)`
+- Vignette 01: `PrepObject` - run after clustering to register colors
+- Vignette 03: `PlotDimPlots` - UMAP visualization after `RunUMAP(dims = 1:dims$n_dims)`
 
 ---
 

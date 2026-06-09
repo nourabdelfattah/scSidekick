@@ -13,15 +13,15 @@
 # but did not reach pathway-level significance in others.
 #
 # Functions:
-#   .cc_search_pair          — inline replacement for CellChat:::searchPair
-#   .cc_chord_internal       — chord diagram with group-merge support
-#   .cc_aggregate            — aggregate visualisation (circle / chord / hierarchy)
-#   .cc_chord_cell           — pathway chord with slot.name choice
-#   .cc_heatmap              — heatmap with zero-matrix fallback for absent paths
+#   .cc_search_pair          - inline replacement for CellChat:::searchPair
+#   .cc_chord_internal       - chord diagram with group-merge support
+#   .cc_aggregate            - aggregate visualisation (circle / chord / hierarchy)
+#   .cc_chord_cell           - pathway chord with slot.name choice
+#   .cc_heatmap              - heatmap with zero-matrix fallback for absent paths
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# .cc_search_pair  — find L-R rows for a given pathway in an LRsig table
+# .cc_search_pair  - find L-R rows for a given pathway in an LRsig table
 # ---------------------------------------------------------------------------
 .cc_search_pair <- function(signaling, lrsig) {
   lrsig[!is.na(lrsig$pathway_name) &
@@ -229,7 +229,7 @@
   prob   <- object@net$prob[, , pairLR.names, drop = FALSE]
   pval   <- object@net$pval[, , pairLR.names, drop = FALSE]
 
-  # Apply threshold — zero out non-significant interactions
+  # Apply threshold - zero out non-significant interactions
   prob[pval > thresh] <- 0
 
   # Ensure 3-D even for a single L-R pair
@@ -397,7 +397,7 @@
 # the pathway level but present at the L-R level).
 # ---------------------------------------------------------------------------
 # Extra arguments in ... are forwarded to ComplexHeatmap::Heatmap(), so users
-# can override any default — e.g. column_names_rot, row_dend_width, col, etc.
+# can override any default - e.g. column_names_rot, row_dend_width, col, etc.
 .cc_heatmap <- function(
     object,
     signaling       = NULL,
@@ -417,7 +417,7 @@
   net.diff <- tryCatch(
     object@netP$prob[, , signaling, drop = TRUE],
     error = function(e) {
-      # Pathway not in netP — create zero matrix of same dims as net$prob
+      # Pathway not in netP - create zero matrix of same dims as net$prob
       n <- nrow(object@net$prob)
       m <- matrix(0, n, n,
                   dimnames = list(rownames(object@net$prob),

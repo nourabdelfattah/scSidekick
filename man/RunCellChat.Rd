@@ -41,8 +41,8 @@ CellChat run (e.g., \code{"Group"}).}
 \item{species}{Character. Determines which CellChatDB ligand-receptor
 database and PPI network are loaded. One of:
 \itemize{
-\item \code{"human"} (default) — uses \code{CellChatDB.human} and \code{PPI.human}
-\item \code{"mouse"} — uses \code{CellChatDB.mouse} and \code{PPI.mouse}
+\item \code{"human"} (default) - uses \code{CellChatDB.human} and \code{PPI.human}
+\item \code{"mouse"} - uses \code{CellChatDB.mouse} and \code{PPI.mouse}
 }}
 
 \item{colors}{Named character vector mapping \code{identity_column} levels to colours.
@@ -108,7 +108,7 @@ pipeline. Default \code{FALSE}. When \code{TRUE}:
 \item All plotting code (circle, pathway, bubble, scatter, patterns) is
 re-executed using the loaded object.
 \item The pipeline (\code{computeCommunProb}, \code{aggregateNet}, etc.) is
-completely skipped — the \code{seurat_object} argument is ignored.
+completely skipped - the \code{seurat_object} argument is ignored.
 \item Use this after \code{\link[=RenameCellTypeInCC]{RenameCellTypeInCC()}} + \code{saveRDS()} to regenerate
 figures with corrected cell-type labels.
 }}

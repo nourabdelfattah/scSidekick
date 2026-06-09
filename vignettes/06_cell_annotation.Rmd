@@ -1,5 +1,5 @@
 ---
-title: "scSidekick — Cell Annotation: CellTypeAssignmentHelper"
+title: "scSidekick - Cell Annotation: CellTypeAssignmentHelper"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -244,7 +244,7 @@ cluster_labels <- c(
 
 pbmc$Assignment <- cluster_labels[as.character(bmcite$seurat_clusters)]
 
-# Register the new column — use force = TRUE to update nk_settings
+# Register the new column - use force = TRUE to update nk_settings
 bmcite <- PrepObject(bmcite,
   variables = c("seurat_clusters", "Sample", "Condition", "Assignment"),
   force     = TRUE)
@@ -278,9 +278,9 @@ automatically.
 
 ## See also
 
-- Vignette 01: `PrepObject` — register the `Assignment` column after annotation
-- Vignette 03: `PlotDimPlots` — visualize the final `Assignment` coloring on UMAP
-- Vignette 05: `GroupHeatmap` — confirm marker expression aligns with assignment
+- Vignette 01: `PrepObject` - register the `Assignment` column after annotation
+- Vignette 03: `PlotDimPlots` - visualize the final `Assignment` coloring on UMAP
+- Vignette 05: `GroupHeatmap` - confirm marker expression aligns with assignment
 
 ---
 

@@ -1,16 +1,16 @@
 # =============================================================================
-# scSidekick — PrepObject  (prep_object.R)
+# scSidekick - PrepObject  (prep_object.R)
 #
 # Exported:
-#   PrepObject()   — assign colors + factor levels + analysis defaults
+#   PrepObject()   - assign colors + factor levels + analysis defaults
 #                    once; all downstream scSidekick functions read from there
-#   ShowColors()   — swatch plot of all stored color assignments
-#   GetColors()    — retrieve stored color vector for one or all variables
+#   ShowColors()   - swatch plot of all stored color assignments
+#   GetColors()    - retrieve stored color vector for one or all variables
 #
 # Internal helpers (used by all other scSidekick functions):
-#   .nk_colors()   — look up colors for a metadata variable; auto-generates
+#   .nk_colors()   - look up colors for a metadata variable; auto-generates
 #                    via Nour_pal if not stored
-#   .nk_setting()  — retrieve any scalar setting (group.by, split.by, etc.)
+#   .nk_setting()  - retrieve any scalar setting (group.by, split.by, etc.)
 # =============================================================================
 
 
@@ -67,6 +67,24 @@
 }
 
 
+# -----------------------------------------------------------------------------
+# .nk_autosave()
+#
+# Returns TRUE (auto-save enabled) unless PrepObject was called with
+# AutoSavePlots = FALSE.  Used by every plotting function before walking up
+# the stored output_dir: if FALSE the walk-up is suppressed so no files are
+# written unless the caller explicitly passes output_dir in the function call.
+# -----------------------------------------------------------------------------
+.nk_autosave <- function(seurat_object) {
+  val <- tryCatch(
+    seurat_object@misc$nk_settings$autosave_plots,
+    error = function(e) NULL
+  )
+  # Default TRUE when the setting has never been stored
+  if (is.null(val)) TRUE else isTRUE(val)
+}
+
+
 # =============================================================================
 # PrepObject
 # =============================================================================
@@ -82,7 +100,7 @@
 #'
 #' \strong{Additive by default.} Calling \code{PrepObject} again for a new
 #' variable (e.g. after cell-type assignment) does not overwrite existing
-#' settings — it only adds or updates the variables you name.  Set
+#' settings - it only adds or updates the variables you name.  Set
 #' \code{force = TRUE} to regenerate a variable that is already stored.
 #'
 #' \strong{Auto-palette selection:}
@@ -90,21 +108,31 @@
 #'   \item \code{"auto"}: \code{Nour_pal("all")} for variables with \eqn{\leq 8}
 #'     levels (warm, distinct), \code{Nour_pal("spectrum")} for \eqn{> 8} levels
 #'     (broader color range).
-#'   \item Specify per-variable with a named character vector:
-#'     \code{palettes = c(Cluster = "all", Sample = "spectrum")}.
+#'   \item Specify per-variable, either \strong{by name}
+#'     \code{palettes = c(Cluster = "all", Sample = "spectrum")} or
+#'     \strong{by position} (one entry per \code{variables}, same order)
+#'     \code{palettes = c("spectrum", "all", "all")}.
 #' }
 #'
 #' @param seurat_object A Seurat object.
 #' @param variables Character vector of metadata column names to color and
 #'   prepare.  Can be a single name; re-run \code{PrepObject} at any time to
 #'   add more.
-#' @param palettes Palette name(s).  Either a single string (\code{"auto"},
-#'   \code{"all"}, or \code{"spectrum"}) applied to all variables, or a named
-#'   character vector specifying a palette per variable (names must match
-#'   \code{variables}).  Missing names fall back to \code{"auto"}.  Default
-#'   \code{"auto"}.
-#' @param reverse Logical or named logical vector.  \code{TRUE} reverses the
-#'   palette for all variables; supply a named vector to reverse selectively
+#' @param palettes Palette name(s).  One of:
+#'   \itemize{
+#'     \item A \strong{single string} (\code{"auto"}, \code{"all"},
+#'       \code{"spectrum"}, \dots) applied to every variable.
+#'     \item A \strong{named} character vector keyed by variable
+#'       (\code{c(Cluster = "all", Sample = "spectrum")}); names not listed
+#'       fall back to \code{"auto"}.
+#'     \item An \strong{unnamed} character vector of the same length as
+#'       \code{variables}, matched \emph{by position}
+#'       (\code{c("spectrum", "all", "all")}).
+#'   }
+#'   Default \code{"auto"}.
+#' @param reverse Logical, named logical vector, or an unnamed logical vector
+#'   matched by position to \code{variables}.  \code{TRUE} reverses the palette
+#'   for all variables; a named vector reverses selectively
 #'   (e.g. \code{c(Cluster = TRUE, Sample = FALSE)}).  Default \code{FALSE}.
 #' @param custom_colors Named list of named character vectors that override
 #'   automatic palette generation entirely for specific variables.
@@ -127,6 +155,17 @@
 #' @param object_name Character.  Label used to prefix output file names.
 #' @param subset_name Character.  Optional subset label appended to output
 #'   file names (e.g. \code{"NoNeurons"}).
+#' @param AutoSavePlots Logical or \code{NULL}.  Controls whether plotting
+#'   functions automatically save PDFs to the stored \code{output_dir} when no
+#'   \code{output_dir} is passed explicitly in the function call.
+#'   \itemize{
+#'     \item \code{TRUE} (default when not set): plotting functions walk up and
+#'       use the stored \code{output_dir} automatically — existing behaviour.
+#'     \item \code{FALSE}: the walk-up is suppressed; functions return the plot
+#'       object without saving unless the caller explicitly passes
+#'       \code{output_dir = "..."} in the plotting call.
+#'   }
+#'   Pass \code{NULL} to leave the current setting unchanged.
 #' @param force Logical.  If \code{FALSE} (default), variables that already
 #'   have stored colors are left unchanged.  If \code{TRUE}, existing colors
 #'   are regenerated for every variable listed in \code{variables}.
@@ -149,6 +188,7 @@ PrepObject <- function(
     output_dir    = NULL,
     object_name   = NULL,
     subset_name   = NULL,
+    AutoSavePlots = NULL,
     force         = FALSE
 ) {
 
@@ -173,16 +213,27 @@ PrepObject <- function(
     seurat_object@misc$nk_settings$levels <- list()
 
   # ── 2. Resolve palette + reverse per variable ───────────────────────────────
+  # Per-variable lookup priority:
+  #   1. NAMED vector/list  -> look up by variable name
+  #   2. POSITIONAL vector  -> length == length(variables): map by position
+  #      (so palettes = c("spectrum","all","all") follows `variables` order)
+  #   3. SINGLE value       -> applied to every variable
+  #   4. otherwise          -> "auto"
   .pal_for <- function(var) {
     if (is.character(palettes) && !is.null(names(palettes)))
-      palettes[[var]] %||% palettes[1]
-    else if (length(palettes) == 1) palettes
+      palettes[[var]] %||% "auto"
+    else if (length(palettes) == length(variables))
+      palettes[[match(var, variables)]]
+    else if (length(palettes) == 1)
+      palettes
     else "auto"
   }
   .rev_for <- function(var) {
     if (is.logical(reverse) && length(reverse) == 1) return(isTRUE(reverse))
     if (!is.null(names(reverse)) && var %in% names(reverse))
       return(isTRUE(reverse[[var]]))
+    if (length(reverse) == length(variables))
+      return(isTRUE(reverse[[match(var, variables)]]))
     FALSE
   }
   # Simple null-coalescing helper (internal only)
@@ -210,7 +261,7 @@ PrepObject <- function(
       next
     }
     if (already_stored && length(new_lvls) > 0) {
-      message("  ", var, ": new level(s) detected — regenerating colors: ",
+      message("  ", var, ": new level(s) detected - regenerating colors: ",
               paste(new_lvls, collapse = ", "))
     }
 
@@ -244,7 +295,7 @@ PrepObject <- function(
     # Propagate to nk_settings$levels for reference
     seurat_object@misc$nk_settings$levels[[var]] <- lvls
 
-    message("  ", var, ": ", n, " levels — ",
+    message("  ", var, ": ", n, " levels - ",
             if (!is.null(custom_colors[[var]])) "custom colors"
             else paste0("Nour_pal('",
                         if (identical(.pal_for(var), "auto"))
@@ -273,6 +324,9 @@ PrepObject <- function(
   if (!is.null(subset_name))
     seurat_object@misc$nk_settings$subset_name <- as.character(subset_name)
 
+  if (!is.null(AutoSavePlots))
+    seurat_object@misc$nk_settings$autosave_plots <- isTRUE(AutoSavePlots)
+
   # ── 5. Summary ───────────────────────────────────────────────────────────────
   cfg <- seurat_object@misc$nk_settings
   message("\nPrepObject complete.")
@@ -288,6 +342,8 @@ PrepObject <- function(
     message("  object_name: ", cfg$object_name)
   if (!is.null(cfg$subset_name) && nchar(cfg$subset_name) > 0)
     message("  subset_name: ", cfg$subset_name)
+  if (!is.null(cfg$autosave_plots))
+    message("  AutoSavePlots: ", cfg$autosave_plots)
 
   invisible(seurat_object)
 }
