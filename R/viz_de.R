@@ -890,8 +890,21 @@ PlotEnrichment <- function(
   df$._padj  <- pmax(as.numeric(df[[padj_col]]), 1e-300)
   df$._nlp   <- -log10(df$._padj)
 
-  if (!is.null(count_col)) df$._count <- as.numeric(df[[count_col]])
-  if (!is.null(ratio_col)) df$._ratio <- as.numeric(df[[ratio_col]])
+  if (!is.null(count_col)) {
+    raw <- df[[count_col]]
+    # enrichR returns "5/200" format; extract the numerator
+    if (is.character(raw) && any(grepl("/", raw, fixed = TRUE)))
+      raw <- sub("/.*", "", raw)
+    df$._count <- suppressWarnings(as.numeric(raw))
+  }
+  if (!is.null(ratio_col)) {
+    raw <- df[[ratio_col]]
+    if (is.character(raw) && any(grepl("/", raw, fixed = TRUE))) {
+      parts <- strsplit(raw, "/", fixed = TRUE)
+      raw   <- sapply(parts, function(x) as.numeric(x[1]) / as.numeric(x[2]))
+    }
+    df$._ratio <- suppressWarnings(as.numeric(raw))
+  }
 
   # Compute ratio from count if missing
   if (is.null(ratio_col) && !is.null(count_col)) {
@@ -1089,6 +1102,11 @@ RunEnrichment <- function(
   if (!requireNamespace("enrichR", quietly = TRUE))
     stop("Package 'enrichR' is required.\n",
          "Install with: install.packages('enrichR')")
+  # enrichR's connection setup runs in .onAttach(), which only fires with
+  # library(), not requireNamespace(). Warn early if the session is not ready.
+  if (is.null(getOption("enrichR.base.address")))
+    stop("enrichR is not initialized. Run library(enrichR) once at the top of ",
+         "your script before calling RunEnrichment().")
 
   if (is.null(features) && is.null(deg_df))
     stop("Provide either 'features' (gene list) or 'deg_df' (DEG data frame).")

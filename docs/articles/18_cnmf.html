@@ -402,8 +402,8 @@ plotting functions accept them as “features” directly.</p>
 </h3>
 <p><code><a href="../reference/GetCNMFTopGenes.html">GetCNMFTopGenes()</a></code> returns a tidy
 <code>program / gene / rank</code> table that feeds straight into a
-blocked <code>GroupHeatmap</code> (or <code>SplitDotPlot</code>, or
-<code>RunGSEA</code>):</p>
+blocked <code>GroupHeatmap</code> (or <code>SplitDotPlot</code>,
+<code>RunGSEA</code>, or <code>RunEnrichment</code>):</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GetCNMFTopGenes.html">GetCNMFTopGenes</a></span><span class="op">(</span><span class="va">Immune</span>, n <span class="op">=</span> <span class="fl">15</span><span class="op">)</span>        <span class="co"># top 15 genes per program</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">tg</span><span class="op">)</span></span>
@@ -418,13 +418,38 @@ blocked <code>GroupHeatmap</code> (or <code>SplitDotPlot</code>, or
 <code class="sourceCode R"><span><span class="va">tg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GetCNMFTopGenes.html">GetCNMFTopGenes</a></span><span class="op">(</span><span class="va">Immune</span>, n <span class="op">=</span> <span class="fl">20</span>, programs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>(<code>n</code> is capped by <code>top_n_genes</code> set in
 <code><a href="../reference/GetCNMFPrograms.html">GetCNMFPrograms()</a></code>, default 50.)</p>
+</div>
+<div class="section level3">
+<h3 id="pathway-enrichment-per-program">Pathway enrichment per program<a class="anchor" aria-label="anchor" href="#pathway-enrichment-per-program"></a>
+</h3>
+<p><code><a href="../reference/RunEnrichment.html">RunEnrichment()</a></code> accepts the
+<code><a href="../reference/GetCNMFTopGenes.html">GetCNMFTopGenes()</a></code> table directly, running enrichR on each
+program’s top genes in one call.</p>
+<blockquote>
+<p><strong>Note:</strong> <code><a href="../reference/RunEnrichment.html">RunEnrichment()</a></code> requires
+<code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(enrichR)</a></code> to have been called in the current
+session. enrichR initializes its connection in <code>.onAttach()</code>,
+which only fires with <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code>, not
+<code><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace()</a></code>.</p>
+</blockquote>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">enrichR</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">tg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GetCNMFTopGenes.html">GetCNMFTopGenes</a></span><span class="op">(</span><span class="va">Immune</span>, n <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>   <span class="co"># use top 50 for enrichment</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/RunEnrichment.html">RunEnrichment</a></span><span class="op">(</span></span>
+<span>  deg_df       <span class="op">=</span> <span class="va">tg</span>,</span>
+<span>  gene_column  <span class="op">=</span> <span class="st">"gene"</span>,</span>
+<span>  group_column <span class="op">=</span> <span class="st">"program"</span>,</span>
+<span>  databases    <span class="op">=</span> <span class="st">"MSigDB_Hallmark_2020"</span>,</span>
+<span>  output_dir   <span class="op">=</span> <span class="st">"./Figures/cNMF/enrichment"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 </div>
 <div class="section level2">
 <h2 id="a-complete-run">6. A complete run<a class="anchor" aria-label="anchor" href="#a-complete-run"></a>
 </h2>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1. Factorize (parallel), then inspect the K-selection plot</span></span>
 <span><span class="va">Immune</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunCNMF.html">RunCNMF</a></span><span class="op">(</span><span class="va">Immune</span>, output_dir <span class="op">=</span> <span class="st">"./Figures/cNMF"</span>,</span>
 <span>                  k_range <span class="op">=</span> <span class="fl">5</span><span class="op">:</span><span class="fl">15</span>, n_iter <span class="op">=</span> <span class="fl">100</span>, n_workers <span class="op">=</span> <span class="fl">6</span>,</span>
@@ -452,7 +477,7 @@ usages on the corrected data, and re-fit the spectra on the uncorrected
 TP10K data. Supply one or more metadata columns to <code>batch.by</code>
 and <code><a href="../reference/RunCNMF.html">RunCNMF()</a></code> runs this workflow via cNMF’s
 <code>Preprocess</code>:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Immune</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunCNMF.html">RunCNMF</a></span><span class="op">(</span><span class="va">Immune</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="st">"./Figures/cNMF"</span>,</span>
 <span>  k_range    <span class="op">=</span> <span class="fl">5</span><span class="op">:</span><span class="fl">15</span>,</span>
@@ -474,7 +499,7 @@ writes
 <p>Harmony correction is slow. If a run crashes after correction but
 before factorization, re-run with <code>resume = TRUE</code> to reuse
 the corrected files and skip straight to factorization:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Immune</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunCNMF.html">RunCNMF</a></span><span class="op">(</span><span class="va">Immune</span>, output_dir <span class="op">=</span> <span class="st">"./Figures/cNMF"</span>,</span>
 <span>                  batch.by <span class="op">=</span> <span class="st">"Sample"</span>, k_range <span class="op">=</span> <span class="fl">5</span><span class="op">:</span><span class="fl">15</span>,</span>
 <span>                  resume <span class="op">=</span> <span class="cn">TRUE</span>, conda_env <span class="op">=</span> <span class="st">"cnmf_env"</span><span class="op">)</span></span></code></pre></div>
@@ -582,7 +607,7 @@ each program</li>
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.3.1 (2023-06-16)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20 (64-bit)</span></span>
