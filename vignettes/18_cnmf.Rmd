@@ -270,7 +270,8 @@ GroupHeatmap(Immune,
 ### Top genes per program
 
 `GetCNMFTopGenes()` returns a tidy `program / gene / rank` table that feeds
-straight into a blocked `GroupHeatmap` (or `SplitDotPlot`, or `RunGSEA`):
+straight into a blocked `GroupHeatmap` (or `SplitDotPlot`, `RunGSEA`, or
+`RunEnrichment`):
 
 ```{r top-genes}
 tg <- GetCNMFTopGenes(Immune, n = 15)        # top 15 genes per program
@@ -290,6 +291,28 @@ tg <- GetCNMFTopGenes(Immune, n = 20, programs = c(1, 3, 5))
 ```
 
 (`n` is capped by `top_n_genes` set in `GetCNMFPrograms()`, default 50.)
+
+### Pathway enrichment per program
+
+`RunEnrichment()` accepts the `GetCNMFTopGenes()` table directly, running
+enrichR on each program's top genes in one call.
+
+> **Note:** `RunEnrichment()` requires `library(enrichR)` to have been called
+> in the current session. enrichR initializes its connection in `.onAttach()`,
+> which only fires with `library()`, not `requireNamespace()`.
+
+```{r program-enrichment}
+library(enrichR)
+
+tg <- GetCNMFTopGenes(Immune, n = 50)   # use top 50 for enrichment
+
+RunEnrichment(
+  deg_df       = tg,
+  gene_column  = "gene",
+  group_column = "program",
+  databases    = "MSigDB_Hallmark_2020",
+  output_dir   = "./Figures/cNMF/enrichment")
+```
 
 ---
 
