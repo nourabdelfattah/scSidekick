@@ -311,6 +311,9 @@ RunGSEA <- function(seurat_object,
   output_dir <- output_dir %||%
     if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
 
+  .nk_warn_donor(seurat_object)
+  gsea_ctx <- .nk_legend_context(seurat_object)
+
   # Warn early: RunGSEA saves nothing (no CSVs or PDFs) when output_dir is NULL.
   # Results are still returned as a list, but will be lost if the caller does
   # not assign them.  Set output_dir or run PrepObject(output_dir = "...").
@@ -629,17 +632,22 @@ RunGSEA <- function(seurat_object,
               ggplot2::ggsave(plot = lp, filename = lp_path,
                               width = 10, height = 10)
               .write_legend_sidecar(lp_path, paste0(
-                "Lollipop plot showing the top up- and down-regulated gene sets ",
-                "from the ", db_name, " pathway database for the ", cl, " group",
-                if (sp != "All") paste0(" within ", sp) else "",
-                if (lab != "All") paste0(" (", lab, ")") else "",
-                ", ranked by Normalized Enrichment Score (NES). ",
-                "Gene set enrichment analysis was performed using the fgsea ",
-                "algorithm with Wilcoxon rank-sum pre-ranking (presto), comparing ",
-                cl, " against all other ", group.by, " groups. ",
-                "Positive NES (red) indicates enrichment in ", cl,
-                "; negative NES (blue) indicates depletion. ",
-                "Only gene sets with adjusted p-value < ", padj_thresh, " are shown."
+                "GSEA lollipop plot for the ", db_name, " pathway database, ",
+                group.by, " = ", cl,
+                if (sp != "All") paste0(", ", split.by, " = ", sp) else "",
+                if (lab != "All") paste0(", ", label.by, " = ", lab) else "",
+                ". Dataset: ", gsea_ctx$n_obs, " ", gsea_ctx$unit,
+                if (!is.null(gsea_ctx$n_donors))
+                  paste0(" from ", format(gsea_ctx$n_donors, big.mark = ","), " donors")
+                else "",
+                if (nchar(gsea_ctx$obj_name) > 0)
+                  paste0(" [", gsea_ctx$obj_name, "]")
+                else "",
+                ". Bars are ranked by Normalized Enrichment Score (NES); ",
+                "positive NES (red) = pathways enriched in ", cl,
+                " vs. all other ", group.by, " groups; ",
+                "negative NES (blue) = depleted. ",
+                "Only gene sets with adjusted p < ", padj_thresh, " are shown."
               ))
             }
           }
@@ -679,16 +687,21 @@ RunGSEA <- function(seurat_object,
                    heatmap_params = heatmap_params,
                    heatmap_colors = heatmap_colors)
           .write_legend_sidecar(full_hm_path, paste0(
-            "Heatmap of Normalized Enrichment Scores (NES) from GSEA using the ",
-            db_name, " pathway database, showing all tested pathways",
-            if (sp_safe != "All") paste0(" in ", sp_safe, " cells") else "",
-            if (lab != "All") paste0(" (", lab, ")") else "", ". ",
-            "Pathways (rows) are hierarchically clustered by NES pattern; ",
-            "columns represent ", group.by, " comparison groups ",
-            "(each group tested against all others via Wilcoxon rank-sum). ",
+            "NES heatmap (all pathways) from GSEA using the ", db_name,
+            " pathway database",
+            if (sp_safe != "All") paste0(", ", split.by, " = ", sp_safe) else "",
+            if (lab != "All") paste0(", ", label.by, " = ", lab) else "",
+            ". Dataset: ", gsea_ctx$n_obs, " ", gsea_ctx$unit,
+            if (!is.null(gsea_ctx$n_donors))
+              paste0(" from ", format(gsea_ctx$n_donors, big.mark = ","), " donors")
+            else "",
+            if (nchar(gsea_ctx$obj_name) > 0)
+              paste0(" [", gsea_ctx$obj_name, "]")
+            else "",
+            ". Pathways (rows) are hierarchically clustered by NES pattern; ",
+            "columns are ", group.by, " groups tested one-vs-all via Wilcoxon rank-sum. ",
             "Blue = depleted (negative NES); red = enriched (positive NES). ",
-            "Color scale is symmetric around 0 and calibrated to the maximum ",
-            "|NES| in this matrix."
+            "Color scale is symmetric around 0."
           ))
 
           # Summary heatmap - top/bottom top_n per cluster.
@@ -717,13 +730,22 @@ RunGSEA <- function(seurat_object,
                        heatmap_params = heatmap_params,
                        heatmap_colors = heatmap_colors)
               .write_legend_sidecar(summary_hm_path, paste0(
-                "Summary NES heatmap for the ", db_name, " pathway database",
-                if (sp_safe != "All") paste0(" in ", sp_safe, " cells") else "",
-                if (lab != "All") paste0(" (", lab, ")") else "", ". ",
-                "Rows: union of the top ", top_n, " up-regulated and bottom ",
-                top_n, " down-regulated pathways per ", group.by, " group",
+                "Summary NES heatmap (top ", top_n, " up/down per group) from GSEA ",
+                "using the ", db_name, " pathway database",
+                if (sp_safe != "All") paste0(", ", split.by, " = ", sp_safe) else "",
+                if (lab != "All") paste0(", ", label.by, " = ", lab) else "",
+                ". Dataset: ", gsea_ctx$n_obs, " ", gsea_ctx$unit,
+                if (!is.null(gsea_ctx$n_donors))
+                  paste0(" from ", format(gsea_ctx$n_donors, big.mark = ","), " donors")
+                else "",
+                if (nchar(gsea_ctx$obj_name) > 0)
+                  paste0(" [", gsea_ctx$obj_name, "]")
+                else "",
+                ". Rows are the union of the top ", top_n,
+                " up-regulated and bottom ", top_n,
+                " down-regulated pathways per ", group.by, " group",
                 if (nes.cutoff > 0)
-                  paste0(", further filtered to pathways with max |NES| >= ",
+                  paste0(", filtered to pathways with max |NES| >= ",
                          nes.cutoff, " across all groups")
                 else "",
                 ". Pathways are hierarchically clustered. ",

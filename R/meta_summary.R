@@ -7,6 +7,83 @@
 
 
 # =============================================================================
+# Private stat helpers (used by PlotMetaSummary)
+# =============================================================================
+
+.fmt_pval <- function(p) {
+  if (is.na(p) || !is.finite(p)) return(NA_character_)
+  if (p < 0.001) "< 0.001" else sprintf("%.3f", p)
+}
+
+# Categorical: Fisher's exact or chi-squared
+.cat_pval <- function(tab, method) {
+  tryCatch({
+    if (method == "parametric") {
+      stats::chisq.test(tab, correct = FALSE)$p.value
+    } else if (method == "nonparametric") {
+      use_sim <- nrow(tab) > 2L || ncol(tab) > 2L
+      stats::fisher.test(tab, simulate.p.value = use_sim, B = 2000L)$p.value
+    } else {
+      expected <- stats::chisq.test(tab, correct = FALSE)$expected
+      if (any(expected < 5, na.rm = TRUE)) {
+        use_sim <- nrow(tab) > 2L || ncol(tab) > 2L
+        stats::fisher.test(tab, simulate.p.value = use_sim, B = 2000L)$p.value
+      } else {
+        stats::chisq.test(tab, correct = FALSE)$p.value
+      }
+    }
+  }, error = function(e) NA_real_)
+}
+
+# Numeric: Wilcoxon/Kruskal-Wallis or t-test/ANOVA
+.num_pval <- function(vals, groups, method) {
+  groups    <- factor(as.character(groups))
+  n_groups  <- nlevels(groups)
+  keep      <- !is.na(vals) & !is.na(groups)
+  vals      <- vals[keep]; groups <- groups[keep]
+  if (length(vals) < 2L || n_groups < 2L) return(NA_real_)
+
+  use_np <- switch(method,
+    nonparametric = TRUE,
+    parametric    = FALSE,
+    {
+      g_split <- split(vals, groups)
+      sw_ok   <- vapply(g_split, function(x)
+        length(x) >= 3L && stats::shapiro.test(x)$p.value > 0.05,
+        logical(1L))
+      !all(sw_ok)
+    }
+  )
+
+  tryCatch({
+    if (n_groups == 2L) {
+      g <- split(vals, groups)
+      if (use_np) stats::wilcox.test(g[[1L]], g[[2L]])$p.value
+      else        stats::t.test(g[[1L]], g[[2L]])$p.value
+    } else {
+      df_tmp <- data.frame(v = vals, g = groups)
+      if (use_np) stats::kruskal.test(v ~ g, data = df_tmp)$p.value
+      else        summary(stats::aov(v ~ g, data = df_tmp))[[1L]][["Pr(>F)"]][1L]
+    }
+  }, error = function(e) NA_real_)
+}
+
+# Column header label reflecting the test used
+.pval_col_label <- function(method, n_groups, type = c("cat", "num")) {
+  type <- match.arg(type)
+  if (method == "auto") return("p.value")
+  if (type == "cat") {
+    if (method == "nonparametric") "p (Fisher)" else "p (Chi-sq)"
+  } else {
+    if (method == "nonparametric")
+      if (n_groups == 2L) "p (Wilcoxon)" else "p (Kruskal-Wallis)"
+    else
+      if (n_groups == 2L) "p (t-test)" else "p (ANOVA)"
+  }
+}
+
+
+# =============================================================================
 # SummarizeMetadata
 # =============================================================================
 
@@ -38,6 +115,21 @@
 #'   alternatives: \code{median}, \code{max}, \code{function(x) sd(x, na.rm = TRUE)}.
 #' @param numeric_na_rm Logical.  Pass \code{na.rm = TRUE} to
 #'   \code{numeric_func}.  Default \code{TRUE}.
+#' @param spread Character or \code{NULL}.  When \code{"sd"} or \code{"sem"},
+#'   adds a companion column for each numeric variable (e.g. \code{Age_sd} or
+#'   \code{Age_sem}).  At the patient level these are computed across cells;
+#'   when \code{group.by} is also supplied they reflect the spread of patient
+#'   means across patients in each group.  Default \code{NULL} (no spread).
+#' @param columns Character vector of column names to include in the summary.
+#'   \code{NULL} (default) includes all columns except \code{id_columns}.
+#'   \code{id_columns} are always retained regardless of this setting.
+#' @param group.by Optional column name to aggregate the patient-level result
+#'   up to a group level.  When supplied, a two-stage aggregation is performed:
+#'   (1) cells are collapsed to one row per \code{id_columns} combination
+#'   (current behavior), then (2) those patient-level rows are averaged by
+#'   \code{group.by}, giving each patient equal weight regardless of cell
+#'   count.  The returned data frame has one row per \code{group.by} level and
+#'   gains an \code{n_patients} column.  Default \code{NULL} (single-stage).
 #' @param pivot Logical.  If \code{TRUE}, the result is pivoted to long format
 #'   (one row per ID × variable combination).  Default \code{FALSE} (wide).
 #'
@@ -60,8 +152,11 @@
 #' }
 SummarizeMetadata <- function(data,
                                id_columns,
+                               columns       = NULL,
+                               group.by      = NULL,
                                numeric_func  = mean,
                                numeric_na_rm = TRUE,
+                               spread        = NULL,
                                pivot         = FALSE) {
 
   # ── 1. Extract metadata ───────────────────────────────────────────────────
@@ -75,8 +170,22 @@ SummarizeMetadata <- function(data,
 
   # ── 3. Identify column types ──────────────────────────────────────────────
   other_cols <- setdiff(colnames(meta), id_columns)
+  if (!is.null(columns)) {
+    bad <- setdiff(columns, colnames(meta))
+    if (length(bad) > 0L)
+      stop("The following columns were not found: ", paste(bad, collapse = ", "))
+    other_cols <- intersect(other_cols, columns)
+  }
   num_cols   <- other_cols[vapply(meta[other_cols], is.numeric, logical(1))]
   cat_cols   <- setdiff(other_cols, num_cols)
+
+  if (!is.null(spread) && !spread %in% c("sd", "sem"))
+    stop("'spread' must be NULL, \"sd\", or \"sem\".")
+
+  .spread_fn <- if (identical(spread, "sem"))
+    \(v) { v <- v[!is.na(v)]; if (length(v) < 2L) NA_real_ else sd(v) / sqrt(length(v)) }
+  else
+    \(v) sd(v, na.rm = TRUE)
 
   func_name  <- tryCatch(deparse(substitute(numeric_func)),
                          error = function(e) "custom function")
@@ -103,6 +212,17 @@ SummarizeMetadata <- function(data,
         .groups = "drop"
       )
     result <- dplyr::left_join(result, num_summary, by = id_columns)
+
+    if (!is.null(spread)) {
+      spread_summary <- meta |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(id_columns))) |>
+        dplyr::summarize(
+          dplyr::across(dplyr::all_of(num_cols), .spread_fn),
+          .groups = "drop"
+        ) |>
+        dplyr::rename_with(\(x) paste0(x, "_", spread), dplyr::all_of(num_cols))
+      result <- dplyr::left_join(result, spread_summary, by = id_columns)
+    }
   }
 
   # ── 6. Categorical columns ────────────────────────────────────────────────
@@ -133,7 +253,79 @@ SummarizeMetadata <- function(data,
     result <- dplyr::left_join(result, col_summary, by = id_columns)
   }
 
-  # ── 7. Optional pivot to long ─────────────────────────────────────────────
+  # ── 7. Optional second-stage: average patient rows by group.by ───────────
+  if (!is.null(group.by)) {
+    if (!group.by %in% colnames(meta))
+      stop("'group.by' column '", group.by, "' not found in metadata.")
+    if (group.by %in% id_columns)
+      stop("'group.by' column '", group.by, "' cannot also be an id_column.")
+
+    # Attach group.by to patient-level result if not already present
+    if (!group.by %in% colnames(result)) {
+      grp_map <- unique(meta[, c(id_columns, group.by), drop = FALSE])
+      result  <- dplyr::left_join(result, grp_map, by = id_columns)
+    }
+
+    # Identify numeric vs categorical among patient-level summary columns.
+    # Exclude any _sd/_sem columns added in stage 1 - they will be recomputed
+    # at the group level rather than averaged (mean-of-SDs is not meaningful).
+    pat_cols      <- setdiff(colnames(result), c(id_columns, group.by, "n_cells"))
+    spread_suffix <- if (!is.null(spread)) paste0("_", spread) else ""
+    spread_pat    <- if (!is.null(spread))
+      grep(paste0(spread_suffix, "$"), pat_cols, value = TRUE) else character(0L)
+    pat_num_cols  <- setdiff(pat_cols[vapply(result[pat_cols], is.numeric, logical(1L))],
+                             spread_pat)
+    pat_cat_cols  <- setdiff(pat_cols, c(pat_num_cols, spread_pat))
+
+    grp_result <- result |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(group.by))) |>
+      dplyr::summarize(
+        n_patients = dplyr::n(),
+        n_cells    = sum(n_cells, na.rm = TRUE),
+        dplyr::across(dplyr::all_of(pat_num_cols), \(v) mean(v, na.rm = TRUE)),
+        .groups    = "drop"
+      )
+
+    if (!is.null(spread) && length(pat_num_cols) > 0L) {
+      grp_spread <- result |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(group.by))) |>
+        dplyr::summarize(
+          dplyr::across(dplyr::all_of(pat_num_cols), .spread_fn),
+          .groups = "drop"
+        ) |>
+        dplyr::rename_with(\(x) paste0(x, "_", spread), dplyr::all_of(pat_num_cols))
+      grp_result <- dplyr::left_join(grp_result, grp_spread, by = group.by)
+    }
+
+    for (col in pat_cat_cols) {
+      val_counts <- result |>
+        dplyr::count(dplyr::across(dplyr::all_of(c(group.by, col))),
+                     name = ".n_pat_inner")
+
+      col_summary <- val_counts |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(group.by))) |>
+        dplyr::summarize(
+          !!col := {
+            vals   <- as.character(.data[[col]])
+            counts <- .data$.n_pat_inner
+            if (dplyr::n() == 1L) {
+              vals[1L]
+            } else {
+              ord <- order(counts, decreasing = TRUE)
+              paste(paste0(vals[ord], " (n=", counts[ord], ")"), collapse = ", ")
+            }
+          },
+          .groups = "drop"
+        )
+      grp_result <- dplyr::left_join(grp_result, col_summary, by = group.by)
+    }
+
+    message("scSidekick SummarizeMetadata: aggregated to ",
+            nrow(grp_result), " group(s) via '", group.by, "'.")
+    result <- grp_result
+  }
+
+  # ── 8. Optional pivot to long ─────────────────────────────────────────────
   if (pivot) {
     result <- tidyr::pivot_longer(
       result,
@@ -212,9 +404,23 @@ SummarizeMetadata <- function(data,
 #' @param alpha Numeric.  Fill transparency for bars (0-1).  Default
 #'   \code{0.85}.
 #' @param return_flextable Logical.  Also return a list of formatted
-#'   \code{flextable} objects: \code{$donor_table} (wide donor-level data) and
-#'   \code{$crosstab} (cross-tabulation per variable, rows separated by
-#'   variable).  Requires the \pkg{flextable} package.  Default \code{FALSE}.
+#'   \code{flextable} objects: \code{$donor_table} (wide donor-level data),
+#'   \code{$crosstab} (n per category level per \code{fill_variable} group),
+#'   and \code{$numeric_table} (mean ± SD per numeric variable per
+#'   \code{fill_variable} group, with each donor weighted equally).
+#'   Requires the \pkg{flextable} package.  Default \code{FALSE}.
+#' @param stats.method Character.  Statistical test to add as a \code{p.value}
+#'   column in the flextable outputs (requires \code{return_flextable = TRUE}
+#'   and \code{fill_variable}).
+#'   \describe{
+#'     \item{\code{"nonparametric"} (default)}{Fisher's exact for categorical,
+#'       Wilcoxon / Kruskal-Wallis for numeric.}
+#'     \item{\code{"parametric"}}{Chi-squared for categorical,
+#'       t-test / ANOVA for numeric.}
+#'     \item{\code{"auto"}}{Parametric when Shapiro-Wilk passes (numeric) or
+#'       expected counts >= 5 (categorical); otherwise non-parametric.}
+#'     \item{\code{"none"}}{No statistics added.}
+#'   }
 #'
 #' @return When only the plot is requested (default), a \code{ggplot2} object.
 #'   When \code{return_data} or \code{return_flextable} are \code{TRUE}, a
@@ -262,16 +468,21 @@ PlotMetaSummary <- function(data,
                              object_name        = "",
                              file_name          = NULL,
                              return_data        = FALSE,
-                             return_flextable   = FALSE) {
+                             return_flextable   = FALSE,
+                             stats.method       = c("nonparametric", "parametric", "auto", "none"),
+                             pdf.width          = NULL,
+                             pdf.height         = NULL) {
 
-  count_unit <- match.arg(count_unit)
+  count_unit   <- match.arg(count_unit)
+  stats.method <- match.arg(stats.method)
 
   # ── 0. Walk up PrepObject defaults (Seurat only) ──────────────────────────
   if (inherits(data, "Seurat")) {
-    output_dir  <- output_dir %||%
-      if (.nk_autosave(data)) .nk_setting(data, "output_dir") else NULL
+    if (missing(output_dir))
+      output_dir <- if (.nk_autosave(data)) .nk_setting(data, "output_dir") else NULL
     object_name <- if (nchar(object_name) > 0) object_name else
       .nk_setting(data, "object_name") %||% ""
+    if (is.null(id_column)) .nk_warn_donor(data)
   }
 
   # ── 1. Extract metadata ───────────────────────────────────────────────────
@@ -302,8 +513,8 @@ PlotMetaSummary <- function(data,
       PlotFeature(
         data        = data,
         features    = numeric_vars,
-        group_by    = feat_group,
-        split_by    = row_variable,
+        group.by    = feat_group,
+        split.by    = row_variable,
         colors      = colors,
         output_dir  = output_dir,
         object_name = object_name
@@ -597,15 +808,15 @@ PlotMetaSummary <- function(data,
 
     n_row_facets <- if (!is.null(row_variable))
       length(unique(as.character(meta[[row_variable]]))) else 1L
-    pdf_h <- n_row_facets * 3 + 1.5
+    pdf_h <- pdf.height %||% (n_row_facets * 3 + 1.5)
 
     if (!is.null(column_variable)) {
       n_col_facets <- length(unique(as.character(meta[[column_variable]])))
-      pdf_w        <- max(4.0, n_col_facets * 2.5 + 2.5)
+      pdf_w        <- pdf.width %||% max(4.0, n_col_facets * 2.5 + 2.5)
     } else {
       n_x_ticks    <- vapply(variables, function(v)
         length(unique(as.character(meta[[v]]))), integer(1))
-      pdf_w        <- sum(pmax(n_x_ticks * 0.35, 1.5)) + 2.5
+      pdf_w        <- pdf.width %||% (sum(pmax(n_x_ticks * 0.35, 1.5)) + 2.5)
     }
 
     if (!is.null(file_name) && nzchar(file_name)) {
@@ -631,12 +842,25 @@ PlotMetaSummary <- function(data,
             " (", round(pdf_w, 1), " × ", round(pdf_h, 1), " in, ",
             length(plots), " page(s))")
 
+    ms_n_obs    <- format(nrow(meta), big.mark = ",")
+    ms_unit     <- if (inherits(data, "Seurat")) .nk_unit_label(data) else "cells"
+    ms_n_donors <- if (!is.null(id_column) && id_column %in% colnames(meta))
+      length(unique(meta[[id_column]]))
+    else if (inherits(data, "Seurat")) {
+      don_col <- .nk_setting(data, "donor.by")
+      if (!is.null(don_col) && don_col %in% colnames(meta))
+        length(unique(meta[[don_col]])) else NULL
+    } else NULL
     .write_legend_sidecar(fpath, paste0(
-      "Stacked bar chart summarizing the distribution of categorical metadata variables",
-      if (!is.null(id_column)) paste0(" deduplicated to one row per ", id_column) else
-        " at the cell level",
-      ". ",
-      "Y-axis shows ", y_label, ". ",
+      "Stacked bar chart of ", ms_n_obs, " ", ms_unit,
+      if (!is.null(ms_n_donors))
+        paste0(" from ", format(ms_n_donors, big.mark = ","),
+               " ", if (!is.null(id_column)) id_column else "donors")
+      else "",
+      if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
+      " summarizing the distribution of categorical metadata variables",
+      if (!is.null(id_column)) paste0(" (deduplicated to one row per ", id_column, ")") else "",
+      ". Y-axis shows ", y_label, ". ",
       "Each column panel corresponds to a separate metadata variable (",
       paste(variables, collapse = ", "), "). ",
       if (!is.null(fill_variable))
@@ -648,18 +872,15 @@ PlotMetaSummary <- function(data,
         paste0("Rows are split by ", row_variable, ". ")
       else "",
       if (!is.null(column_variable))
-        paste0("When column_variable is set, one page is produced per variable in 'variables',",
-               " with bars faceted by ", column_variable, ". ")
+        paste0("One page is produced per variable, with bars faceted by ",
+               column_variable, ". ")
       else "",
       if (percent) "Values are shown as percentages rather than raw counts. " else "",
       if (!is.null(exclude) && length(exclude) > 0)
-        paste0("The following groups were excluded before plotting: ",
+        paste0("The following groups were excluded: ",
                paste(mapply(function(col, vals)
                  paste0(col, " = ", paste(vals, collapse = ", ")),
                  names(exclude), exclude), collapse = "; "), ". ")
-      else "",
-      if (!is.null(object_name) && nchar(object_name) > 0)
-        paste0("Dataset: ", object_name, ".")
       else ""
     ))
   }
@@ -700,8 +921,20 @@ PlotMetaSummary <- function(data,
           flextable::theme_vanilla()
       }
 
-      # Cross-tab per variable, all stacked into one flextable
-      if (!is.null(fill_variable)) {
+      run_stats   <- stats.method != "none" && !is.null(fill_variable)
+      n_grp_fill  <- if (!is.null(fill_variable))
+        length(unique(as.character(meta_dedup[[fill_variable]]))) else 0L
+
+      # ── Categorical cross-tab (n per level per fill group) ──────────────────
+      crosstab_ft <- NULL
+      if (!is.null(fill_variable) && length(variables) > 0L) {
+        cat_pvals <- if (run_stats)
+          stats::setNames(vapply(variables, function(var) {
+            tab <- table(meta_dedup[[var]], meta_dedup[[fill_variable]])
+            .cat_pval(tab, stats.method)
+          }, numeric(1L)), variables)
+        else NULL
+
         ct_list <- lapply(variables, function(var) {
           tab <- meta_dedup |>
             dplyr::count(.data[[var]], .data[[fill_variable]]) |>
@@ -712,29 +945,113 @@ PlotMetaSummary <- function(data,
             )
           colnames(tab)[1] <- "Value"
           tab$Variable     <- var
-          tab[, c("Variable", "Value",
-                  setdiff(colnames(tab), c("Variable", "Value")))]
+          tab <- tab[, c("Variable", "Value",
+                         setdiff(colnames(tab), c("Variable", "Value")))]
+          if (run_stats) {
+            p_str <- .fmt_pval(cat_pvals[[var]])
+            tab$p.value <- c(p_str, rep(NA_character_, nrow(tab) - 1L))
+          }
+          tab
         })
 
         ct_combined <- do.call(rbind, ct_list)
+        sep_rows    <- cumsum(vapply(ct_list, nrow, integer(1)))
+        sep_rows    <- sep_rows[-length(sep_rows)]
 
-        # Row positions where a separator line should appear (after each variable's block)
-        sep_rows <- cumsum(vapply(ct_list, nrow, integer(1)))
-        sep_rows <- sep_rows[-length(sep_rows)]   # no line after the last block
+        merge_cols  <- if (run_stats) c("Variable", "p.value") else "Variable"
+        cat_lbl     <- if (run_stats)
+          .pval_col_label(stats.method, n_grp_fill, "cat") else NULL
 
         crosstab_ft <- flextable::flextable(as.data.frame(ct_combined)) |>
-          flextable::merge_v(j = "Variable") |>
+          flextable::merge_v(j = merge_cols) |>
           flextable::autofit() |>
           flextable::theme_vanilla()
-
+        if (!is.null(cat_lbl))
+          crosstab_ft <- flextable::set_header_labels(
+            crosstab_ft, p.value = cat_lbl)
         if (length(sep_rows) > 0L)
           crosstab_ft <- flextable::hline(crosstab_ft, i = sep_rows)
-
-        result$flextable <- list(donor_table = donor_ft,
-                                 crosstab    = crosstab_ft)
-      } else {
-        result$flextable <- list(donor_table = donor_ft)
+        if (run_stats) {
+          sig_rows <- which(!is.na(ct_combined$p.value) &
+                            suppressWarnings(as.numeric(
+                              gsub("< ", "", ct_combined$p.value))) < 0.05)
+          if (length(sig_rows) > 0L)
+            crosstab_ft <- flextable::bold(crosstab_ft, i = sig_rows,
+                                           j = "p.value")
+        }
       }
+
+      # ── Numeric summary table (mean +- SD per fill group) ───────────────────
+      numeric_ft <- NULL
+      if (length(numeric_vars) > 0L) {
+        num_meta <- if (!is.null(id_column))
+          dplyr::distinct(meta[, intersect(
+            c(id_column, numeric_vars, fill_variable), colnames(meta)),
+            drop = FALSE])
+        else
+          meta[, intersect(c(numeric_vars, fill_variable), colnames(meta)),
+               drop = FALSE]
+
+        group_cols_num <- if (!is.null(fill_variable)) fill_variable else character(0L)
+
+        num_rows <- lapply(numeric_vars, function(var) {
+          if (!var %in% colnames(num_meta)) return(NULL)
+          if (length(group_cols_num) > 0L) {
+            row <- num_meta |>
+              dplyr::group_by(dplyr::across(dplyr::all_of(group_cols_num))) |>
+              dplyr::summarize(
+                stat = {
+                  v <- .data[[var]]
+                  sprintf("%.2f ± %.2f",
+                          mean(v, na.rm = TRUE), sd(v, na.rm = TRUE))
+                },
+                .groups = "drop"
+              ) |>
+              tidyr::pivot_wider(names_from  = dplyr::all_of(fill_variable),
+                                 values_from = stat)
+          } else {
+            v   <- num_meta[[var]]
+            row <- data.frame(stat = sprintf("%.2f ± %.2f",
+                                             mean(v, na.rm = TRUE),
+                                             sd(v, na.rm = TRUE)))
+          }
+          row <- dplyr::mutate(row, Variable = var, .before = 1)
+          if (run_stats) {
+            p_raw <- .num_pval(num_meta[[var]],
+                               num_meta[[fill_variable]], stats.method)
+            row$p.value <- .fmt_pval(p_raw)
+          }
+          row
+        })
+        num_rows <- Filter(Negate(is.null), num_rows)
+
+        if (length(num_rows) > 0L) {
+          num_combined <- do.call(rbind, num_rows)
+          num_lbl      <- if (run_stats)
+            .pval_col_label(stats.method, n_grp_fill, "num") else NULL
+
+          numeric_ft <- flextable::flextable(as.data.frame(num_combined)) |>
+            flextable::autofit() |>
+            flextable::theme_vanilla()
+          if (!is.null(num_lbl))
+            numeric_ft <- flextable::set_header_labels(
+              numeric_ft, p.value = num_lbl)
+          if (run_stats) {
+            sig_rows <- which(!is.na(num_combined$p.value) &
+                              suppressWarnings(as.numeric(
+                                gsub("< ", "", num_combined$p.value))) < 0.05)
+            if (length(sig_rows) > 0L)
+              numeric_ft <- flextable::bold(numeric_ft, i = sig_rows,
+                                            j = "p.value")
+          }
+        }
+      }
+
+      result$flextable <- list(
+        donor_table   = donor_ft,
+        crosstab      = crosstab_ft,
+        numeric_table = numeric_ft
+      )
     }
   }
 

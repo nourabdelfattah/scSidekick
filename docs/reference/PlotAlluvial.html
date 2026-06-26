@@ -31,7 +31,7 @@ longest axis label so text is never clipped."><meta property="og:image" content=
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +52,7 @@ longest axis label so text is never clipped."><meta property="og:image" content=
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -62,6 +63,9 @@ longest axis label so text is never clipped."><meta property="og:image" content=
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -69,6 +73,7 @@ longest axis label so text is never clipped."><meta property="og:image" content=
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -116,6 +121,12 @@ longest axis label so text is never clipped.</p>
 <span>  group_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  split_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  axes_colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  axis.labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  facet.spacing <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  horizontal <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  label.inside <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  title.size <span class="op">=</span> <span class="fl">13</span>,</span>
+<span>  title.rotation <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  pdf_width <span class="op">=</span> <span class="fl">7</span>,</span>
@@ -205,6 +216,42 @@ Auto-assigned if <code>NULL</code>.</p></dd>
 <dd><p>Named <code>list</code> of color vectors, keyed by column
 name (e.g. <code>list(BraakStage = BraakColors, ThalPhase = ThalColors)</code>).
 Takes precedence over <code>group_colors</code>/<code>split_colors</code>.</p></dd>
+
+
+<dt id="arg-axis-labels">axis.labels<a class="anchor" aria-label="anchor" href="#arg-axis-labels"></a></dt>
+<dd><p>Character vector of display labels for the axes, in the
+same order as <code>axes</code>.  Use this to show short/readable names instead
+of raw column names (e.g. <code>c("AD neuropath.", "Cognitive status",
+  "Dementia")</code>).  <code>NULL</code> = use column names as-is.</p></dd>
+
+
+<dt id="arg-facet-spacing">facet.spacing<a class="anchor" aria-label="anchor" href="#arg-facet-spacing"></a></dt>
+<dd><p>Numeric (0-1+). Scale factor applied to the auto-computed
+left and right panel margins when <code>facet.by</code> is used.  Values below
+1 shrink the gap between panels (try <code>0.5</code>); values above 1 widen it.
+Default <code>1</code> (no change).</p></dd>
+
+
+<dt id="arg-horizontal">horizontal<a class="anchor" aria-label="anchor" href="#arg-horizontal"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, rotate the diagram 90 degrees so
+axis bars run horizontally using <code>coord_flip()</code>.  Best combined with
+<code>label.inside = TRUE</code>.  Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-label-inside">label.inside<a class="anchor" aria-label="anchor" href="#arg-label-inside"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, place category labels centered
+inside the colored bars in white text instead of outside.  Default
+<code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-title-size">title.size<a class="anchor" aria-label="anchor" href="#arg-title-size"></a></dt>
+<dd><p>Numeric. Font size for the axis name labels (e.g. "Sex",
+"Group").  Default <code>13</code>.</p></dd>
+
+
+<dt id="arg-title-rotation">title.rotation<a class="anchor" aria-label="anchor" href="#arg-title-rotation"></a></dt>
+<dd><p>Numeric. Rotation angle (degrees) for the axis name
+labels.  Default <code>0</code> (horizontal).</p></dd>
 
 
 <dt id="arg-output-dir">output_dir<a class="anchor" aria-label="anchor" href="#arg-output-dir"></a></dt>

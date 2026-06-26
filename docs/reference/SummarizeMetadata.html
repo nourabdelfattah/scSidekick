@@ -9,7 +9,7 @@ returns a wide data frame with one row per unique ID combination."><meta propert
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,21 +29,29 @@ returns a wide data frame with one row per unique ID combination."><meta propert
     <li><a class="dropdown-item" href="../articles/03_umap_visualization.html">03 - UMAP Visualization</a></li>
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
-    <li><a class="dropdown-item" href="../articles/11_metadata_composition.html">11 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
     <li><a class="dropdown-item" href="../articles/07_spatial.html">07 - Spatial Transcriptomics</a></li>
-    <li><a class="dropdown-item" href="../articles/08_pathway_analysis.html">08 - Pathway Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/09_cellchat.html">09 - Cell-Cell Communication</a></li>
-    <li><a class="dropdown-item" href="../articles/12_large_data.html">12 - Large Datasets</a></li>
+    <li><a class="dropdown-item" href="../articles/08_pathway_gsea.html">08 - Pathway: RunGSEA</a></li>
+    <li><a class="dropdown-item" href="../articles/09_pathway_pseudobulk.html">09 - Pathway: Pseudobulk GSEA</a></li>
+    <li><a class="dropdown-item" href="../articles/10_pathway_enrichment.html">10 - Pathway: Single-Cell &amp; Enrichment</a></li>
+    <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
+    <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
+    <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
-    <li><a class="dropdown-item" href="../articles/10_reporting_utilities.html">10 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -67,8 +75,11 @@ returns a wide data frame with one row per unique ID combination.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">SummarizeMetadata</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
 <span>  <span class="va">id_columns</span>,</span>
+<span>  columns <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  numeric_func <span class="op">=</span> <span class="va">mean</span>,</span>
 <span>  numeric_na_rm <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  spread <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pivot <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -88,6 +99,22 @@ uniquely identify a donor or sample (e.g.
 One output row is produced per unique combination.</p></dd>
 
 
+<dt id="arg-columns">columns<a class="anchor" aria-label="anchor" href="#arg-columns"></a></dt>
+<dd><p>Character vector of column names to include in the summary.
+<code>NULL</code> (default) includes all columns except <code>id_columns</code>.
+<code>id_columns</code> are always retained regardless of this setting.</p></dd>
+
+
+<dt id="arg-group-by">group.by<a class="anchor" aria-label="anchor" href="#arg-group-by"></a></dt>
+<dd><p>Optional column name to aggregate the patient-level result
+up to a group level.  When supplied, a two-stage aggregation is performed:
+(1) cells are collapsed to one row per <code>id_columns</code> combination
+(current behavior), then (2) those patient-level rows are averaged by
+<code>group.by</code>, giving each patient equal weight regardless of cell
+count.  The returned data frame has one row per <code>group.by</code> level and
+gains an <code>n_patients</code> column.  Default <code>NULL</code> (single-stage).</p></dd>
+
+
 <dt id="arg-numeric-func">numeric_func<a class="anchor" aria-label="anchor" href="#arg-numeric-func"></a></dt>
 <dd><p>Function to summarize numeric columns.  Must accept a
 numeric vector and return a single value.  Default <code>mean</code>.  Common
@@ -97,6 +124,14 @@ alternatives: <code>median</code>, <code>max</code>, <code>function(x) sd(x, na.
 <dt id="arg-numeric-na-rm">numeric_na_rm<a class="anchor" aria-label="anchor" href="#arg-numeric-na-rm"></a></dt>
 <dd><p>Logical.  Pass <code>na.rm = TRUE</code> to
 <code>numeric_func</code>.  Default <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-spread">spread<a class="anchor" aria-label="anchor" href="#arg-spread"></a></dt>
+<dd><p>Character or <code>NULL</code>.  When <code>"sd"</code> or <code>"sem"</code>,
+adds a companion column for each numeric variable (e.g. <code>Age_sd</code> or
+<code>Age_sem</code>).  At the patient level these are computed across cells;
+when <code>group.by</code> is also supplied they reflect the spread of patient
+means across patients in each group.  Default <code>NULL</code> (no spread).</p></dd>
 
 
 <dt id="arg-pivot">pivot<a class="anchor" aria-label="anchor" href="#arg-pivot"></a></dt>

@@ -175,9 +175,12 @@ SplitDotPlot <- function(seurat_object,
   if (!is.null(gene_col)       && identical(gene_column,       "Genes"))    gene_column       <- gene_col
   if (!is.null(gene_group_col) && identical(gene_group_column, "CellType")) gene_group_column <- gene_group_col
 
-  # Walk up output_dir from PrepObject when not explicitly supplied
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up output_dir from PrepObject only when the caller omitted it entirely.
+  # An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  .nk_warn_donor(seurat_object)
 
   # 1. Filter to genes present in the object
   valid_genes <- markers_df[[gene_column]][markers_df[[gene_column]] %in%
@@ -296,10 +299,18 @@ SplitDotPlot <- function(seurat_object,
     print(p)
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath)
+    dp1_ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      "Dot plot of ", length(unique(valid_genes)), " genes across ",
+      format(ncol(seurat_object), big.mark = ","), " ", dp1_ctx$unit,
+      if (!is.null(dp1_ctx$n_donors))
+        paste0(" from ", format(dp1_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(dp1_ctx$obj_name) > 0) paste0(" [", dp1_ctx$obj_name, "]") else "",
+      ", grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      ". Dot size = percent expressed; dot color = scaled average expression."
+      ". Dot size encodes the percentage of ", dp1_ctx$unit,
+      " expressing each gene; dot color reflects scaled average expression."
     ))
     return(invisible(p))
   }
@@ -354,9 +365,12 @@ SplitDotPlot2 <- function(seurat_object,
   df_name <- deparse(substitute(markers_df))
   if (!.usable_obj_name(df_name)) df_name <- NULL
 
-  # Walk up output_dir from PrepObject when not explicitly supplied
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up output_dir from PrepObject only when the caller omitted it entirely.
+  # An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  .nk_warn_donor(seurat_object)
 
   valid_genes <- markers_df[[gene_column]][markers_df[[gene_column]] %in%
                                           rownames(seurat_object)]
@@ -494,11 +508,19 @@ SplitDotPlot2 <- function(seurat_object,
     print(p)
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath)
+    dp2_ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      "Dot plot of ", length(unique(valid_genes)), " genes across ",
+      format(ncol(seurat_object), big.mark = ","), " ", dp2_ctx$unit,
+      if (!is.null(dp2_ctx$n_donors))
+        paste0(" from ", format(dp2_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(dp2_ctx$obj_name) > 0) paste0(" [", dp2_ctx$obj_name, "]") else "",
+      ", grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      ". Dot size = percent expressed; dot color = scaled average expression.",
-      " Genes are hierarchically clustered on the x-axis."
+      ". Genes are hierarchically clustered on the x-axis. ",
+      "Dot size encodes the percentage of ", dp2_ctx$unit,
+      " expressing each gene; dot color reflects scaled average expression."
     ))
     return(invisible(p))
   }
@@ -565,9 +587,12 @@ FastDotPlot <- function(seurat_object,
   # other; append the regex pattern when one was used.
   auto_base <- if (!is.null(pattern)) paste0(group.by, "_pattern_", pattern) else group.by
 
-  # Walk up output_dir from PrepObject when not explicitly supplied
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up output_dir from PrepObject only when the caller omitted it entirely.
+  # An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  .nk_warn_donor(seurat_object)
 
   Seurat::DefaultAssay(seurat_object) <- assay
 
@@ -727,13 +752,22 @@ FastDotPlot <- function(seurat_object,
     print(p)
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath)
+    fd1_ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      "Dot plot of ", length(unique(valid_genes)), " genes",
+      if (!is.null(pattern)) paste0(" matching pattern '", pattern, "'") else "",
+      " across ", format(ncol(seurat_object), big.mark = ","), " ", fd1_ctx$unit,
+      if (!is.null(fd1_ctx$n_donors))
+        paste0(" from ", format(fd1_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(fd1_ctx$obj_name) > 0) paste0(" [", fd1_ctx$obj_name, "]") else "",
+      ", grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      if (!is.null(pattern)) paste0(" (genes matching pattern: '", pattern, "')") else "",
       if (ClusterGenes && k_genes > 1)
-        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering") else "",
-      ". Dot size = percent expressed; dot color = scaled average expression."
+        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering")
+      else "",
+      ". Dot size encodes the percentage of ", fd1_ctx$unit,
+      " expressing each gene; dot color reflects scaled average expression."
     ))
     return(invisible(p))
   }
@@ -804,9 +838,12 @@ FastDotPlot2 <- function(seurat_object,
   # other; append the regex pattern when one was used.
   auto_base <- if (!is.null(pattern)) paste0(group.by, "_pattern_", pattern) else group.by
 
-  # Walk up output_dir from PrepObject when not explicitly supplied
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up output_dir from PrepObject only when the caller omitted it entirely.
+  # An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  .nk_warn_donor(seurat_object)
 
   Seurat::DefaultAssay(seurat_object) <- assay
 
@@ -1077,15 +1114,26 @@ FastDotPlot2 <- function(seurat_object,
     print(combined_plot)
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath)
+    fd2_ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      "Dot plot of ", length(unique(valid_genes)), " genes across ", group.by,
+      "Dot plot of ", length(unique(valid_genes)), " genes",
+      if (!is.null(pattern)) paste0(" matching pattern '", pattern, "'") else "",
+      " across ", format(ncol(seurat_object), big.mark = ","), " ", fd2_ctx$unit,
+      if (!is.null(fd2_ctx$n_donors))
+        paste0(" from ", format(fd2_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(fd2_ctx$obj_name) > 0) paste0(" [", fd2_ctx$obj_name, "]") else "",
+      ", grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      if (!is.null(pattern)) paste0(" (genes matching pattern: '", pattern, "')") else "",
       if (ClusterGenes && k_genes > 1)
-        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering") else "",
+        paste0(". Genes divided into ", k_genes, " clusters by hierarchical clustering")
+      else "",
       if (isTRUE(RunEnrichR))
-        paste0(". Top enrichment terms from ", EnrichR_DB, " shown above each gene cluster") else "",
-      ". Dot size = percent expressed; dot color = scaled average expression."
+        paste0(". Top enrichment terms from ", EnrichR_DB,
+               " are shown above each gene cluster")
+      else "",
+      ". Dot size encodes the percentage of ", fd2_ctx$unit,
+      " expressing each gene; dot color reflects scaled average expression."
     ))
   } else {
     print(combined_plot)

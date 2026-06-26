@@ -43,7 +43,7 @@ palettes = c("spectrum", "all", "all").
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,6 +64,7 @@ palettes = c("spectrum", "all", "all").
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -74,6 +75,9 @@ palettes = c("spectrum", "all", "all").
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -81,6 +85,7 @@ palettes = c("spectrum", "all", "all").
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -124,6 +129,8 @@ levels (warm, distinct), <code>Nour_pal("spectrum")</code> for \(&gt; 8\) levels
 <span>  var_levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  split.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  donor.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  assay_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -191,6 +198,28 @@ Downstream functions use this as the default <code>split.by</code>.  Pass
 <code>NA</code> to explicitly disable the stored default (even if one exists).</p></dd>
 
 
+<dt id="arg-donor-by">donor.by<a class="anchor" aria-label="anchor" href="#arg-donor-by"></a></dt>
+<dd><p>Character or <code>NULL</code>.  Metadata column that identifies
+the biological replicate / library unit – the donor, patient, mouse, or
+sample from which each cell/spot was obtained.  When set, plotting
+functions include the number of unique donors in figure legends
+(e.g. "8,691 cells from 36 samples").  Pass <code>NA</code> to clear a
+previously stored value.</p></dd>
+
+
+<dt id="arg-assay-type">assay_type<a class="anchor" aria-label="anchor" href="#arg-assay-type"></a></dt>
+<dd><p>Character or <code>NULL</code>.  Sequencing modality.  Controls
+the observation-level word used in auto-generated legend and methods text.
+Recognized values (same vocabulary as <code><a href="log_analysis_params.html">log_analysis_params</a></code>):</p><ul><li><p><code>"scRNAseq"</code> – "cells" (default)</p></li>
+<li><p><code>"snRNAseq"</code> – "nuclei"</p></li>
+<li><p><code>"Visium"</code>   – "spots"</p></li>
+<li><p><code>"VisiumHD"</code> – "bins"</p></li>
+<li><p><code>"Xenium"</code>   – "cells"</p></li>
+<li><p><code>"Spatial"</code>  – "spots"</p></li>
+<li><p><code>"scATACseq"</code>, <code>"scMultiome"</code> – "cells"</p></li>
+</ul><p>Pass <code>NULL</code> to leave unchanged; <code>NA</code> to clear.</p></dd>
+
+
 <dt id="arg-output-dir">output_dir<a class="anchor" aria-label="anchor" href="#arg-output-dir"></a></dt>
 <dd><p>Character.  Store the preferred output directory for
 saving PDFs and plots.  All downstream scSidekick functions walk up to
@@ -211,7 +240,7 @@ file names (e.g. <code>"NoNeurons"</code>).</p></dd>
 <dd><p>Logical or <code>NULL</code>.  Controls whether plotting
 functions automatically save PDFs to the stored <code>output_dir</code> when no
 <code>output_dir</code> is passed explicitly in the function call.</p><ul><li><p><code>TRUE</code> (default when not set): plotting functions walk up and
-use the stored <code>output_dir</code> automatically — existing behavior.</p></li>
+use the stored <code>output_dir</code> automatically – existing behavior.</p></li>
 <li><p><code>FALSE</code>: the walk-up is suppressed; functions return the plot
 object without saving unless the caller explicitly passes
 <code>output_dir = "..."</code> in the plotting call.</p></li>

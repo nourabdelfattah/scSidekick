@@ -433,6 +433,7 @@ PlotPseudoBulk <- function(seurat_object,
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
 
+  pb_unit <- .nk_unit_label(seurat_object)
   meta <- seurat_object@meta.data
 
   # ── Validate columns ──────────────────────────────────────────────────────
@@ -778,16 +779,18 @@ PlotPseudoBulk <- function(seurat_object,
 
     n_donors <- length(unique(cache[[donor.by]]))
     .write_legend_sidecar(fpath, paste0(
-      "Pseudobulk box plot of ", paste(valid_features, collapse = ", "), ". ",
-      "Each dot represents the mean log-normalized expression for one ",
-      donor.by, " (n = ", n_donors, " donors), ",
+      "Pseudobulk box plot of ", paste(valid_features, collapse = ", "),
+      " across ", format(ncol(seurat_object), big.mark = ","), " ", pb_unit,
+      " from ", n_donors, " ", donor.by, " donors",
+      if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
+      ". Each dot = mean log-normalized expression for one ", donor.by, ", ",
       "grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
       if (!is.null(row.by))   paste0(", rows by ", row.by)   else "",
-      ". Box plot elements: center line = median; box limits = 25th-75th percentile (IQR); whiskers extend to the furthest observation within 1.5x IQR from the box; outliers beyond this range are not shown.",
+      ". Box: median, IQR; whiskers: 1.5x IQR.",
       if (min_cells > 0L)
         paste0(" Groups with fewer than ", min_cells,
-               " cells per donor were excluded.")
+               " ", pb_unit, " per ", donor.by, " were excluded.")
       else "",
       if (add_stats)
         " Statistical comparisons: Wilcoxon rank-sum test on donor-level means."
@@ -797,8 +800,7 @@ PlotPseudoBulk <- function(seurat_object,
                paste(mapply(function(col, vals)
                  paste0(col, " = ", paste(vals, collapse = ", ")),
                  names(exclude), exclude), collapse = "; "), ".")
-      else "",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+      else ""
     ))
   }
 

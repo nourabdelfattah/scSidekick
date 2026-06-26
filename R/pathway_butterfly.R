@@ -460,6 +460,8 @@ PlotPathwayButterfly <- function(
   fname_base <- sub("\\.pdf$", "", fname_base, ignore.case = TRUE)
 
   # ── Main loop over split levels ───────────────────────────────────────────────
+  .nk_warn_donor(seurat_object)
+  bf_ctx  <- .nk_legend_context(seurat_object)
   results <- list()
 
   for (sp in sp_lvls) {
@@ -605,23 +607,27 @@ PlotPathwayButterfly <- function(
 
       # ── .legend sidecar ───────────────────────────────────────────────────
       .write_legend_sidecar(fpath, paste0(
-        "Butterfly plot of single-cell pathway state hierarchy",
-        if (sp != "All") paste0(" — ", split.by, ": ", sp) else "",
-        ". Cells scored against four pathways: ",
+        "Butterfly plot of ", bf_ctx$unit, " pathway state hierarchy",
+        if (sp != "All") paste0(", ", split.by, ": ", sp) else "",
+        "; ", format(ncol(mat), big.mark = ","), " ", bf_ctx$unit, " scored",
+        if (!is.null(bf_ctx$n_donors))
+          paste0(" from ", format(bf_ctx$n_donors, big.mark = ","), " donors")
+        else "",
+        if (nchar(bf_ctx$obj_name) > 0) paste0(" [", bf_ctx$obj_name, "]") else "",
+        ". Gene sets: ",
         paste(paste0(quadrant_order, " (", lengths(gene_sets_filt), " genes)"),
               collapse = "; "), ". ",
         "Scores are mean ", layer, " expression across each pathway's genes",
-        if (center) ", column-centered across cells" else "",
+        if (center) paste0(", column-centered across ", bf_ctx$unit) else "",
         ". Hierarchy coordinates: Y-axis separates ",
         qlabels[3], " / ", qlabels[4], " (top, Y > 0) from ",
         qlabels[1], " / ", qlabels[2], " (bottom, Y < 0); ",
         "X-axis gives left-right balance within the dominant axis",
         if (log_scale) " (log2-scaled)" else "",
-        ". Total cells: ", ncol(mat), ". ",
-        "Cells per ", group.by, ": ", cpg_str, ". ",
-        "Left panel: overview of all cells colored by ", group.by, ". ",
+        ". ", tools::toTitleCase(bf_ctx$unit), " per ", group.by, ": ", cpg_str, ". ",
+        "Left panel: overview colored by ", group.by, ". ",
         "Right panels: one panel per ", group.by,
-        " level (group highlighted in color; remaining cells in gray)."
+        " level (group highlighted in color; remaining ", bf_ctx$unit, " in gray)."
       ))
 
       # ── .json methods sidecar ─────────────────────────────────────────────

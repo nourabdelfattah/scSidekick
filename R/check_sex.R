@@ -353,6 +353,7 @@ CheckSex <- function(seurat_object,
 
     sample_labels <- meta[[sample_col]]
     samples       <- unique(sample_labels)
+    samples       <- samples[!is.na(samples)]   # NA IDs yield integer(0) idx
 
     # ── per-sample pseudobulk ────────────────────────────────────────────────
     sample_tbl <- do.call(rbind, lapply(samples, function(s) {
@@ -370,7 +371,7 @@ CheckSex <- function(seurat_object,
 
       ann <- {
         tbl <- sort(table(annotated_norm[idx]), decreasing = TRUE)
-        names(tbl)[1]
+        if (length(tbl) == 0L) NA_character_ else names(tbl)[1L]
       }
 
       # Mismatch: BOTH conditions required
@@ -388,7 +389,7 @@ CheckSex <- function(seurat_object,
       }
 
       flag <- dplyr::case_when(
-        mismatch                  ~ paste0("⚠  Annotated ", ann, " — predicted ", pred_sex),
+        mismatch                  ~ paste0("⚠  Annotated ", ann, " vs predicted ", pred_sex),
         pred_sex == "Ambiguous"   ~ "ℹ  Both F and M markers detected (possible BMT/chimerism)",
         pred_sex == "Undetermined"~ "ℹ  Neither marker detected (low coverage?)",
         TRUE                      ~ "✓"

@@ -45,6 +45,35 @@
   }
 }
 
+# Internal: categorical legend panel size (width, height in inches)
+.cat_legend_dims <- function(n_lvls, display_labels, legend.direction, legendnrow) {
+  max_lbl <- max(nchar(as.character(display_labels)), 1L)
+  if (identical(legend.direction, "horizontal")) {
+    n_rows  <- min(legendnrow, n_lvls)
+    per_col <- ceiling(n_lvls / n_rows)
+    c(w = per_col * (0.45 + max_lbl * 0.075) + 1.0, h = 0.5 + n_rows * 0.4)
+  } else {
+    c(w = (0.45 + max_lbl * 0.075) + 1.0, h = 0.5 + n_lvls * 0.35)
+  }
+}
+
+# Internal: ggarrange + legend panel; sets nk_pdf_dims attr in inches
+.ggarrange_with_legend <- function(inner, lgd, legend.side,
+                                    grid_h, grid_w, legend_h, legend_w) {
+  if (legend.side %in% c("bottom", "top")) {
+    parts <- if (legend.side == "bottom") list(inner, lgd) else list(lgd, inner)
+    ht    <- if (legend.side == "bottom") c(grid_h, legend_h) else c(legend_h, grid_h)
+    p <- ggpubr::ggarrange(plotlist = parts, nrow = 2L, ncol = 1L, heights = ht)
+    attr(p, "nk_pdf_dims") <- c(max(grid_w, legend_w), grid_h + legend_h)
+  } else {
+    parts <- if (legend.side == "right") list(inner, lgd) else list(lgd, inner)
+    ws    <- if (legend.side == "right") c(grid_w, legend_w) else c(legend_w, grid_w)
+    p <- ggpubr::ggarrange(plotlist = parts, nrow = 1L, ncol = 2L, widths = ws)
+    attr(p, "nk_pdf_dims") <- c(grid_w + legend_w, max(grid_h, legend_h))
+  }
+  p
+}
+
 # --------------------------------------------------------------------------- #
 # GenerateSpatialFeatureMaps                                                   #
 # --------------------------------------------------------------------------- #
@@ -83,13 +112,25 @@
 #' @param colors Character vector. Gradient colors from low to high.
 #' @param calcptsizesc Numeric. Scaling constant for auto point-size
 #'   calculation. Default \code{100}.
+#' @param legend.side Character. Where to place the legend panel relative to
+#'   the image grid: \code{"right"} (default), \code{"left"}, \code{"bottom"},
+#'   or \code{"top"}.
+#' @param legend.direction Character. Internal layout of legend entries:
+#'   \code{"vertical"} (default, entries stacked) or \code{"horizontal"}
+#'   (entries arranged in rows). Also controls colorbar orientation.
+#' @param join_plots Logical. When `features` has more than one gene, combine
+#'   all per-feature figures into a single page/PDF instead of one each.
+#'   Default `FALSE`.
+#' @param join_nrow,join_ncol Integer or `NULL`. Grid layout for `join_plots`.
+#'   `NULL` auto-arranges into a near-square grid.
 #' @param output_dir Character or `NULL`. Output directory for PDFs. Returns
 #'   last plot when `NULL`.
 #' @param object_name Character. Label appended to PDF filenames. Default `""`.
 #' @param subset_name Character. Optional second label appended to PDF
 #'   filenames after \code{object_name}. Default `""`.
 #'
-#' @return Invisibly returns the last plot when `output_dir = NULL`.
+#' @return Invisibly returns the last plot when `output_dir = NULL`. When
+#'   `join_plots = TRUE`, invisibly returns the combined tiled figure.
 #' @export
 GenerateSpatialFeatureMaps <- function(seurat_object,
                                         features,
@@ -103,7 +144,12 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
                                                            "#D1E5F0", "#FDDBC7",
                                                            "#F4A582", "#D6604D",
                                                            "#B2182B", "#67001F"),
-                                        calcptsizesc   = 3800,
+                                        calcptsizesc   = 100,
+                                        legend.side    = "right",
+                                        legend.direction = "vertical",
+                                        join_plots     = FALSE,
+                                        join_nrow      = NULL,
+                                        join_ncol      = NULL,
                                         output_dir     = NULL,
                                         object_name    = "",
                                         subset_name    = "") {
@@ -113,12 +159,15 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
   if (layout_method == "metadata" && is.null(row.by))
     stop("'row.by' must be specified for layout_method = 'metadata'.")
 
-  # Walk up to PrepObject-stored defaults when not explicitly supplied
-  output_dir  <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up to PrepObject-stored defaults only when the caller did not pass
+  # output_dir at all. An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
 
+  .nk_warn_donor(seurat_object)
   all_imgs  <- Seurat::Images(seurat_object)
   img_names <- if (!is.null(images_to_plot)) {
 
@@ -126,7 +175,9 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
   } else all_imgs
   if (length(img_names) == 0) stop("No matching images found.")
 
-  last_plot <- NULL
+  last_plot    <- NULL
+  do_join      <- isTRUE(join_plots) && length(features) > 1L
+  join_collect <- if (do_join) list() else NULL
 
   for (i in seq_along(features)) {
     feat <- features[i]
@@ -200,19 +251,27 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
     }
 
     # Extract legend
+    lgd_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
     legend_guide <- if (is_numeric_feat) {
       ggplot2::guides(fill = ggplot2::guide_colourbar(
-        title = feat, title.position = "top",
-        title.theme = ggplot2::element_text(size = 12, face = "bold")
+        title          = feat, title.position = "top",
+        title.theme    = ggplot2::element_text(size = 12, face = "bold"),
+        direction      = legend.direction
       ))
     } else {
       ggplot2::guides(fill = ggplot2::guide_legend(
-        title = feat, title.position = "top",
-        title.theme = ggplot2::element_text(size = 12, face = "bold"),
-        override.aes = list(size = 5)
+        title          = feat, title.position = "top",
+        title.theme    = ggplot2::element_text(size = 12, face = "bold"),
+        override.aes   = list(size = 5),
+        nrow           = if (legend.direction == "horizontal") 3L else NULL,
+        ncol           = if (legend.direction == "vertical")   1L else NULL
       ))
     }
-    PlotLegend <- ggpubr::get_legend(plot_list[[1]] + legend_guide)
+    PlotLegend <- ggpubr::get_legend(
+      plot_list[[1]] + legend_guide +
+        ggplot2::theme(legend.position = lgd_pos,
+                       legend.direction = legend.direction)
+    )
 
     plot_list <- lapply(plot_list, function(pp)
       pp + ggplot2::theme_void() + Seurat::NoLegend() +
@@ -253,13 +312,31 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       inner_grid <- ggpubr::ggarrange(plotlist = plot_list, nrow = n_rows, ncol = n_cols)
     }
 
-    CustomPlot <- ggpubr::ggarrange(inner_grid, PlotLegend,
-                                     nrow = 1, ncol = 2,
-                                     widths = c(n_cols, 0.5))
+    grid_h_in  <- n_rows * 5
+    grid_w_in  <- (n_cols * 4) + 2
+    if (is_numeric_feat) {
+      if (legend.direction == "vertical") {
+        legend_w <- 1.5; legend_h <- min(grid_h_in * 0.7, 5.0)
+      } else {
+        legend_w <- max(n_cols * 2.5, 5.0); legend_h <- 1.2
+      }
+    } else {
+      n_lvls   <- length(unique(as.character(seurat_object@meta.data[[feat]])))
+      ld       <- .cat_legend_dims(n_lvls, unique(as.character(seurat_object@meta.data[[feat]])),
+                                    legend.direction, legendnrow = 3L)
+      legend_w <- ld[["w"]]; legend_h <- ld[["h"]]
+    }
 
-    if (!is.null(output_dir)) {
-      pdf_h <- n_rows * 5
-      pdf_w <- (n_cols * 4) + 2
+    CustomPlot <- .ggarrange_with_legend(inner_grid, PlotLegend, legend.side,
+                                          grid_h_in, grid_w_in, legend_h, legend_w)
+    pdf_h <- attr(CustomPlot, "nk_pdf_dims")[2]
+    pdf_w <- attr(CustomPlot, "nk_pdf_dims")[1]
+
+    if (do_join) {
+      # join_plots: defer saving/printing until every feature's panel is built
+      attr(CustomPlot, "nk_pdf_dims") <- c(pdf_w, pdf_h)
+      join_collect[[feat]] <- CustomPlot
+    } else if (!is.null(output_dir)) {
       fname <- file.path(output_dir,
                          paste0(feat, " SpatialFeatureMap ",
                                 object_name,
@@ -268,25 +345,82 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       print(CustomPlot)
       grDevices::dev.off()
+      sp_ctx <- .nk_legend_context(seurat_object)
+      sp_unit <- sp_ctx$unit   # "spots" / "bins" per assay_type
       .write_legend_sidecar(fname, paste0(
-        "Spatial feature plot showing the distribution of ", feat,
-        " across ", length(img_names), " tissue section(s)",
-        if (nchar(object_name) > 0) paste0(" in ", object_name) else "", ". ",
-        "Each spot on the tissue section represents a spatial barcode, colored ",
-        "on a continuous scale from low (dark blue) to high (dark red) according ",
-        "to the ", if (feat %in% rownames(seurat_object)) "log-normalized expression"
-                   else "value", " of ", feat, ".",
+        "Spatial transcriptomics map of ", sp_ctx$n_obs, " ", sp_unit,
+        if (!is.null(sp_ctx$n_donors))
+          paste0(" from ", format(sp_ctx$n_donors, big.mark = ","), " tissue sections")
+        else paste0(" across ", length(img_names), " tissue section(s)"),
+        if (nchar(sp_ctx$obj_name) > 0) paste0(" [", sp_ctx$obj_name, "]") else "",
+        ", showing ",
+        if (feat %in% rownames(seurat_object)) "log-normalized expression" else "values",
+        " of ", feat, ". ",
+        "Each ", sp_unit, " is colored on a continuous scale from low (dark blue) ",
+        "to high (dark red).",
         if (remove_outliers) paste0(
-          " Outlier spots above the ", round((1 - outlier_prob) * 100),
-          "th percentile are excluded from the color scale to improve ",
-          "visualization of the main expression range.") else ""
+          " Outlier ", sp_unit, " above the ", round((1 - outlier_prob) * 100),
+          "th percentile are excluded from the color scale to highlight ",
+          "the main expression range.") else ""
       ))
     } else {
+      print(CustomPlot)
       last_plot <- CustomPlot
     }
     message(sprintf("Spatial feature map: %s (%d of %d) - %dx%d",
                     feat, i, length(features), n_rows, n_cols))
   }
+
+  # ── join_plots: tile every per-feature plot into one figure ───────────────
+  if (do_join) {
+    n <- length(join_collect)
+    if (is.null(join_ncol) && is.null(join_nrow)) {
+      ncol_j <- ceiling(sqrt(n)); nrow_j <- ceiling(n / ncol_j)
+    } else if (is.null(join_ncol)) {
+      nrow_j <- join_nrow; ncol_j <- ceiling(n / nrow_j)
+    } else {
+      ncol_j <- join_ncol; nrow_j <- ceiling(n / ncol_j)
+    }
+
+    combined <- patchwork::wrap_plots(
+      lapply(join_collect, function(p) patchwork::wrap_elements(full = p)),
+      nrow = nrow_j, ncol = ncol_j
+    )
+
+    one_dim <- attr(join_collect[[1]], "nk_pdf_dims") %||% c(12, 6)
+    pdf_w   <- ncol_j * one_dim[1]
+    pdf_h   <- nrow_j * one_dim[2]
+
+    if (!is.null(output_dir)) {
+      fname <- file.path(output_dir,
+                         paste0(paste(features, collapse = "-"),
+                                " SpatialFeatureMaps ", object_name,
+                                if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
+                                ".pdf"))
+      grDevices::pdf(fname, width = pdf_w, height = pdf_h)
+      print(combined)
+      grDevices::dev.off()
+      spj_ctx <- .nk_legend_context(seurat_object)
+      spj_unit <- spj_ctx$unit
+      .write_legend_sidecar(fname, paste0(
+        "Spatial transcriptomics maps of ", spj_ctx$n_obs, " ", spj_unit,
+        if (!is.null(spj_ctx$n_donors))
+          paste0(" from ", format(spj_ctx$n_donors, big.mark = ","), " tissue sections")
+        else paste0(" across ", length(img_names), " tissue section(s)"),
+        if (nchar(spj_ctx$obj_name) > 0) paste0(" [", spj_ctx$obj_name, "]") else "",
+        ", showing log-normalized expression of ",
+        paste(features, collapse = ", "),
+        ", arranged in a ", nrow_j, " x ", ncol_j, " grid. ",
+        "Each panel uses its own continuous color scale (dark blue = low, ",
+        "dark red = high) capped at that feature's maximum value."
+      ))
+      return(invisible(combined))
+    }
+
+    print(combined)
+    return(invisible(combined))
+  }
+
   invisible(last_plot)
 }
 
@@ -296,72 +430,88 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 
 #' Batch spatial dimensionality-reduction (cell-type) plots
 #'
-#' Loops over `group_by_vars` and produces [Seurat::SpatialDimPlot()] panels
-#' for each image. Supports the same `"auto"` / `"metadata"` layout modes as
-#' [GenerateSpatialFeatureMaps()].
+#' Produces [Seurat::SpatialDimPlot()] panels for each image in the object,
+#' one figure per metadata variable in \code{group_by_vars}. Supports the same
+#' \code{"auto"} / \code{"metadata"} layout modes as
+#' [GenerateSpatialFeatureMaps()]. When multiple variables are supplied,
+#' \code{join_plots = TRUE} tiles them into a single page.
 #'
 #' @param seurat_object A Seurat object with spatial images.
-#' @param group_by_vars Character vector. Metadata columns to plot (one PDF
-#'   per variable).
-#' @param layout_method Character. `"auto"` or `"metadata"`. Default `"auto"`.
-#' @param row.by Character or `NULL`. Slide-level metadata column for row
-#'   grouping (required for `"metadata"` layout).
-#' @param images_to_plot Character vector or `NULL`. Images to include.
-#' @param remove_outliers Logical. Trim outlier cells. Default `FALSE`.
-#' @param outlier_prob Numeric. Quantile trim level. Default `0.01`.
+#' @param group_by_vars Character vector. Metadata columns to plot.
+#' @param layout_method Character. \code{"auto"} or \code{"metadata"}.
+#'   Default \code{"auto"}.
+#' @param row.by Character or \code{NULL}. Slide-level metadata column for row
+#'   grouping (required for \code{"metadata"} layout).
+#' @param images_to_plot Character vector or \code{NULL}. Images to include.
+#' @param remove_outliers Logical. Trim outlier cells. Default \code{FALSE}.
+#' @param outlier_prob Numeric. Quantile trim level. Default \code{0.01}.
 #' @param size_override Scalar or named numeric list. A plain number applies
 #'   to all images; a named list applies per image.
-#' @param colors Named character vector. Colors for each group level in
-#'   \code{group_by_vars}.  \code{NULL} auto-resolves from PrepObject or
-#'   \code{Nour_pal}.  Supersedes the deprecated \code{cluster_colors}.
-#' @param number_labels Logical. When \code{TRUE}, prefix each level label in
-#'   the legend with a zero-padded index (e.g., "01. CellType"). Useful when
-#'   there are many categories. Default \code{FALSE}.
-#' @param output_dir Character or `NULL`. PDF output directory. Returns last
-#'   plot when `NULL`.
-#' @param rowannsize Numeric. Font size for the row-group annotation label
-#'   drawn to the left of each tissue row in \code{"metadata"} layout.
+#' @param colors Named character vector. Colors for each group level.
+#'   \code{NULL} auto-resolves from PrepObject or \code{Nour_pal}.
+#'   Supersedes the deprecated \code{cluster_colors}.
+#' @param number_labels Logical. Prefix each legend label with a zero-padded
+#'   index (e.g., "01. CellType"). Default \code{FALSE}.
+#' @param legendnrow Integer or vector. Number of rows the categorical legend
+#'   wraps into; PDF dimensions scale automatically to fit. When
+#'   \code{group_by_vars} has multiple variables, pass a vector aligned
+#'   positionally (e.g. \code{c(3, 1)}) or named by variable (e.g.
+#'   \code{c(seurat_clusters = 3, Diagnosis = 1)}) to set a different row
+#'   count per variable; a single value applies to all. Default \code{3}.
+#' @param legend.side Character. Where to place the legend panel: \code{"bottom"}
+#'   (default), \code{"top"}, \code{"left"}, or \code{"right"}.
+#' @param legend.direction Character. Internal layout of legend entries:
+#'   \code{"horizontal"} (default, entries in rows) or \code{"vertical"}
+#'   (entries stacked in one column).
+#' @param join_plots Logical. When \code{group_by_vars} has more than one
+#'   variable, combine all per-variable figures into a single page instead of
+#'   one page each. Default \code{FALSE}.
+#' @param join_nrow,join_ncol Integer or \code{NULL}. Grid layout for
+#'   \code{join_plots}. \code{NULL} auto-arranges into a near-square grid.
+#' @param output_dir Character or \code{NULL}. PDF output directory. When
+#'   \code{NULL} the plot is printed to the active device and returned
+#'   invisibly.
+#' @param rowannsize Numeric. Font size for the row-group annotation label.
 #'   Default \code{16}.
-#' @param imgalpha Numeric. Transparency of the tissue background image
-#'   (0 = fully transparent, 1 = fully opaque). Default \code{1}.
-#' @param alpha Numeric. Transparency of the colored spot points
-#'   (0 = fully transparent, 1 = fully opaque). Default \code{1}.
-#' @param uniform_size Logical. When \code{TRUE} all images receive the same
-#'   auto-computed point size (the median across images), preventing tiny
-#'   tissue fragments from getting disproportionately large dots. Default
-#'   \code{FALSE}.
+#' @param imgalpha Numeric. Tissue image transparency. Default \code{1}.
+#' @param alpha Numeric. Spot transparency. Default \code{1}.
+#' @param uniform_size Logical. Use the median point size across all images.
+#'   Default \code{FALSE}.
 #' @param object_name Character. Label appended to PDF filenames. Default
 #'   \code{""}.
 #' @param group.by Character vector. Preferred alias for \code{group_by_vars}.
-#'   When supplied, \code{group_by_vars} is ignored.
 #' @param cluster_colors Named character vector. Deprecated alias for
-#'   \code{colors}. Kept for backward compatibility.
+#'   \code{colors}.
 #'
-#' @return Invisibly returns the last plot when `output_dir = NULL`.
+#' @return Invisibly returns the plot, or a named list of plots when
+#'   \code{join_plots = FALSE} and multiple variables are supplied.
 #' @export
 GenerateSpatialDimMaps <- function(seurat_object,
-                                    group_by_vars  = NULL,
-                                    layout_method  = "auto",
-                                    row.by        = NULL,
-                                    images_to_plot = NULL,
+                                    group_by_vars   = NULL,
+                                    layout_method   = "auto",
+                                    row.by          = NULL,
+                                    images_to_plot  = NULL,
                                     remove_outliers = FALSE,
-                                    outlier_prob   = 0.01,
-                                    size_override  = NULL,
-                                    uniform_size   = FALSE,
-                                    colors         = NULL,
-                                    number_labels  = FALSE,
-                                    output_dir     = NULL,
-                                    rowannsize     = 16,
-                                    imgalpha       = 1,
-                                    alpha          = 1,
-                                    object_name    = "",
-                                    # preferred aliases
-                                    group.by       = NULL,
-                                    cluster_colors = NULL) {   # deprecated → use colors
+                                    outlier_prob    = 0.01,
+                                    size_override   = NULL,
+                                    uniform_size    = FALSE,
+                                    colors          = NULL,
+                                    number_labels   = FALSE,
+                                    legendnrow      = 3,
+                                    legend.side     = "bottom",
+                                    legend.direction = "horizontal",
+                                    join_plots      = FALSE,
+                                    join_nrow       = NULL,
+                                    join_ncol       = NULL,
+                                    output_dir      = NULL,
+                                    rowannsize      = 16,
+                                    imgalpha        = 1,
+                                    alpha           = 1,
+                                    object_name     = "",
+                                    group.by        = NULL,
+                                    cluster_colors  = NULL) {
 
-  # Accept group.by as the primary alias
   if (is.null(group_by_vars) && !is.null(group.by)) group_by_vars <- group.by
-  # Deprecated alias
   if (!is.null(cluster_colors) && is.null(colors)) colors <- cluster_colors
   if (is.null(group_by_vars)) group_by_vars <- "seurat_clusters"
 
@@ -370,20 +520,110 @@ GenerateSpatialDimMaps <- function(seurat_object,
   if (layout_method == "metadata" && is.null(row.by))
     stop("'row.by' must be specified for layout_method = 'metadata'.")
 
-  # Walk up to PrepObject-stored defaults when not explicitly supplied
-  output_dir  <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up to PrepObject-stored defaults only when the caller omitted it
+  # entirely. NA_character_ is a sentinel from join recursion meaning "no
+  # save"; explicit NULL means "show, don't save."
+  if (identical(output_dir, NA_character_)) {
+    output_dir <- NULL
+  } else if (missing(output_dir)) {
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  }
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
+  .nk_warn_donor(seurat_object)
 
   all_imgs  <- Seurat::Images(seurat_object)
   img_names <- if (!is.null(images_to_plot)) intersect(images_to_plot, all_imgs) else all_imgs
   if (length(img_names) == 0) stop("No matching images found.")
 
-  last_plot <- NULL
+  # ── Multiple group.by: recurse once per variable ───────────────────────────
+  if (length(group_by_vars) > 1L) {
+    sub_dir <- if (isTRUE(join_plots)) NA_character_ else output_dir
 
-  for (i in seq_along(group_by_vars)) {
-    grp <- group_by_vars[i]
+    plots <- lapply(seq_along(group_by_vars), function(i) {
+      gb <- group_by_vars[i]
+      # legendnrow may be a single number (applies to all), a vector aligned
+      # positionally with group_by_vars, or a vector named by variable
+      gb_legendnrow <- if (!is.null(names(legendnrow)) && gb %in% names(legendnrow)) {
+        legendnrow[[gb]]
+      } else {
+        legendnrow[[((i - 1) %% length(legendnrow)) + 1]]
+      }
+      GenerateSpatialDimMaps(
+        seurat_object   = seurat_object,
+        group_by_vars   = gb,
+        layout_method   = layout_method,
+        row.by          = row.by,
+        images_to_plot  = images_to_plot,
+        remove_outliers = remove_outliers,
+        outlier_prob    = outlier_prob,
+        size_override   = size_override,
+        uniform_size    = uniform_size,
+        colors          = colors,
+        number_labels    = number_labels,
+        legendnrow       = gb_legendnrow,
+        legend.side      = legend.side,
+        legend.direction = legend.direction,
+        output_dir       = sub_dir,
+        rowannsize       = rowannsize,
+        imgalpha        = imgalpha,
+        alpha           = alpha,
+        object_name     = object_name
+      )
+    })
+    names(plots) <- group_by_vars
+
+    if (!isTRUE(join_plots)) return(invisible(plots))
+
+    # ── Join: tile every per-variable plot into one figure ───────────────────
+    n <- length(plots)
+    if (is.null(join_ncol) && is.null(join_nrow)) {
+      ncol_j <- ceiling(sqrt(n)); nrow_j <- ceiling(n / ncol_j)
+    } else if (is.null(join_ncol)) {
+      nrow_j <- join_nrow; ncol_j <- ceiling(n / nrow_j)
+    } else {
+      ncol_j <- join_ncol; nrow_j <- ceiling(n / ncol_j)
+    }
+
+    combined <- patchwork::wrap_plots(
+      lapply(plots, function(p) patchwork::wrap_elements(full = p)),
+      nrow = nrow_j, ncol = ncol_j
+    )
+
+    if (!is.null(output_dir)) {
+      one_dim <- attr(plots[[1]], "nk_pdf_dims") %||% c(12, 8)
+      pdf_w   <- ncol_j * one_dim[1]
+      pdf_h   <- nrow_j * one_dim[2]
+      fname   <- file.path(output_dir,
+                           paste0(paste(group_by_vars, collapse = "-"),
+                                  " SpatialDimMaps",
+                                  if (nchar(object_name) > 0) paste0(" ", object_name) else "",
+                                  ".pdf"))
+      grDevices::pdf(fname, width = pdf_w, height = pdf_h)
+      print(combined)
+      grDevices::dev.off()
+      sdj_ctx <- .nk_legend_context(seurat_object)
+      sdj_unit <- sdj_ctx$unit
+      .write_legend_sidecar(fname, paste0(
+        "Spatial transcriptomics maps of ", sdj_ctx$n_obs, " ", sdj_unit,
+        if (!is.null(sdj_ctx$n_donors))
+          paste0(" from ", format(sdj_ctx$n_donors, big.mark = ","), " tissue sections")
+        else paste0(" across ", length(img_names), " tissue section(s)"),
+        if (nchar(sdj_ctx$obj_name) > 0) paste0(" [", sdj_ctx$obj_name, "]") else "",
+        ", color-coded by ", paste(group_by_vars, collapse = " and "),
+        ", arranged in a ", nrow_j, " x ", ncol_j, " grid. ",
+        "Each column corresponds to one metadata variable; each row to one tissue section."
+      ))
+      return(invisible(combined))
+    }
+
+    print(combined)
+    return(invisible(combined))
+  }
+
+  # ── Single variable ────────────────────────────────────────────────────────
+  grp <- group_by_vars
 
     # ── Resolve colors once per variable ──────────────────────────────────
     grp_colors <- colors %||% .nk_colors(seurat_object, grp)
@@ -437,6 +677,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
     # Map display labels to original colors (colors are keyed by original names)
     lgd_colors_display <- stats::setNames(lgd_colors, display_lvls[names(lgd_colors)])
 
+    lgd_extract_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
     lgd_plot <- ggplot2::ggplot(lgd_dat,
         ggplot2::aes(x = x, y = y, fill = label)) +
       ggplot2::geom_point(shape = 21, size = 5) +
@@ -447,10 +688,12 @@ GenerateSpatialDimMaps <- function(seurat_object,
         title.theme    = ggplot2::element_text(size = 15, face = "bold"),
         title.position = "top",
         label.theme    = ggplot2::element_text(size = 15),
-        ncol           = 9
+        nrow           = if (legend.direction == "horizontal") legendnrow else NULL,
+        ncol           = if (legend.direction == "vertical")   1L         else NULL
       )) +
       ggplot2::theme_void() +
-      ggplot2::theme(legend.position = "bottom")
+      ggplot2::theme(legend.position  = lgd_extract_pos,
+                     legend.direction = legend.direction)
     PlotLegend <- ggpubr::get_legend(lgd_plot)
 
     plot_list <- list()
@@ -543,33 +786,47 @@ GenerateSpatialDimMaps <- function(seurat_object,
       inner_grid <- ggpubr::ggarrange(plotlist = plot_list, nrow = n_rows, ncol = n_cols)
     }
 
-    CustomPlot <- ggpubr::ggarrange(inner_grid, PlotLegend,
-                                     nrow = 2, ncol = 1,
-                                     heights = c(1, 0.2))
+    # ── Legend and grid dimensions ─────────────────────────────────────────────
+    ld        <- .cat_legend_dims(length(all_lvls), display_lvls, legend.direction, legendnrow)
+    legend_w_in <- ld[["w"]]
+    legend_h_in <- ld[["h"]]
+    grid_h_in   <- n_rows * 4
+    grid_w_in   <- max(n_cols * 4, 12)
 
-    if (!is.null(output_dir)) {
-      pdf_h <- (n_rows * 4) + 1.5
-      pdf_w <- max(n_cols * 4, 12)
-      fname <- file.path(output_dir,
-                         paste0(grp, " SpatialDimMap ", object_name, ".pdf"))
-      grDevices::pdf(fname, width = pdf_w, height = pdf_h)
-      print(CustomPlot)
-      grDevices::dev.off()
-      .write_legend_sidecar(fname, paste0(
-        "Spatial dimension map showing ", grp, " assignments projected onto ",
-        "tissue section coordinates across ", length(img_names), " section(s)",
-        if (nchar(object_name) > 0) paste0(" in ", object_name) else "", ". ",
-        "Each spot is colored according to its group identity, enabling direct ",
-        "comparison of transcriptional cluster boundaries with tissue anatomy. ",
-        "The shared color legend is displayed beneath the section grid."
-      ))
-    } else {
-      last_plot <- CustomPlot
-    }
-    message(sprintf("Spatial DimMap: %s (%d of %d) - %dx%d",
-                    grp, i, length(group_by_vars), n_rows, n_cols))
+    CustomPlot <- .ggarrange_with_legend(inner_grid, PlotLegend, legend.side,
+                                          grid_h_in, grid_w_in, legend_h_in, legend_w_in)
+
+  pdf_w <- attr(CustomPlot, "nk_pdf_dims")[1]
+  pdf_h <- attr(CustomPlot, "nk_pdf_dims")[2]
+
+  if (!is.null(output_dir)) {
+    fname <- file.path(output_dir,
+                       paste0(grp, " SpatialDimMap ", object_name, ".pdf"))
+    grDevices::pdf(fname, width = pdf_w, height = pdf_h)
+    print(CustomPlot)
+    grDevices::dev.off()
+    sd_ctx <- .nk_legend_context(seurat_object)
+    sd_unit <- sd_ctx$unit
+    .write_legend_sidecar(fname, paste0(
+      "Spatial transcriptomics map of ", sd_ctx$n_obs, " ", sd_unit,
+      if (!is.null(sd_ctx$n_donors))
+        paste0(" from ", format(sd_ctx$n_donors, big.mark = ","), " tissue sections")
+      else paste0(" across ", length(img_names), " tissue section(s)"),
+      if (nchar(sd_ctx$obj_name) > 0) paste0(" [", sd_ctx$obj_name, "]") else "",
+      ", color-coded by ", grp, ". ",
+      "Each ", sd_unit, " is colored by its assigned ", grp, " identity, enabling ",
+      "direct comparison of transcriptional boundaries with tissue anatomy. ",
+      "The shared color legend is displayed ",
+      if (legend.side %in% c("bottom", "top")) legend.side else "to the right",
+      " of the section grid."
+    ))
+    message(sprintf("Spatial DimMap: %s - %dx%d", grp, n_rows, n_cols))
+    return(invisible(CustomPlot))
   }
-  invisible(last_plot)
+
+  message(sprintf("Spatial DimMap: %s - %dx%d", grp, n_rows, n_cols))
+  print(CustomPlot)
+  invisible(CustomPlot)
 }
 
 # --------------------------------------------------------------------------- #
@@ -601,12 +858,19 @@ GenerateSpatialDimMaps <- function(seurat_object,
 #' @param colors Named character vector. Colors for \code{group.by} levels.
 #'   \code{NULL} auto-resolves from PrepObject or \code{Nour_pal}.
 #' @param gene_colors Character vector. Gradient for gene expression.
-#' @param output_dir Character. Output directory for PDFs.
+#' @param legend.side Character. Where to place the paired legends: \code{"right"}
+#'   (default, stacked vertically) or \code{"bottom"} (side by side).
+#' @param legend.direction Character. Internal layout of the categorical
+#'   cluster legend: \code{"vertical"} (default) or \code{"horizontal"}.
+#' @param output_dir Character or \code{NULL}. Output directory for PDFs.
+#'   When \code{NULL} the plot is printed to the active device and returned
+#'   invisibly. Walk-up from PrepObject applies when omitted entirely.
 #' @param object_name Character. Label for PDF filenames. Default \code{""}.
 #' @param cluster_col Deprecated alias for \code{group.by}.
 #' @param cluster_colors Deprecated alias for \code{colors}.
 #'
-#' @return \code{NULL} invisibly (always writes to disk).
+#' @return Invisibly returns the last assembled plot when \code{output_dir =
+#'   NULL}; otherwise writes PDFs and returns \code{NULL} invisibly.
 #' @export
 GenerateMasterGeneMaps <- function(seurat_object,
                                     features,
@@ -622,7 +886,9 @@ GenerateMasterGeneMaps <- function(seurat_object,
                                                         "#D1E5F0", "#FDDBC7",
                                                         "#F4A582", "#D6604D",
                                                         "#B2182B", "#67001F"),
-                                    output_dir,
+                                    legend.side      = "right",
+                                    legend.direction = "vertical",
+                                    output_dir      = NULL,
                                     object_name     = "",
                                     # deprecated aliases
                                     cluster_col     = NULL,
@@ -635,6 +901,9 @@ GenerateMasterGeneMaps <- function(seurat_object,
     colors <- cluster_colors
 
   # ── Walk-up PrepObject defaults ────────────────────────────────────────────
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
 
@@ -651,10 +920,12 @@ GenerateMasterGeneMaps <- function(seurat_object,
         remove_outliers = remove_outliers,
         outlier_prob    = outlier_prob,
         size_override   = size_override,
-        colors          = colors,
-        gene_colors     = gene_colors,
-        output_dir      = output_dir,
-        object_name     = object_name
+        colors           = colors,
+        gene_colors      = gene_colors,
+        legend.side      = legend.side,
+        legend.direction = legend.direction,
+        output_dir       = output_dir,
+        object_name      = object_name
       )
     }
     return(invisible(NULL))
@@ -667,6 +938,8 @@ GenerateMasterGeneMaps <- function(seurat_object,
   all_imgs  <- Seurat::Images(seurat_object)
   img_names <- if (!is.null(images_to_plot)) intersect(images_to_plot, all_imgs) else all_imgs
   if (length(img_names) == 0) stop("No matching images found.")
+
+  last_plot <- NULL
 
   for (gene_idx in seq_along(features)) {
     gene       <- features[gene_idx]
@@ -743,24 +1016,35 @@ GenerateMasterGeneMaps <- function(seurat_object,
         ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"))
 
       if (i == 1) {
+        lgd_pos   <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
         dummy_cat <- Seurat::DimPlot(plot_obj, group.by = group.by) +
           ggplot2::guides(color = ggplot2::guide_legend(
             title          = group.by,
             override.aes   = list(size = 5),
             title.theme    = ggplot2::element_text(size = 14, face = "bold"),
-            label.theme    = ggplot2::element_text(size = 12)))
+            label.theme    = ggplot2::element_text(size = 12),
+            ncol           = if (legend.direction == "vertical")   1L else NULL,
+            nrow           = if (legend.direction == "horizontal") 3L else NULL)) +
+          ggplot2::theme(legend.position  = lgd_pos,
+                         legend.direction = legend.direction)
         if (!is.null(grp_colors))
           dummy_cat <- dummy_cat +
           ggplot2::scale_color_manual(values = grp_colors, drop = FALSE)
         ClusterLegend <- ggpubr::get_legend(dummy_cat)
 
+        bar_dir   <- if (legend.side %in% c("bottom", "top")) "horizontal" else "vertical"
+        bar_h     <- if (bar_dir == "vertical")   ggplot2::unit(3, "in") else ggplot2::unit(0.5, "in")
+        bar_w     <- if (bar_dir == "horizontal") ggplot2::unit(4, "in") else ggplot2::unit(0.5, "in")
         dummy_cont <- Seurat::FeaturePlot(plot_obj, features = gene) +
           umap_gene_scale +
           ggplot2::guides(color = ggplot2::guide_colourbar(
             title          = gene,
             title.position = "top",
             title.theme    = ggplot2::element_text(size = 14, face = "bold"),
-            barheight      = ggplot2::unit(3, "in")))
+            direction      = bar_dir,
+            barheight      = bar_h,
+            barwidth       = bar_w)) +
+          ggplot2::theme(legend.position = lgd_pos)
         GeneLegend <- ggpubr::get_legend(dummy_cont)
       }
 
@@ -771,41 +1055,68 @@ GenerateMasterGeneMaps <- function(seurat_object,
       )
     }
 
-    n_rows       <- length(list_of_rows)
-    main_grid    <- ggpubr::ggarrange(plotlist = list_of_rows, nrow = n_rows, ncol = 1)
-    legends_comb <- ggpubr::ggarrange(ClusterLegend, GeneLegend,
-                                       nrow = 2, ncol = 1, heights = c(1, 1))
-    CustomPlot   <- ggpubr::ggarrange(main_grid, legends_comb,
-                                       nrow = 1, ncol = 2, widths = c(4, 0.5))
+    n_rows    <- length(list_of_rows)
+    main_grid <- ggpubr::ggarrange(plotlist = list_of_rows, nrow = n_rows, ncol = 1)
+
+    # Combine legends and assemble with main grid based on legend.side
+    if (legend.side %in% c("right", "left")) {
+      legends_comb <- ggpubr::ggarrange(ClusterLegend, GeneLegend,
+                                         nrow = 2, ncol = 1, heights = c(1, 1))
+      parts  <- if (legend.side == "right") list(main_grid, legends_comb)
+                 else list(legends_comb, main_grid)
+      ws     <- if (legend.side == "right") c(4, 0.5) else c(0.5, 4)
+      CustomPlot <- ggpubr::ggarrange(plotlist = parts, nrow = 1, ncol = 2, widths = ws)
+      pdf_w_val  <- 18; pdf_h_val <- (n_rows * 3.5) + 1
+    } else {
+      legends_comb <- ggpubr::ggarrange(ClusterLegend, GeneLegend,
+                                         nrow = 1, ncol = 2, widths = c(1, 0.4))
+      parts  <- if (legend.side == "bottom") list(main_grid, legends_comb)
+                 else list(legends_comb, main_grid)
+      ht     <- if (legend.side == "bottom") c(n_rows * 3.5, 2) else c(2, n_rows * 3.5)
+      CustomPlot <- ggpubr::ggarrange(plotlist = parts, nrow = 2, ncol = 1, heights = ht)
+      pdf_w_val  <- 18; pdf_h_val <- (n_rows * 3.5) + 3
+    }
+
     final_plot   <- ggpubr::annotate_figure(
       CustomPlot,
       top = ggpubr::text_grob(paste0("Gene Master Map: ", gene),
                               face = "bold", size = 22, color = "#B2182B")
     )
 
-    fname <- file.path(output_dir,
-                       paste0(gene, "_", group.by,
-                              " Master Gene Map ", object_name, ".pdf"))
-    grDevices::pdf(fname, width = 18, height = (n_rows * 3.5) + 1)
-    print(final_plot)
-    grDevices::dev.off()
-    .write_legend_sidecar(fname, paste0(
-      "Master spatial gene map showing the co-localization of ", gene,
-      " expression with ", group.by, " identity across ", length(img_names),
-      " tissue section(s)",
-      if (nchar(object_name) > 0) paste0(" in ", object_name) else "", ". ",
-      "Each row corresponds to one tissue section and contains four panels: ",
-      "(1) UMAP colored by ", group.by, " clusters, ",
-      "(2) UMAP colored by ", gene, " log-normalized expression, ",
-      "(3) spatial tissue plot colored by ", group.by, " clusters, and ",
-      "(4) spatial tissue plot colored by ", gene, " expression on a ",
-      "continuous color scale (dark blue = low, dark red = high). ",
-      "Paired categorical and continuous legends are shown to the right."
-    ))
+    if (!is.null(output_dir)) {
+      fname <- file.path(output_dir,
+                         paste0(gene, "_", group.by,
+                                " Master Gene Map ", object_name, ".pdf"))
+      grDevices::pdf(fname, width = pdf_w_val, height = pdf_h_val)
+      print(final_plot)
+      grDevices::dev.off()
+      mg_ctx  <- .nk_legend_context(seurat_object)
+      mg_unit <- mg_ctx$unit
+      .write_legend_sidecar(fname, paste0(
+        "Master gene map for ", gene, " showing co-localization of expression ",
+        "with ", group.by, " identity. ",
+        "Data: ", mg_ctx$n_obs, " ", mg_unit,
+        if (!is.null(mg_ctx$n_donors))
+          paste0(" from ", format(mg_ctx$n_donors, big.mark = ","), " tissue sections")
+        else paste0(" across ", length(img_names), " tissue section(s)"),
+        if (nchar(mg_ctx$obj_name) > 0) paste0(" [", mg_ctx$obj_name, "]") else "",
+        ". Each row corresponds to one tissue section and contains four panels: ",
+        "(1) UMAP colored by ", group.by, " clusters, ",
+        "(2) UMAP colored by ", gene, " log-normalized expression, ",
+        "(3) spatial map of ", mg_unit, " colored by ", group.by, " clusters, and ",
+        "(4) spatial map of ", mg_unit, " colored by ", gene, " expression ",
+        "(dark blue = low, dark red = high). ",
+        "Paired categorical and continuous legends are shown ",
+        if (legend.side %in% c("bottom", "top")) legend.side else "to the right", "."
+      ))
+    } else {
+      print(final_plot)
+      last_plot <- final_plot
+    }
     message(sprintf("Master gene map: %s / %s (%d of %d)",
                     gene, group.by, gene_idx, length(features)))
   }
-  invisible(NULL)
+  invisible(last_plot)
 }
 
 # =============================================================================

@@ -87,6 +87,8 @@ PlotTrendLabeled <- function(seurat_object,
   if (is.null(output_dir))  output_dir  <- .nk_setting(seurat_object, "output_dir")
   if (is.null(object_name)) object_name <- .nk_setting(seurat_object, "object_name") %||% ""
   if (is.null(subset_name)) subset_name <- .nk_setting(seurat_object, "subset_name") %||% ""
+  .nk_warn_donor(seurat_object)
+  trend_ctx <- .nk_legend_context(seurat_object)
 
   # Resolve colors from PrepObject or auto-generate
   if (is.null(colors)) {
@@ -266,15 +268,16 @@ PlotTrendLabeled <- function(seurat_object,
     message("scSidekick: Saved to ", fpath,
             " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
     .write_legend_sidecar(fpath, paste0(
-      "Labeled stacked composition trend plot showing the proportion of ",
-      stat.by, " categories across ordered levels of ", group.by,
-      ", with one panel per level of ", split.by, ". ",
-      "Each panel displays stacked bars (proportions sum to 100%) with a ",
-      "semi-transparent area ribbon connecting adjacent time points to show ",
-      "compositional trends. Labels identifying each ", stat.by, " category ",
-      "are placed to the right of the final ", group.by, " position using ",
-      "ggrepel (no legend is needed). Colors are consistent across panels.",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+      "Stacked composition trend plot of ", trend_ctx$n_obs, " ", trend_ctx$unit,
+      if (!is.null(trend_ctx$n_donors))
+        paste0(" from ", format(trend_ctx$n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(trend_ctx$obj_name) > 0) paste0(" [", trend_ctx$obj_name, "]") else "",
+      ". Shows the proportion of ", stat.by, " categories across ordered levels of ",
+      group.by, ", with one panel per level of ", split.by, ". ",
+      "Stacked bars sum to 100%; area ribbons connect adjacent time points to ",
+      "highlight compositional trends. Category labels are placed to the right ",
+      "of the final position using ggrepel (no legend needed)."
     ))
     return(invisible(result))
   }

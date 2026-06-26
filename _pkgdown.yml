@@ -163,9 +163,10 @@ reference:
   - PlotGSEAEnrichment
   - VisualizeLeadingEdge
 - title: Cell Annotation
-  desc: Automated cell-type assignment
+  desc: Automated cell-type assignment and metadata enrichment
   contents:
   - AssignCellTypes
+  - AddClinicalMeta
   - CellTypeAssignmentHelper
 - title: Spatial Transcriptomics
   desc: Visualize spatial gene expression and cell-type distributions

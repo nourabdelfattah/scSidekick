@@ -21,6 +21,8 @@ PlotDimPlots(
   label.size = 3,
   bar.width = 0.6,
   legendnrow = 2,
+  legend.side = "bottom",
+  legend.direction = "horizontal",
   legendtitle = NA,
   trend_width = 1,
   split.col.levels = NULL,
@@ -102,7 +104,16 @@ PrepObject or \code{Nour_pal}.}
 
 \item{bar.width}{Numeric. Bar width in the trend plot. Default \code{0.6}.}
 
-\item{legendnrow}{Integer. Legend rows. Default \code{2}.}
+\item{legendnrow}{Integer or vector. Legend rows (when
+\code{legend.direction = "horizontal"}). When \code{group.by} has multiple
+variables, pass a vector positionally or named by variable. Default \code{2}.}
+
+\item{legend.side}{Character. Where to place the legend panel: \code{"bottom"}
+(default), \code{"top"}, \code{"left"}, or \code{"right"}.}
+
+\item{legend.direction}{Character. Internal layout of legend entries:
+\code{"horizontal"} (default, entries in rows) or \code{"vertical"}
+(entries stacked in one column).}
 
 \item{legendtitle}{Character or \code{NA}. Legend title.}
 

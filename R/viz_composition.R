@@ -68,6 +68,9 @@ PlotComposition <- function(
       stop("'", col, "' not found in seurat_object@meta.data.")
   }
 
+  .nk_warn_donor(seurat_object)
+  comp_ctx <- .nk_legend_context(seurat_object)
+
   # ── Factor levels (respect PrepObject order) ─────────────────────────────
   .lvls <- function(col_name) {
     col <- meta[[col_name]]
@@ -166,10 +169,13 @@ PlotComposition <- function(
       .write_legend_sidecar(
         file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", "composition.pdf")),
         paste0(
-          plot_type, " bar chart showing the composition of ", group.by,
-          " levels colored by ", split.by, ". ",
-          "The x-axis shows each ", group.by, " level; bar fill represents ",
-          split.by, " proportions."
+          plot_type, " bar chart of ", comp_ctx$n_obs, " ", comp_ctx$unit,
+          if (!is.null(comp_ctx$n_donors))
+            paste0(" from ", format(comp_ctx$n_donors, big.mark = ","), " donors")
+          else "",
+          if (nchar(comp_ctx$obj_name) > 0) paste0(" [", comp_ctx$obj_name, "]") else "",
+          " showing ", group.by, " composition colored by ", split.by, ". ",
+          "X-axis: each ", group.by, " level; bar fill: ", split.by, " proportions."
         )
       )
     }
@@ -206,8 +212,12 @@ PlotComposition <- function(
     .write_legend_sidecar(
       file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", "composition.pdf")),
       paste0(
-        "Two-panel ", plot_type, " bar chart showing the reciprocal composition of ",
-        group.by, " and ", split.by, ". ",
+        "Two-panel ", plot_type, " bar chart of ", comp_ctx$n_obs, " ", comp_ctx$unit,
+        if (!is.null(comp_ctx$n_donors))
+          paste0(" from ", format(comp_ctx$n_donors, big.mark = ","), " donors")
+        else "",
+        if (nchar(comp_ctx$obj_name) > 0) paste0(" [", comp_ctx$obj_name, "]") else "",
+        " showing reciprocal composition of ", group.by, " and ", split.by, ". ",
         "Left panel: each ", group.by, " level on the x-axis, bars filled by ",
         split.by, " proportions. ",
         "Right panel: each ", split.by, " level on the x-axis, bars filled by ",
@@ -296,6 +306,9 @@ PlotPieUMAP <- function(
     if (!col %in% colnames(meta))
       stop("'", col, "' not found in seurat_object@meta.data.")
   }
+
+  .nk_warn_donor(seurat_object)
+  pie_ctx <- .nk_legend_context(seurat_object)
 
   # ── Extract 2D coordinates ────────────────────────────────────────────────
   red_key <- tolower(reduction)
@@ -432,9 +445,14 @@ PlotPieUMAP <- function(
     .write_legend_sidecar(
       file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", pie_file)),
       paste0(
-        reduction, " scatter plot with proportional pie charts placed at each ",
-        group.by, " centroid. Each pie shows the fraction of cells from each ",
-        split.by, " level within that ", group.by, " group. ",
+        toupper(reduction), " of ", pie_ctx$n_obs, " ", pie_ctx$unit,
+        if (!is.null(pie_ctx$n_donors))
+          paste0(" from ", format(pie_ctx$n_donors, big.mark = ","), " donors")
+        else "",
+        if (nchar(pie_ctx$obj_name) > 0) paste0(" [", pie_ctx$obj_name, "]") else "",
+        " with proportional pie charts placed at each ", group.by,
+        " centroid. Each pie shows the fraction of ", pie_ctx$unit,
+        " from each ", split.by, " level within that ", group.by, " group. ",
         "Background points are colored ", bg_color, "; pie slices are colored by ",
         split.by, "."
       )
@@ -504,6 +522,24 @@ PlotPieUMAP <- function(
 #' @param axes_colors Named \code{list} of color vectors, keyed by column
 #'   name (e.g. \code{list(BraakStage = BraakColors, ThalPhase = ThalColors)}).
 #'   Takes precedence over \code{group_colors}/\code{split_colors}.
+#' @param axis.labels Character vector of display labels for the axes, in the
+#'   same order as \code{axes}.  Use this to show short/readable names instead
+#'   of raw column names (e.g. \code{c("AD neuropath.", "Cognitive status",
+#'   "Dementia")}).  \code{NULL} = use column names as-is.
+#' @param facet.spacing Numeric (0-1+). Scale factor applied to the auto-computed
+#'   left and right panel margins when \code{facet.by} is used.  Values below
+#'   1 shrink the gap between panels (try \code{0.5}); values above 1 widen it.
+#'   Default \code{1} (no change).
+#' @param horizontal Logical. If \code{TRUE}, rotate the diagram 90 degrees so
+#'   axis bars run horizontally using \code{coord_flip()}.  Best combined with
+#'   \code{label.inside = TRUE}.  Default \code{FALSE}.
+#' @param label.inside Logical. If \code{TRUE}, place category labels centered
+#'   inside the colored bars in white text instead of outside.  Default
+#'   \code{FALSE}.
+#' @param title.size Numeric. Font size for the axis name labels (e.g. "Sex",
+#'   "Group").  Default \code{13}.
+#' @param title.rotation Numeric. Rotation angle (degrees) for the axis name
+#'   labels.  Default \code{0} (horizontal).
 #' @param output_dir Directory to save a PDF.  \code{NULL} = no save.
 #' @param object_name Label prefix for the output filename.
 #' @param pdf_width,pdf_height PDF dimensions per panel in inches.  Default
@@ -513,24 +549,30 @@ PlotPieUMAP <- function(
 #' @export
 PlotAlluvial <- function(
     data,
-    axes         = NULL,
-    group.by     = NULL,
-    split.by     = NULL,
-    donor.by     = NULL,
-    facet.by     = NULL,
-    ncol_facet   = NULL,
-    alpha        = 0.75,
-    axis_width   = 0.1,
-    label        = TRUE,
-    label_size   = 4,
-    label_nudge  = 0.1,
-    group_colors = NULL,
-    split_colors = NULL,
-    axes_colors  = list(),
-    output_dir   = NULL,
-    object_name  = "",
-    pdf_width    = 7,
-    pdf_height   = 5.5
+    axes          = NULL,
+    group.by      = NULL,
+    split.by      = NULL,
+    donor.by      = NULL,
+    facet.by      = NULL,
+    ncol_facet    = NULL,
+    alpha         = 0.75,
+    axis_width    = 0.1,
+    label         = TRUE,
+    label_size    = 4,
+    label_nudge   = 0.1,
+    group_colors  = NULL,
+    split_colors  = NULL,
+    axes_colors   = list(),
+    axis.labels   = NULL,
+    facet.spacing = 1,
+    horizontal     = FALSE,
+    label.inside   = FALSE,
+    title.size     = 13,
+    title.rotation = 0,
+    output_dir     = NULL,
+    object_name   = "",
+    pdf_width     = 7,
+    pdf_height    = 5.5
 ) {
   if (!requireNamespace("ggforce", quietly = TRUE))
     stop("Package 'ggforce' is required for PlotAlluvial.\n",
@@ -544,6 +586,22 @@ PlotAlluvial <- function(
   }
   if (length(axes) < 2L) stop("'axes' must specify at least 2 columns.")
   n_axes <- length(axes)
+
+  # Resolve axis display labels
+  if (!is.null(axis.labels)) {
+    if (!is.null(names(axis.labels))) {
+      # Named vector: match by axis column name
+      x_labels <- stats::setNames(
+        ifelse(axes %in% names(axis.labels), axis.labels[axes], axes), axes)
+    } else {
+      if (length(axis.labels) != n_axes)
+        stop("'axis.labels' must be the same length as 'axes' (",
+             n_axes, " elements).")
+      x_labels <- stats::setNames(axis.labels, axes)
+    }
+  } else {
+    x_labels <- stats::setNames(axes, axes)
+  }
 
   # ── Extract metadata ──────────────────────────────────────────────────────
   meta <- if (inherits(data, "Seurat")) data@meta.data else as.data.frame(data)
@@ -595,7 +653,7 @@ PlotAlluvial <- function(
   all_colors <- unlist(unname(colors_per_axis))
 
   # ── Inner panel builder (one metadata slice → one ggplot) ─────────────────
-  .one_panel <- function(meta_sub, panel_title = NULL) {
+  .one_panel <- function(meta_sub, panel_title = NULL, pad_scale = 1) {
     # Levels present in this slice (may be fewer than full-data levels)
     axes_lvls_sub <- lapply(axes, function(ax) {
       meta_sub[[ax]] <- factor(as.character(meta_sub[[ax]]), levels = axes_levels[[ax]])
@@ -625,19 +683,38 @@ PlotAlluvial <- function(
     pdata$y <- factor(pdata$y,
                       levels = unique(unlist(axes_lvls_sub, use.names = FALSE)))
 
-    # ── Label positioning: left for axis-1, right for axis-N, center middle ──
-    # stat='parallel_sets_axes' generates rows in axis order, level order within
-    dlabels <- do.call(rbind, lapply(seq_along(axes), function(i) {
-      n_lvl <- length(axes_lvls_sub[[axes[i]]])
-      if (i == 1L)      data.frame(hjust = rep(1,   n_lvl), nudge_x = rep(-label_nudge, n_lvl))
-      else if (i == n_axes) data.frame(hjust = rep(0,   n_lvl), nudge_x = rep( label_nudge, n_lvl))
-      else                  data.frame(hjust = rep(0.5, n_lvl), nudge_x = rep(0,            n_lvl))
-    }))
+    # ── Label positioning ──────────────────────────────────────────────────────
+    n_lvls_total <- sum(lengths(axes_lvls_sub))
+    if (isTRUE(label.inside)) {
+      dlabels <- data.frame(hjust = rep(0.5, n_lvls_total), nudge_x = rep(0, n_lvls_total))
+    } else {
+      dlabels <- do.call(rbind, lapply(seq_along(axes), function(i) {
+        n_lvl <- length(axes_lvls_sub[[axes[i]]])
+        if (i == 1L)          data.frame(hjust = rep(1,   n_lvl), nudge_x = rep(-label_nudge, n_lvl))
+        else if (i == n_axes) data.frame(hjust = rep(0,   n_lvl), nudge_x = rep( label_nudge, n_lvl))
+        else                  data.frame(hjust = rep(0.5, n_lvl), nudge_x = rep(0,            n_lvl))
+      }))
+    }
 
-    # Auto-pad: left margin by first axis, right by last axis
-    left_pad  <- max(8, max(nchar(axes_lvls_sub[[axes[1]]]))      * label_size * 0.5 + label_nudge * 20)
-    right_pad <- max(8, max(nchar(axes_lvls_sub[[axes[n_axes]]])) * label_size * 0.5 + label_nudge * 20)
+    # Auto-pad: left margin by first axis, right by last axis; scaled for facets.
+    # label.inside eliminates the need for large outer margins.
+    if (isTRUE(label.inside)) {
+      left_pad  <- 3
+      right_pad <- 3
+    } else {
+      left_pad  <- max(8, max(nchar(axes_lvls_sub[[axes[1]]]))      * label_size * 0.5 + label_nudge * 20) * pad_scale
+      right_pad <- max(8, max(nchar(axes_lvls_sub[[axes[n_axes]]])) * label_size * 0.5 + label_nudge * 20) * pad_scale
+    }
+    # When horizontal, left/right pads become bottom/top after coord_flip
+    mrg <- if (isTRUE(horizontal))
+      ggplot2::unit(c(right_pad, 5, left_pad, 5), "mm")
+    else
+      ggplot2::unit(c(5, right_pad, 5, left_pad), "mm")
 
+    # After coord_flip(), visual x = data y (blank) and visual y = data x (axis names).
+    # So we swap axis.text.x/y when horizontal to keep axis name labels visible.
+    ax_label_el <- ggplot2::element_text(face = "bold", color = "black",
+                                         size = title.size, angle = title.rotation)
     p <- ggplot2::ggplot(pdata, ggplot2::aes(x, id = id, split = y, value = n)) +
       ggforce::geom_parallel_sets(
         ggplot2::aes(fill = .data[[axes[1]]]),
@@ -648,20 +725,22 @@ PlotAlluvial <- function(
         color = "black", axis.width = axis_width
       ) +
       ggplot2::scale_fill_manual(values = all_colors) +
-      ggplot2::scale_x_discrete(labels = axes) +
-      ggplot2::coord_cartesian(clip = "off") +
+      ggplot2::scale_x_discrete(labels = unname(x_labels)) +
       ggplot2::theme_bw() +
       ggplot2::theme(
         legend.position  = "none",
         axis.title       = ggplot2::element_blank(),
-        axis.text.x      = ggplot2::element_text(face = "bold", color = "black", size = 13),
-        axis.text.y      = ggplot2::element_blank(),
+        axis.text.x      = if (isTRUE(horizontal)) ggplot2::element_blank() else ax_label_el,
+        axis.text.y      = if (isTRUE(horizontal)) ax_label_el else ggplot2::element_blank(),
         axis.ticks       = ggplot2::element_blank(),
         panel.grid.major = ggplot2::element_blank(),
         panel.grid.minor = ggplot2::element_blank(),
         panel.border     = ggplot2::element_blank(),
-        plot.margin      = ggplot2::unit(c(5, right_pad, 5, left_pad), "mm")
+        plot.margin      = mrg
       )
+
+    p <- p + if (isTRUE(horizontal)) ggplot2::coord_flip(clip = "off")
+             else                     ggplot2::coord_cartesian(clip = "off")
 
     if (!is.null(panel_title))
       p <- p +
@@ -674,6 +753,7 @@ PlotAlluvial <- function(
         stat     = ggforce::StatParallelSetsAxes,
         fontface = "bold",
         size     = label_size,
+        color    = if (isTRUE(label.inside)) "white" else "black",
         hjust    = dlabels$hjust,
         nudge_x  = dlabels$nudge_x
       )
@@ -687,7 +767,7 @@ PlotAlluvial <- function(
 
     plot_list <- Filter(Negate(is.null), lapply(facet_lvls, function(fv)
       .one_panel(meta[as.character(meta[[facet.by]]) == fv, , drop = FALSE],
-                 panel_title = fv)
+                 panel_title = fv, pad_scale = facet.spacing)
     ))
 
     ncol_f   <- ncol_facet %||% min(length(plot_list), 3L)
@@ -722,20 +802,18 @@ PlotAlluvial <- function(
             " (", round(pdf_w, 1), " × ", round(pdf_h, 1), " in)")
 
     .write_legend_sidecar(fpath, paste0(
-      "Parallel sets (alluvial) diagram showing the flow of ",
-      unit_word, "s across ", paste(axes, collapse = " → "),
-      ". Stream width is proportional to ", unit_word, " count. ",
-      "Streams are colored by ", axes[1], " level.",
+      "Parallel sets (alluvial) diagram of ",
+      format(nrow(meta), big.mark = ","), " ", unit_word, "s",
+      if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
+      " flowing across ", paste(axes, collapse = " -> "),
+      ". Stream width is proportional to ", unit_word, " count; ",
+      "streams are colored by ", axes[1], " level.",
       if (n_axes > 2L)
         paste0(" Middle axes: ", paste(axes[-c(1L, n_axes)], collapse = ", "), ".")
       else "",
-      if (!is.null(donor.by))
-        paste0(" Aggregated to one row per unique ", donor.by, " before counting.")
-      else "",
       if (!is.null(facet.by))
         paste0(" Separate panels shown for each level of ", facet.by, ".")
-      else "",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+      else ""
     ))
   }
 
@@ -971,17 +1049,15 @@ PlotRose <- function(
 
     .write_legend_sidecar(fpath, paste0(
       if (stat_type == "percent") "Percentage" else "Count",
-      " rose (polar bar) chart showing ", stat.by, " composition within each ",
-      group.by, " level. Each petal represents one ", group.by,
-      " level, stacked and filled by ", stat.by, " proportion. ",
-      "Values reflect ", unit_word, " counts.",
-      if (!is.null(donor.by))
-        paste0(" Aggregated to one row per unique ", donor.by, " before counting.")
-      else "",
+      " rose (polar bar) chart of ",
+      format(nrow(meta), big.mark = ","), " ", unit_word, "s",
+      if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
+      " showing ", stat.by, " composition within each ", group.by, " level. ",
+      "Each petal = one ", group.by, " level, stacked and filled by ",
+      stat.by, " proportion.",
       if (!is.null(facet.by))
         paste0(" Separate panels shown for each level of ", facet.by, ".")
-      else "",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+      else ""
     ))
   }
 
@@ -994,93 +1070,112 @@ PlotRose <- function(
 # PlotChord
 # =============================================================================
 
-#' Chord Diagram Between Two Categorical Variables
+#' Chord Diagram Across Two or More Categorical Variables
 #'
 #' @description
-#' Draws a chord diagram showing the connectivity between two metadata
-#' variables (e.g. cell-type assignment and sample).  Each arc represents the
-#' number of cells shared between a level of \code{var1} and a level of
-#' \code{var2}.  Uses \pkg{circlize}.
+#' Draws a chord diagram showing connectivity across two or more metadata
+#' variables (e.g. cell type, diagnosis, sex).  Arc widths are proportional to
+#' cell (or donor) counts.  Uses \pkg{circlize}.
+#'
+#' With two variables the diagram is a standard bidirectional chord between
+#' the two sector sets.  With three or more variables, adjacent pairs are
+#' linked in sequence (A-B, B-C, ...) so the diagram reads like a circular
+#' alluvial: sectors are grouped by variable around the circle and chords only
+#' connect adjacent variables.  Sector labels show the level name only (the
+#' variable prefix is used internally to keep names unique but is stripped in
+#' the plot).
 #'
 #' Because \pkg{circlize} draws to the active graphics device (base R
-#' graphics), this function returns the contingency matrix invisibly rather
-#' than a \code{ggplot2} object.
-#'
-#' When \code{facet.by} is supplied, chord diagrams are arranged
-#' \strong{side-by-side in a grid} on a single PDF page using
-#' \code{par(fig = ..., new = TRUE)}.  The PDF width/height scale
-#' automatically with the number of panels.  The filename includes
-#' \code{"by_{facet.by}"}.
-#'
-#' \code{canvas_padding} expands the circlize canvas so long sector labels are
-#' never clipped - increase it if you still see clipping.
+#' graphics), this function returns the link object invisibly rather than a
+#' \code{ggplot2} object.
 #'
 #' @param data A Seurat object or a plain \code{data.frame}/\code{tibble}.
-#' @param var1 Character. First variable (e.g. \code{"BraakStage"}).  Sectors
-#'   for \code{var1} levels appear first in the diagram.
-#' @param var2 Character. Second variable (e.g. \code{"ThalPhase"}).
+#' @param variables Character vector of two or more metadata column names, in
+#'   the order they should appear around the chord circle.
+#' @param var1,var2 Deprecated aliases kept for backward compatibility.  Use
+#'   \code{variables} instead.
 #' @param donor.by Character or \code{NULL}.  Column identifying the donor /
 #'   patient.  When supplied, metadata is deduplicated to one row per donor so
-#'   arc widths reflect \emph{donor counts} - the right choice for any
-#'   patient-level pathological or clinical variable.  Default \code{NULL}.
+#'   arc widths reflect \emph{donor counts}.  Default \code{NULL}.
 #' @param facet.by Character or \code{NULL}.  Metadata column to facet by -
-#'   one chord diagram per level, arranged side-by-side in a grid.  Default
-#'   \code{NULL}.
-#' @param ncol_facet Integer or \code{NULL}.  Number of columns in the chord
-#'   grid when \code{facet.by} is used.  Auto-computed (max 3) if \code{NULL}.
-#' @param canvas_padding Numeric.  Extra space added around the chord circle
-#'   (in canvas units) to prevent sector labels from being clipped.  The
-#'   canvas runs from \code{-1 - padding} to \code{1 + padding} on each axis.
-#'   Default \code{0.3}.  Increase to e.g. \code{0.5} for very long labels.
-#' @param var1_colors Named character vector for \code{var1} levels.
+#'   one chord diagram per level, arranged side-by-side in a grid.
+#' @param ncol_facet Integer or \code{NULL}.  Columns in the facet grid.
+#'   Auto-computed (max 3) if \code{NULL}.
+#' @param canvas_padding Numeric.  Extra space around the chord circle to
+#'   prevent label clipping.  Default \code{0.3}.
+#' @param colors Named list of color vectors, one element per variable name
+#'   (e.g. \code{list(CellType = c(...), Diagnosis = c(...))}).
 #'   Auto-assigned if \code{NULL}.
-#' @param var2_colors Named character vector for \code{var2} levels.
-#'   Auto-assigned if \code{NULL}.
+#' @param var1_colors,var2_colors Deprecated.  Use \code{colors} instead.
+#' @param group.gap Numeric. Gap in degrees between \code{variables[1]} sectors
+#'   and \code{variables[2]} sectors on the chord circle.  Default \code{15}.
+#' @param sector.gap Numeric. Gap in degrees between individual sectors within
+#'   each variable.  Default \code{2}.
 #' @param alpha Numeric. Chord fill opacity (0-1).  Default \code{0.8}.
-#' @param label_cex Numeric. Sector label font size multiplier.  Default
-#'   \code{0.8}.
-#' @param directional Logical.  Draw directional arrows from \code{var1} to
-#'   \code{var2}.  Default \code{FALSE}.
+#' @param label_cex Numeric. Sector label size multiplier.  Default \code{0.8}.
+#' @param directional Logical.  Draw directional arrows.  Default \code{FALSE}.
 #' @param output_dir Directory to save a PDF.  \code{NULL} = no save.
 #' @param object_name Label prefix for the output filename.
-#' @param pdf_width,pdf_height PDF dimensions \emph{per panel} in inches.
-#'   Total PDF width = \code{pdf_width × ncol}; total height = \code{pdf_height
-#'   × nrow}.  Default \code{7 x 7}.
+#' @param pdf_width,pdf_height PDF dimensions per panel in inches.  Default
+#'   \code{7 x 7}.
 #'
-#' @return The contingency matrix, or a named list of matrices when
-#'   \code{facet.by} is used (invisibly).
+#' @return The contingency matrix (2 variables) or link data frame (3+
+#'   variables), or a named list of those when \code{facet.by} is used
+#'   (invisibly).
 #' @export
 PlotChord <- function(
     data,
-    var1,
-    var2,
-    donor.by        = NULL,
-    facet.by        = NULL,
-    ncol_facet      = NULL,
-    canvas_padding  = 0.3,
-    var1_colors     = NULL,
-    var2_colors     = NULL,
-    alpha           = 0.8,
-    label_cex       = 0.8,
-    directional     = FALSE,
-    output_dir      = NULL,
-    object_name     = "",
-    pdf_width       = 7,
-    pdf_height      = 7
+    variables         = NULL,
+    var1              = NULL,
+    var2              = NULL,
+    donor.by          = NULL,
+    facet.by          = NULL,
+    ncol_facet        = NULL,
+    canvas_padding    = 0.3,
+    colors            = NULL,
+    var1_colors       = NULL,
+    var2_colors       = NULL,
+    group.gap         = 15,
+    sector.gap        = 2,
+    alpha             = 0.8,
+    label_cex         = 0.8,
+    directional       = FALSE,
+    output_dir        = NULL,
+    object_name       = "",
+    pdf_width         = 7,
+    pdf_height        = 7
 ) {
   if (!requireNamespace("circlize", quietly = TRUE))
     stop("Package 'circlize' is required for PlotChord.\n",
          "Install with: install.packages('circlize')")
 
+  # ── Resolve variables ──────────────────────────────────────────────────────
+  if (is.null(variables)) {
+    if (is.null(var1) || is.null(var2))
+      stop("Provide 'variables' (character vector of 2+ column names) or both 'var1' and 'var2'.")
+    variables <- c(var1, var2)
+  }
+  if (length(variables) < 2)
+    stop("'variables' must contain at least 2 column names.")
+
+  if (length(variables) > 2)
+    stop("PlotChord() only supports 2 variables. Chord diagrams are bipartite by ",
+         "nature: a middle variable would be double-counted (once per adjacent pair), ",
+         "inflating its arc width and misrepresenting the data.\n",
+         "For 3+ variables use PlotAlluvial(), which correctly represents each ",
+         "donor/cell as a single flow passing through all axes simultaneously.")
+
+  multi <- FALSE
+
   # ── Metadata ──────────────────────────────────────────────────────────────
   meta <- if (inherits(data, "Seurat")) data@meta.data else as.data.frame(data)
-  for (col in c(var1, var2, facet.by))
+  for (col in c(variables, facet.by))
     if (!is.null(col) && !col %in% colnames(meta))
       stop("'", col, "' not found in metadata.")
 
-  keep_cols <- c(var1, var2, donor.by, facet.by)
-  meta <- meta[stats::complete.cases(
-    meta[, keep_cols[!sapply(keep_cols, is.null)], drop = FALSE]), , drop = FALSE]
+  keep_cols <- unique(c(variables, donor.by, facet.by))
+  keep_cols <- keep_cols[lengths(lapply(keep_cols, is.null)) == 0]
+  meta <- meta[stats::complete.cases(meta[, keep_cols, drop = FALSE]), , drop = FALSE]
 
   # ── Donor-level aggregation ────────────────────────────────────────────────
   if (!is.null(donor.by)) {
@@ -1093,36 +1188,45 @@ PlotChord <- function(
     col <- meta[[col_name]]
     if (is.factor(col)) levels(col) else sort(unique(as.character(col)))
   }
-  v1_levels <- .lvls(var1)
-  v2_levels <- .lvls(var2)
-  n_v1 <- length(v1_levels)
-  n_v2 <- length(v2_levels)
+  lvls_list <- stats::setNames(lapply(variables, .lvls), variables)
 
   # ── Colors ────────────────────────────────────────────────────────────────
-  if (is.null(var1_colors)) {
-    var1_colors <- if (inherits(data, "Seurat")) .nk_colors(data, var1) else NULL
-    if (is.null(var1_colors))
-      var1_colors <- stats::setNames(
-        Nour_pal(if (n_v1 <= 8) "all" else "spectrum")(n_v1), v1_levels)
+  # Backward compat: convert var1_colors/var2_colors to colors list
+  if (is.null(colors) && (!is.null(var1_colors) || !is.null(var2_colors))) {
+    colors <- list()
+    if (!is.null(var1_colors)) colors[[variables[1]]] <- var1_colors
+    if (!is.null(var2_colors)) colors[[variables[2]]] <- var2_colors
   }
-  if (is.null(var2_colors)) {
-    var2_colors <- if (inherits(data, "Seurat")) .nk_colors(data, var2) else NULL
-    if (is.null(var2_colors))
-      var2_colors <- stats::setNames(Nour_pal("spectrum")(n_v2), v2_levels)
-  }
-  all_colors <- c(var1_colors[v1_levels], var2_colors[v2_levels])
 
-  # Canvas limits - expanding beyond ±1 gives labels room on all sides
+  color_list <- stats::setNames(vector("list", length(variables)), variables)
+  for (v in variables) {
+    lv <- lvls_list[[v]]
+    nv <- length(lv)
+    if (!is.null(colors[[v]])) {
+      color_list[[v]] <- colors[[v]]
+    } else {
+      auto <- if (inherits(data, "Seurat")) .nk_colors(data, v) else NULL
+      color_list[[v]] <- auto %||%
+        stats::setNames(Nour_pal(if (nv <= 8) "all" else "spectrum")(nv), lv)
+    }
+  }
+
+  all_colors <- c(color_list[[1]][lvls_list[[1]]],
+                  color_list[[2]][lvls_list[[2]]])
+
   clim <- c(-1 - canvas_padding, 1 + canvas_padding)
 
-  # ── Inner draw function for one matrix ────────────────────────────────────
-  # Called once per mfrow cell; par(mfrow) is set by .draw_grid before any
-  # circlize calls so each sub-panel gets its own properly-sized plot region.
-  .draw_one <- function(mat_one, panel_title = NULL) {
-    # Drop zero-sum rows/columns: they create zero-width sectors that circlize
-    # cannot render, triggering "not enough space for cells" errors.
-    mat_one <- mat_one[rowSums(mat_one) > 0, colSums(mat_one) > 0, drop = FALSE]
-    if (nrow(mat_one) == 0L || ncol(mat_one) == 0L) {
+  # ── Build contingency matrix for one metadata subset ───────────────────────
+  .build_links <- function(m) {
+    table(factor(m[[variables[1]]], levels = lvls_list[[variables[1]]]),
+          factor(m[[variables[2]]], levels = lvls_list[[variables[2]]]))
+  }
+
+  # ── Inner draw function for one panel ─────────────────────────────────────
+  .draw_one <- function(links_obj, panel_title = NULL) {
+    mat <- links_obj[rowSums(links_obj) > 0, colSums(links_obj) > 0, drop = FALSE]
+
+    if (nrow(mat) == 0L || ncol(mat) == 0L) {
       graphics::plot.new()
       graphics::plot.window(xlim = clim, ylim = clim)
       lbl <- if (!is.null(panel_title) && nzchar(panel_title))
@@ -1130,10 +1234,15 @@ PlotChord <- function(
       graphics::text(0, 0, lbl, cex = 1.0, adj = c(0.5, 0.5))
       return(invisible(NULL))
     }
+
+    n_r     <- nrow(mat); n_c <- ncol(mat)
+    gap_vec <- c(rep(sector.gap, n_r - 1L), group.gap,
+                 rep(sector.gap, n_c - 1L), group.gap)
+
     circlize::circos.clear()
-    circlize::circos.par(canvas.xlim = clim, canvas.ylim = clim)
+    circlize::circos.par(canvas.xlim = clim, canvas.ylim = clim, gap.after = gap_vec)
     circlize::chordDiagram(
-      mat_one,
+      mat,
       grid.col          = all_colors,
       transparency      = 1 - alpha,
       directional       = if (directional) 1L else 0L,
@@ -1141,62 +1250,41 @@ PlotChord <- function(
       annotationTrack   = "grid",
       preAllocateTracks = list(track.height = 0.1)
     )
-    circlize::circos.trackPlotRegion(
-      track.index = 1,
-      panel.fun   = function(x, y) {
-        sector.name <- circlize::get.cell.meta.data("sector.index")
-        xlim        <- circlize::get.cell.meta.data("xlim")
-        ylim        <- circlize::get.cell.meta.data("ylim")
-        circlize::circos.text(
-          mean(xlim), ylim[1] + 0.1, sector.name,
-          facing = "clockwise", niceFacing = TRUE,
-          adj = c(0, 0.5), cex = label_cex
-        )
-      },
-      bg.border = NA
-    )
+    circlize::circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
+      sname <- circlize::get.cell.meta.data("sector.index")
+      xlim  <- circlize::get.cell.meta.data("xlim")
+      ylim  <- circlize::get.cell.meta.data("ylim")
+      circlize::circos.text(mean(xlim), ylim[1] + 0.1, sname,
+        facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = label_cex)
+    }, bg.border = NA)
     circlize::circos.clear()
-    # Panel title in the top margin (mtext works in base-R space after circos.clear)
     if (!is.null(panel_title) && nzchar(panel_title))
       graphics::mtext(panel_title, side = 3, line = 0.3, cex = 1.0, font = 2)
   }
 
-  # ── Build contingency matrices ─────────────────────────────────────────────
+  # ── Build link objects (optionally per facet level) ────────────────────────
   if (!is.null(facet.by)) {
     facet_lvls <- if (is.factor(meta[[facet.by]])) levels(meta[[facet.by]])
                   else sort(unique(as.character(meta[[facet.by]])))
-    mat_list <- stats::setNames(lapply(facet_lvls, function(fv) {
-      meta_f <- meta[as.character(meta[[facet.by]]) == fv, , drop = FALSE]
-      table(factor(meta_f[[var1]], levels = v1_levels),
-            factor(meta_f[[var2]], levels = v2_levels))
-    }), facet_lvls)
+    links_list <- stats::setNames(lapply(facet_lvls, function(fv)
+      .build_links(meta[as.character(meta[[facet.by]]) == fv, , drop = FALSE])
+    ), facet_lvls)
   } else {
-    mat_list <- list(table(factor(meta[[var1]], levels = v1_levels),
-                           factor(meta[[var2]], levels = v2_levels)))
+    links_list <- list(.build_links(meta))
   }
 
-  # ── Grid layout helpers ────────────────────────────────────────────────────
-  n_plots <- length(mat_list)
+  # ── Grid layout ───────────────────────────────────────────────────────────
+  n_plots <- length(links_list)
   ncol_f  <- if (n_plots == 1L) 1L else (ncol_facet %||% min(n_plots, 3L))
   nrow_f  <- ceiling(n_plots / ncol_f)
 
-  # Draw all diagrams in a grid using par(mfrow=...).
-  # par(fig=..., new=TRUE) was the previous approach but it doesn't reset
-  # margins per cell, so circlize inherits the full default margins in a
-  # shrunken sub-region and runs out of space even for simple diagrams.
-  # par(mfrow) handles per-cell margin accounting correctly.
   .draw_grid <- function() {
     old_par <- graphics::par(no.readonly = TRUE)
     on.exit(graphics::par(old_par), add = TRUE)
-    # Small margins: circlize needs room for the circle, not axis labels.
-    # 1.5 lines on top leaves space for the panel title drawn via mtext().
     graphics::par(mfrow = c(nrow_f, ncol_f), mar = c(1, 1, 1.5, 1))
-
-    for (i in seq_len(n_plots)) {
-      .draw_one(mat_list[[i]],
-                panel_title = if (!is.null(facet.by)) names(mat_list)[i] else NULL)
-    }
-    # Fill any trailing empty cells so the mfrow grid is complete
+    for (i in seq_len(n_plots))
+      .draw_one(links_list[[i]],
+                panel_title = if (!is.null(facet.by)) names(links_list)[i] else NULL)
     remainder <- ncol_f * nrow_f - n_plots
     for (i in seq_len(remainder)) graphics::plot.new()
   }
@@ -1204,7 +1292,7 @@ PlotChord <- function(
   # ── Filename ──────────────────────────────────────────────────────────────
   parts <- c(
     if (nchar(object_name) > 0) object_name,
-    var1, var2,
+    paste(variables, collapse = "_"),
     if (!is.null(donor.by)) "Donors",
     if (!is.null(facet.by)) paste0("by_", facet.by),
     "Chord"
@@ -1215,35 +1303,30 @@ PlotChord <- function(
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
-
-    # Total PDF = per-panel dims × grid shape
-    grDevices::pdf(fpath,
-                   width  = pdf_width  * ncol_f,
-                   height = pdf_height * nrow_f)
+    grDevices::pdf(fpath, width = pdf_width * ncol_f, height = pdf_height * nrow_f)
     .draw_grid()
     grDevices::dev.off()
-
     message("scSidekick: Saved ", basename(fpath),
-            " (", pdf_width * ncol_f, " × ", pdf_height * nrow_f, " in",
-            if (n_plots > 1L) paste0(", ", ncol_f, "×", nrow_f, " grid") else "",
+            " (", pdf_width * ncol_f, " x ", pdf_height * nrow_f, " in",
+            if (n_plots > 1L) paste0(", ", ncol_f, "x", nrow_f, " grid") else "",
             ")")
-
     .write_legend_sidecar(fpath, paste0(
-      "Chord diagram showing the distribution of ", unit_word, "s between ",
-      var1, " and ", var2, ". Arc width is proportional to ", unit_word, " count.",
-      if (!is.null(donor.by))
-        paste0(" Aggregated to one row per unique ", donor.by, " before counting.")
-      else "",
+      "Chord diagram of ",
+      format(nrow(meta), big.mark = ","), " ", unit_word, "s",
+      if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
+      " showing flow across ", paste(variables, collapse = " -> "),
+      ". Arc width is proportional to ", unit_word, " count.",
+      if (multi) paste0(" Chords connect adjacent variables only (",
+                        length(variables) - 1L, " pairs).") else "",
       if (!is.null(facet.by))
-        paste0(" Separate diagrams arranged in a ", ncol_f, "-column grid,",
-               " one per level of ", facet.by, ".")
-      else "",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+        paste0(" Separate diagrams in a ", ncol_f,
+               "-column grid, one per level of ", facet.by, ".")
+      else ""
     ))
   }
 
   # ── Draw to active device ─────────────────────────────────────────────────
   .draw_grid()
 
-  if (!is.null(facet.by)) invisible(mat_list) else invisible(mat_list[[1L]])
+  if (!is.null(facet.by)) invisible(links_list) else invisible(links_list[[1L]])
 }

@@ -61,7 +61,14 @@
 #' @param pt.size Numeric. Point size. Default \code{0.1}.
 #' @param label.size Numeric. Label text size. Default \code{3}.
 #' @param bar.width Numeric. Bar width in the trend plot. Default \code{0.6}.
-#' @param legendnrow Integer. Legend rows. Default \code{2}.
+#' @param legendnrow Integer or vector. Legend rows (when
+#'   \code{legend.direction = "horizontal"}). When \code{group.by} has multiple
+#'   variables, pass a vector positionally or named by variable. Default \code{2}.
+#' @param legend.side Character. Where to place the legend panel: \code{"bottom"}
+#'   (default), \code{"top"}, \code{"left"}, or \code{"right"}.
+#' @param legend.direction Character. Internal layout of legend entries:
+#'   \code{"horizontal"} (default, entries in rows) or \code{"vertical"}
+#'   (entries stacked in one column).
 #' @param legendtitle Character or \code{NA}. Legend title.
 #' @param trend_width Numeric. Relative width of the trend panel vs. one UMAP
 #'   column. Default \code{1}.
@@ -101,6 +108,8 @@ PlotDimPlots <- function(seurat_object,
                           label.size       = 3,
                           bar.width        = 0.6,
                           legendnrow       = 2,
+                          legend.side      = "bottom",
+                          legend.direction = "horizontal",
                           legendtitle      = NA,
                           trend_width      = 1,
                           split.col.levels = NULL,
@@ -118,9 +127,14 @@ PlotDimPlots <- function(seurat_object,
   # ── Walk-up PrepObject defaults ────────────────────────────────────────────
   # NA_character_ is a sentinel passed by the outer join call meaning
   # "explicitly no save — do not walk up". Convert it to NULL before use.
-  if (identical(output_dir, NA_character_)) output_dir <- NULL else
-    output_dir <- output_dir %||%
-      if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # An explicit output_dir = NULL from the user also means "show, don't save."
+  # Walk up only when the caller omitted the argument entirely.
+  if (identical(output_dir, NA_character_)) {
+    output_dir <- NULL
+  } else if (missing(output_dir)) {
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
+  }
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
   group.by <- group.by %||% .nk_setting(seurat_object, "group.by") %||%
@@ -129,6 +143,7 @@ PlotDimPlots <- function(seurat_object,
   # is always respected regardless of whether the call comes from the console,
   # a lapply, or the multi-group recursive path.
   split.by <- split.by %||% .nk_setting(seurat_object, "split.by")
+  .nk_warn_donor(seurat_object)
 
   # ── Multiple group.by ──────────────────────────────────────────────────────
   if (length(group.by) > 1L) {
@@ -138,7 +153,15 @@ PlotDimPlots <- function(seurat_object,
     # each panel; otherwise each variable saves its own PDF as before.
     sub_dir <- if (isTRUE(join_plots)) NA_character_ else output_dir
 
-    plots <- lapply(stats::setNames(group.by, group.by), function(gb) {
+    plots <- lapply(seq_along(group.by), function(i) {
+      gb <- group.by[i]
+      # legendnrow may be a single number (applies to all), a vector aligned
+      # positionally with group.by, or a vector named by variable
+      gb_legendnrow <- if (!is.null(names(legendnrow)) && gb %in% names(legendnrow)) {
+        legendnrow[[gb]]
+      } else {
+        legendnrow[[((i - 1) %% length(legendnrow)) + 1]]
+      }
       PlotDimPlots(
         seurat_object    = seurat_object,
         group.by         = gb,
@@ -153,7 +176,9 @@ PlotDimPlots <- function(seurat_object,
         pt.size          = pt.size,
         label.size       = label.size,
         bar.width        = bar.width,
-        legendnrow       = legendnrow,
+        legendnrow       = gb_legendnrow,
+        legend.side      = legend.side,
+        legend.direction = legend.direction,
         legendtitle      = legendtitle,
         trend_width      = trend_width,
         split.col.levels = split.col.levels,
@@ -165,6 +190,7 @@ PlotDimPlots <- function(seurat_object,
         file_name        = if (isTRUE(join_plots)) NULL else file_name
       )
     })
+    names(plots) <- group.by
 
     if (!isTRUE(join_plots)) return(invisible(plots))
 
@@ -199,12 +225,15 @@ PlotDimPlots <- function(seurat_object,
       grDevices::dev.off()
       message("scSidekick: Saved to ", fpath,
               " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
+      ctx <- .nk_legend_context(seurat_object)
       .write_legend_sidecar(fpath, paste0(
-        toupper(reduction), " plots of ",
-        paste(group.by, collapse = ", "),
-        if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-        ", arranged in a ", nrow_j, " x ", ncol_j, " grid",
-        if (nchar(object_name) > 0) paste0(" for ", object_name) else "", "."
+        .nk_obs_sentence(ctx,
+                         reduction = reduction,
+                         group.by  = group.by,
+                         split.by  = split.by),
+        ", arranged in a ", nrow_j, " x ", ncol_j, " grid. ",
+        "Each panel shares a single color legend keyed to ",
+        paste(group.by, collapse = " and "), "."
       ))
       return(invisible(combined))
     }
@@ -334,15 +363,17 @@ PlotDimPlots <- function(seurat_object,
     if (!show_legend_here) {
       p <- p + Seurat::NoLegend()
     } else {
+      lgd_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
       p <- p +
         ggplot2::guides(color = ggplot2::guide_legend(
           override.aes   = list(size = 5),
-          nrow           = legendnrow,
+          nrow           = if (legend.direction == "horizontal") legendnrow else NULL,
+          ncol           = if (legend.direction == "vertical")   1L         else NULL,
           title.position = "top",
           title          = leg_title
         )) +
-        ggplot2::theme(legend.position = "bottom",
-                       legend.direction = "horizontal")
+        ggplot2::theme(legend.position  = lgd_pos,
+                       legend.direction = legend.direction)
     }
     p
   }
@@ -487,27 +518,38 @@ PlotDimPlots <- function(seurat_object,
   # longest label, so it is never squeezed into a fixed fraction (the old
   # ggarrange heights = c(1, 0.12) cropped large legends).
   leg_labels    <- if (show_labels || number_labels) legend_labels else grp_lvls
-  max_lbl_chars <- max(nchar(as.character(leg_labels)), 1L)
-  per_row       <- ceiling(length(grp_lvls) / max(legendnrow, 1L))
-  entry_w_in    <- 0.45 + max_lbl_chars * 0.075          # key + label width
-  legend_w_in   <- per_row * entry_w_in + 1.0            # + legend title
-  legend_h_in   <- 0.45 + legendnrow * 0.30              # title + rows
+  ld            <- .cat_legend_dims(length(grp_lvls), leg_labels, legend.direction, legendnrow)
+  legend_w_in   <- ld[["w"]]
+  legend_h_in   <- ld[["h"]]
 
   # ── Final assembly via patchwork ──────────────────────────────────────────
-  # patchwork stacks the grid over the legend, giving the legend a FIXED inch
-  # height (a real "null" + fixed-unit layout) instead of a squeezable fraction.
-  result <- patchwork::wrap_plots(
-    inner,
-    patchwork::wrap_elements(full = shared_lgd),
-    ncol    = 1,
-    heights = grid::unit.c(grid::unit(1, "null"), grid::unit(legend_h_in, "in"))
-  )
+  lgd_el <- patchwork::wrap_elements(full = shared_lgd)
+  if (legend.side %in% c("bottom", "top")) {
+    panels  <- if (legend.side == "bottom") list(inner, lgd_el) else list(lgd_el, inner)
+    heights <- if (legend.side == "bottom")
+      grid::unit.c(grid::unit(1, "null"), grid::unit(legend_h_in, "in"))
+    else
+      grid::unit.c(grid::unit(legend_h_in, "in"), grid::unit(1, "null"))
+    result <- patchwork::wrap_plots(panels, ncol = 1, heights = heights)
+  } else {
+    panels <- if (legend.side == "right") list(inner, lgd_el) else list(lgd_el, inner)
+    widths <- if (legend.side == "right")
+      grid::unit.c(grid::unit(1, "null"), grid::unit(legend_w_in, "in"))
+    else
+      grid::unit.c(grid::unit(legend_w_in, "in"), grid::unit(1, "null"))
+    result <- patchwork::wrap_plots(panels, nrow = 1, widths = widths)
+  }
 
   # ── Auto PDF size (computed always so join mode can tile by it) ────────────
   grid_w_in <- max_cols * 3 + (if (show_trend) trend_width * 2 + 1 else 0) + 1
   grid_h_in <- n_rows * 3
-  pdf_w <- width  %||% max(grid_w_in, legend_w_in)
-  pdf_h <- height %||% (grid_h_in + legend_h_in + 0.5)
+  if (legend.side %in% c("bottom", "top")) {
+    pdf_w <- width  %||% max(grid_w_in, legend_w_in)
+    pdf_h <- height %||% (grid_h_in + legend_h_in + 0.5)
+  } else {
+    pdf_w <- width  %||% (grid_w_in + legend_w_in + 0.5)
+    pdf_h <- height %||% max(grid_h_in, legend_h_in)
+  }
   attr(result, "nk_pdf_dims") <- c(pdf_w, pdf_h)
 
   # ── Save or return ──────────────────────────────────────────────────────────
@@ -533,16 +575,21 @@ PlotDimPlots <- function(seurat_object,
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath,
             " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
+    ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      toupper(reduction), " plot colored by ", group.by,
-      if (!is.null(split.by)) paste0(", split into one panel per ", split.by,
-                                     " level") else "",
-      if (has_row) paste0(", with rows by ", row.by) else "",
-      if (show_trend) "; the left panel shows the stacked composition trend" else "",
-      ". A single shared color legend is shown below the panels",
+      .nk_obs_sentence(ctx,
+                       reduction = reduction,
+                       group.by  = group.by,
+                       split.by  = split.by,
+                       row.by    = if (has_row) row.by else NULL),
+      ". ",
+      if (show_trend) "The leftmost panel shows the stacked cellular composition trend across levels. " else "",
+      "A single shared color legend is shown ",
+      if (legend.side %in% c("bottom", "top")) legend.side else "to the right",
+      " of the panels",
       if (show_labels || number_labels)
-        "; clusters are marked with numbered labels keyed to the legend" else "",
-      if (nchar(object_name) > 0) paste0(". Dataset: ", object_name) else "", "."
+        "; cluster identities are marked with numeric labels keyed to the legend" else "",
+      "."
     ))
     return(invisible(result))
   }

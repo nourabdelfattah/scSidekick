@@ -17,7 +17,7 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,7 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -48,6 +49,9 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -55,6 +59,7 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -94,6 +99,8 @@ bordered boxes.  The optional composition trend panel
 <span>  label.size <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  bar.width <span class="op">=</span> <span class="fl">0.6</span>,</span>
 <span>  legendnrow <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  legend.side <span class="op">=</span> <span class="st">"bottom"</span>,</span>
+<span>  legend.direction <span class="op">=</span> <span class="st">"horizontal"</span>,</span>
 <span>  legendtitle <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  trend_width <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  split.col.levels <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -206,7 +213,20 @@ PrepObject or <code>Nour_pal</code>.</p></dd>
 
 
 <dt id="arg-legendnrow">legendnrow<a class="anchor" aria-label="anchor" href="#arg-legendnrow"></a></dt>
-<dd><p>Integer. Legend rows. Default <code>2</code>.</p></dd>
+<dd><p>Integer or vector. Legend rows (when
+<code>legend.direction = "horizontal"</code>). When <code>group.by</code> has multiple
+variables, pass a vector positionally or named by variable. Default <code>2</code>.</p></dd>
+
+
+<dt id="arg-legend-side">legend.side<a class="anchor" aria-label="anchor" href="#arg-legend-side"></a></dt>
+<dd><p>Character. Where to place the legend panel: <code>"bottom"</code>
+(default), <code>"top"</code>, <code>"left"</code>, or <code>"right"</code>.</p></dd>
+
+
+<dt id="arg-legend-direction">legend.direction<a class="anchor" aria-label="anchor" href="#arg-legend-direction"></a></dt>
+<dd><p>Character. Internal layout of legend entries:
+<code>"horizontal"</code> (default, entries in rows) or <code>"vertical"</code>
+(entries stacked in one column).</p></dd>
 
 
 <dt id="arg-legendtitle">legendtitle<a class="anchor" aria-label="anchor" href="#arg-legendtitle"></a></dt>

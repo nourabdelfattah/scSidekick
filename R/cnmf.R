@@ -393,13 +393,21 @@ RunCNMF <- function(seurat_object,
     cnmf_obj$k_selection_plot(close_fig = TRUE)
   }
 
+  .nk_warn_donor(seurat_object)
+  cnmf_ctx <- .nk_legend_context(seurat_object)
   .write_legend_sidecar(k_plot, paste0(
     "cNMF k-selection diagnostic for run '", name, "': solution stability ",
     "(silhouette) and reconstruction error across K = ", min(k_range), "-",
     max(k_range), " (", n_iter, " iterations, ",
     if (is.null(genes_use)) paste0(num_highvar_genes, " high-variance genes")
     else paste0(length(genes_use), " supplied genes"),
-    ", seed ", seed, "). Choose the K at the stability peak / error elbow and ",
+    ", seed ", seed, "). Dataset: ", format(cnmf_ctx$n_obs, big.mark = ","),
+    " ", cnmf_ctx$unit,
+    if (!is.null(cnmf_ctx$n_donors))
+      paste0(" from ", format(cnmf_ctx$n_donors, big.mark = ","), " donors")
+    else "",
+    if (nchar(cnmf_ctx$obj_name) > 0) paste0(" [", cnmf_ctx$obj_name, "]") else "",
+    ". Choose the K at the stability peak / error elbow and ",
     "pass it to GetCNMFPrograms(seurat_object, k = ...)."))
 
   seurat_object@misc$cnmf <- list(
@@ -581,9 +589,16 @@ GetCNMFPrograms <- function(seurat_object,
   dt_str <- gsub("[.]", "_", format(density_threshold, trim = TRUE))
   clustergram <- file.path(output_dir, name,
     paste0(name, ".clustering.k_", k, ".dt_", dt_str, ".png"))
+  .nk_warn_donor(seurat_object)
+  gcnmf_ctx <- .nk_legend_context(seurat_object)
   .write_legend_sidecar(clustergram, paste0(
     "cNMF consensus clustergram for run '", name, "', k = ", k,
     " programs, density_threshold = ", density_threshold,
+    ". Dataset: ", format(gcnmf_ctx$n_obs, big.mark = ","), " ", gcnmf_ctx$unit,
+    if (!is.null(gcnmf_ctx$n_donors))
+      paste0(" from ", format(gcnmf_ctx$n_donors, big.mark = ","), " donors")
+    else "",
+    if (nchar(gcnmf_ctx$obj_name) > 0) paste0(" [", gcnmf_ctx$obj_name, "]") else "",
     ". Usages stored as reduction '", reduction_name, "' (cNMF_1..cNMF_", k,
     "); gene spectra and top genes per program in @misc$cnmf$results."))
 

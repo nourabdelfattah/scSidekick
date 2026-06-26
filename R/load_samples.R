@@ -399,11 +399,12 @@ LoadSamplesRNA <- function(
             silent = TRUE)
         grDevices::dev.off()
         .write_legend_sidecar(f_dbl, paste0(
-          "UMAP of sample ", sid, " split by doublet classification from ",
-          "SCP::db_scDblFinder. Each panel shows the cells assigned to one ",
-          "DoubletStatus class (singlet vs. doublet); points are color-",
-          "matched to the active cluster identity and plotted in shuffled ",
-          "order so neither class is occluded."
+          "UMAP of ", format(ncol(seurat_object), big.mark = ","),
+          " cells in sample ", sid,
+          " split by doublet classification (SCP::db_scDblFinder). ",
+          "Each panel shows cells assigned to one DoubletStatus class ",
+          "(singlet vs. doublet); points are color-matched to the active ",
+          "cluster identity and plotted in shuffled order."
         ))
         message("  Saved: ", f_dbl)
       }
@@ -593,6 +594,9 @@ PlotQCMetrics <- function(
   file_prefix <- trimws(paste(object_name, subset_name))
   pref        <- function(fname) file.path(output_dir, paste0(file_prefix, " ", fname))
 
+  .nk_warn_donor(seurat_object)
+  qc_ctx <- .nk_legend_context(seurat_object)
+
   # ── Species-specific gene patterns ─────────────────────────────────────────
   .mt_ribo <- list(
     human = list(mt = "^MT-",  ribo = "^RP[LS]"),
@@ -660,9 +664,13 @@ PlotQCMetrics <- function(
     print(PDS)
     grDevices::dev.off()
     .write_legend_sidecar(f_dbl, paste0(
-      "Bar plot showing the number of cells classified as singlets or doublets ",
-      "by SCP::db_scDblFinder in ", object_name, subset_name,
-      ". Each bar is colored by sample of origin."
+      "Bar plot of doublet classification by SCP::db_scDblFinder for ",
+      qc_ctx$n_obs, " ", qc_ctx$unit,
+      if (!is.null(qc_ctx$n_donors))
+        paste0(" from ", format(qc_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(qc_ctx$obj_name) > 0) paste0(" [", qc_ctx$obj_name, "]") else "",
+      ". Bars are stacked singlet vs. doublet and colored by sample of origin."
     ))
     message("  Saved: ", f_dbl)
   }
@@ -687,10 +695,14 @@ PlotQCMetrics <- function(
     print(KeepP)
     grDevices::dev.off()
     .write_legend_sidecar(f_miqc, paste0(
-      "Bar plot showing the number of cells flagged for retention or removal ",
-      "by SeuratWrappers::RunMiQC in ", object_name, subset_name,
+      "Bar plot of miQC quality calls (SeuratWrappers::RunMiQC) for ",
+      qc_ctx$n_obs, " ", qc_ctx$unit,
+      if (!is.null(qc_ctx$n_donors))
+        paste0(" from ", format(qc_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(qc_ctx$obj_name) > 0) paste0(" [", qc_ctx$obj_name, "]") else "",
       ". Cells with a posterior probability of being low quality above the ",
-      "cutoff threshold are marked 'discard'."
+      "cutoff are marked 'discard'."
     ))
     message("  Saved: ", f_miqc)
   }
@@ -755,14 +767,17 @@ PlotQCMetrics <- function(
   print(density_grid / patchwork::wrap_plots(vln))
   grDevices::dev.off()
   .write_legend_sidecar(f_qc, paste0(
-    "Quality control metrics for all recovered ",
-    if (species == "mouse") "cells" else "cells",
-    " in ", object_name, subset_name, " prior to filtering. ",
-    "Density distributions (top row) and violin plots (bottom row) show total UMI counts ",
+    "Quality control metrics for ", qc_ctx$n_obs, " ", qc_ctx$unit,
+    if (!is.null(qc_ctx$n_donors))
+      paste0(" from ", format(qc_ctx$n_donors, big.mark = ","), " samples")
+    else "",
+    if (nchar(qc_ctx$obj_name) > 0) paste0(" [", qc_ctx$obj_name, "]") else "",
+    " prior to filtering. ",
+    "Density distributions (top) and violin plots (bottom) show total UMI counts ",
     "(nCount_RNA), number of detected genes (nFeature_RNA), mitochondrial read fraction ",
     "(mitoRatio, pattern: ", mt_pattern, "), and transcriptional complexity ",
-    "(log10GenesPerUMI), stratified by sample. ",
-    "Vertical lines indicate the suggested filtering thresholds."
+    "(log10GenesPerUMI), stratified by ", sample_col, ". ",
+    "Vertical lines indicate suggested filtering thresholds."
   ))
   message("  Saved: ", f_qc)
 
@@ -785,10 +800,14 @@ PlotQCMetrics <- function(
   print(P1)
   grDevices::dev.off()
   .write_legend_sidecar(f_count, paste0(
-    "Bar plot of total recovered cells per sample in ", object_name, subset_name,
-    " prior to any quality-based filtering. ",
-    "Each bar represents one sample (", sample_col, "), colored by sample identity. ",
-    "Cell counts shown are pre-doublet-removal and pre-miQC filtration."
+    "Bar plot of total recovered ", qc_ctx$unit, " per ", sample_col, " (",
+    qc_ctx$n_obs, " total",
+    if (!is.null(qc_ctx$n_donors))
+      paste0(" across ", format(qc_ctx$n_donors, big.mark = ","), " samples")
+    else "",
+    if (nchar(qc_ctx$obj_name) > 0) paste0(", ", qc_ctx$obj_name) else "",
+    ") prior to quality-based filtering. ",
+    "Counts are pre-doublet-removal and pre-miQC filtration."
   ))
   message("  Saved: ", f_count)
 

@@ -1,0 +1,10 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "scSidekick: A Single-Cell and Spatial Transcriptomics Toolkit",
+  author   = person("Nourhan", "Abdelfattah",
+                    email = "neabdelfattah@gmail.com",
+                    role  = c("aut", "cre")),
+  year     = "2026",
+  note     = "R package version 1.0.0",
+  url      = "https://nourabdelfattah.github.io/scSidekick/"
+)

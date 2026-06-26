@@ -13,7 +13,7 @@ single pair of legends (categorical + continuous) is attached to the right."><me
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,21 +33,29 @@ single pair of legends (categorical + continuous) is attached to the right."><me
     <li><a class="dropdown-item" href="../articles/03_umap_visualization.html">03 - UMAP Visualization</a></li>
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
-    <li><a class="dropdown-item" href="../articles/11_metadata_composition.html">11 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
     <li><a class="dropdown-item" href="../articles/07_spatial.html">07 - Spatial Transcriptomics</a></li>
-    <li><a class="dropdown-item" href="../articles/08_pathway_analysis.html">08 - Pathway Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/09_cellchat.html">09 - Cell-Cell Communication</a></li>
-    <li><a class="dropdown-item" href="../articles/12_large_data.html">12 - Large Datasets</a></li>
+    <li><a class="dropdown-item" href="../articles/08_pathway_gsea.html">08 - Pathway: RunGSEA</a></li>
+    <li><a class="dropdown-item" href="../articles/09_pathway_pseudobulk.html">09 - Pathway: Pseudobulk GSEA</a></li>
+    <li><a class="dropdown-item" href="../articles/10_pathway_enrichment.html">10 - Pathway: Single-Cell &amp; Enrichment</a></li>
+    <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
+    <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
+    <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
-    <li><a class="dropdown-item" href="../articles/10_reporting_utilities.html">10 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -83,7 +91,9 @@ single pair of legends (categorical + continuous) is attached to the right.</p>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gene_colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#053061"</span>, <span class="st">"#2166AC"</span>, <span class="st">"#D1E5F0"</span>, <span class="st">"#FDDBC7"</span>, <span class="st">"#F4A582"</span>, <span class="st">"#D6604D"</span>,</span>
 <span>    <span class="st">"#B2182B"</span>, <span class="st">"#67001F"</span><span class="op">)</span>,</span>
-<span>  <span class="va">output_dir</span>,</span>
+<span>  legend.side <span class="op">=</span> <span class="st">"right"</span>,</span>
+<span>  legend.direction <span class="op">=</span> <span class="st">"vertical"</span>,</span>
+<span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  cluster_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster_colors <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -102,7 +112,9 @@ single pair of legends (categorical + continuous) is attached to the right.</p>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gene_colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#053061"</span>, <span class="st">"#2166AC"</span>, <span class="st">"#D1E5F0"</span>, <span class="st">"#FDDBC7"</span>, <span class="st">"#F4A582"</span>, <span class="st">"#D6604D"</span>,</span>
 <span>    <span class="st">"#B2182B"</span>, <span class="st">"#67001F"</span><span class="op">)</span>,</span>
-<span>  <span class="va">output_dir</span>,</span>
+<span>  legend.side <span class="op">=</span> <span class="st">"right"</span>,</span>
+<span>  legend.direction <span class="op">=</span> <span class="st">"vertical"</span>,</span>
+<span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  cluster_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster_colors <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -162,8 +174,20 @@ to all images; a named list applies per image.</p></dd>
 <dd><p>Character vector. Gradient for gene expression.</p></dd>
 
 
+<dt id="arg-legend-side">legend.side<a class="anchor" aria-label="anchor" href="#arg-legend-side"></a></dt>
+<dd><p>Character. Where to place the paired legends: <code>"right"</code>
+(default, stacked vertically) or <code>"bottom"</code> (side by side).</p></dd>
+
+
+<dt id="arg-legend-direction">legend.direction<a class="anchor" aria-label="anchor" href="#arg-legend-direction"></a></dt>
+<dd><p>Character. Internal layout of the categorical
+cluster legend: <code>"vertical"</code> (default) or <code>"horizontal"</code>.</p></dd>
+
+
 <dt id="arg-output-dir">output_dir<a class="anchor" aria-label="anchor" href="#arg-output-dir"></a></dt>
-<dd><p>Character. Output directory for PDFs.</p></dd>
+<dd><p>Character or <code>NULL</code>. Output directory for PDFs.
+When <code>NULL</code> the plot is printed to the active device and returned
+invisibly. Walk-up from PrepObject applies when omitted entirely.</p></dd>
 
 
 <dt id="arg-object-name">object_name<a class="anchor" aria-label="anchor" href="#arg-object-name"></a></dt>
@@ -180,7 +204,8 @@ to all images; a named list applies per image.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>NULL</code> invisibly (always writes to disk).</p>
+    <p>Invisibly returns the last assembled plot when <code>output_dir =
+  NULL</code>; otherwise writes PDFs and returns <code>NULL</code> invisibly.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

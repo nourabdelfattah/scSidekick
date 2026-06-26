@@ -18,6 +18,103 @@
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 
+# =============================================================================
+# Legend-context helpers
+#
+# These three helpers cooperate to build the standardized opening sentence
+# in every .write_legend_sidecar() call:
+#
+#   .nk_unit_label()     -- "cells" / "nuclei" / "spots" / "bins" from assay_type
+#   .nk_warn_donor()     -- one-time message when donor.by is not set in PrepObject
+#   .nk_legend_context() -- bundles count + donor info into a list
+#   .nk_obs_sentence()   -- assembles the human-readable preamble string
+# =============================================================================
+
+# Map the assay_type vocabulary (same as log_analysis_params) to a unit label.
+.nk_unit_label <- function(seurat_object) {
+  at <- .nk_setting(seurat_object, "assay_type") %||%
+        tryCatch(seurat_object@misc$scSidekick_params$assay_type,
+                 error = function(e) NULL)
+  switch(at %||% "",
+    "snRNAseq"   = ,
+    "snRNA-seq"  = "nuclei",
+    "VisiumHD"   = "bins",
+    "Visium"     = ,
+    "Spatial"    = "spots",
+    "cells"   # default: scRNAseq, Xenium, ATAC, multiome, unrecognized
+  )
+}
+
+# Emit a once-per-session warning when donor.by is not configured.
+.nk_warn_donor <- function(seurat_object) {
+  if (!is.null(.nk_setting(seurat_object, "donor.by"))) return(invisible(NULL))
+  if (isTRUE(.nk_session_state$donor_warned))           return(invisible(NULL))
+  message("scSidekick: Set `donor.by` in PrepObject() to include sample counts ",
+          "in figure legends and methods text.")
+  .nk_session_state$donor_warned <- TRUE
+  invisible(NULL)
+}
+
+# Build the context list used by .nk_obs_sentence().
+# Counts donors at plot time (not PrepObject time) so subsetting is reflected.
+.nk_legend_context <- function(seurat_object) {
+  unit     <- .nk_unit_label(seurat_object)
+  n_obs    <- format(ncol(seurat_object), big.mark = ",")
+  obj_name <- .nk_setting(seurat_object, "object_name") %||% ""
+  don_col  <- .nk_setting(seurat_object, "donor.by")
+  n_donors <- if (!is.null(don_col) &&
+                  don_col %in% colnames(seurat_object@meta.data))
+    length(unique(seurat_object@meta.data[[don_col]]))
+  else NULL
+  list(unit     = unit,
+       n_obs    = n_obs,
+       obj_name = obj_name,
+       don_col  = don_col,
+       n_donors = n_donors)
+}
+
+# Build the opening preamble sentence from a context list.
+# Returns a character string ending without a period (caller adds punctuation).
+#
+# Example output:
+#   "UMAP projections of 8,691 cells from 36 samples [MouseBrain],
+#    color-coded by seurat_clusters, split by Group"
+.nk_obs_sentence <- function(ctx,
+                              reduction = NULL,
+                              group.by  = NULL,
+                              split.by  = NULL,
+                              row.by    = NULL) {
+  red_part <- if (!is.null(reduction) && nzchar(reduction))
+    paste0(toupper(reduction), " projections of ")
+  else
+    "Visualization of "
+
+  donor_part <- if (!is.null(ctx$n_donors))
+    paste0(" from ", format(ctx$n_donors, big.mark = ","), " samples")
+  else ""
+
+  name_part <- if (nchar(ctx$obj_name) > 0)
+    paste0(" [", ctx$obj_name, "]")
+  else ""
+
+  base <- paste0(red_part, ctx$n_obs, " ", ctx$unit, donor_part, name_part)
+
+  if (!is.null(group.by) && length(group.by) > 0)
+    base <- paste0(base, ", color-coded by ",
+                   paste(group.by, collapse = " and "))
+
+  if (!is.null(split.by) && !is.null(row.by))
+    base <- paste0(base, ", split by ", split.by, " (columns) and ",
+                   row.by, " (rows)")
+  else if (!is.null(split.by))
+    base <- paste0(base, ", split by ", split.by)
+  else if (!is.null(row.by))
+    base <- paste0(base, ", with rows grouped by ", row.by)
+
+  base
+}
+
+
 # ── Sleep prevention helpers ──────────────────────────────────────────────────
 # .nk_caffeinate() / .nk_decaffeinate() keep the machine awake during long
 # computations (CellChat, GSEA, annotation, etc.).

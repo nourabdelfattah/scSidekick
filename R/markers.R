@@ -26,12 +26,23 @@
 #' calls \code{presto::wilcoxauc(matrix, y)} so S3 dispatch lands on
 #' \code{wilcoxauc.default} directly - no internal \code{:::} access needed.
 #'
+#' When \code{split.by} is supplied the test is run independently within each
+#' level of that column (e.g. each cell type), and the results are combined into
+#' a single data frame with an extra column named after \code{split.by}.
+#'
 #' @param seurat_object A Seurat object.
 #' @param group.by Character. Metadata column whose levels define the
-#'   comparison groups (e.g. \code{"Cluster"}, \code{"Assignment"}).
+#'   comparison groups (e.g. \code{"Condition"}, \code{"Assignment"}).
 #'   When \code{NULL}, \code{\link[Seurat]{Idents}} is used.
+#' @param split.by Character or \code{NULL}. Metadata column to split on before
+#'   running the test.  The test is run independently within each level
+#'   (e.g. \code{split.by = "CellType"} finds condition markers per cell type).
+#'   The output gains a column named after \code{split.by} identifying each
+#'   level.  Levels with fewer than 2 groups after filtering are skipped with a
+#'   message.  Default \code{NULL} (no split).
 #' @param groups_use Character vector or \code{NULL}. Restrict the test to
-#'   a subset of \code{group.by} levels.  \code{NULL} = all levels.
+#'   a subset of \code{group.by} levels.  Applied within each split level when
+#'   \code{split.by} is set.  \code{NULL} = all levels.
 #' @param assay Character. Assay to extract. Default \code{"RNA"}.
 #' @param layer Character. Layer / slot to extract. Default \code{"data"}
 #'   (log-normalized counts, recommended for AUC statistics).
@@ -46,6 +57,8 @@
 #' @return A \code{data.frame} with one row per (feature × group) combination
 #'   containing \code{auc}, \code{pval}, \code{padj}, \code{logFC},
 #'   \code{pct_in}, \code{pct_out} - the standard \pkg{presto} output.
+#'   When \code{split.by} is set, an additional column named after
+#'   \code{split.by} identifies which split level each row came from.
 #'
 #' @seealso \code{\link[presto]{wilcoxauc}}
 #'
@@ -55,24 +68,28 @@
 #' markers <- RunWilcoxAUC(SeuratObj)
 #'
 #' # Specify a metadata column
-#' markers <- RunWilcoxAUC(SeuratObj, group.by = "Cluster")
+#' markers <- RunWilcoxAUC(SeuratObj, group.by = "Condition")
 #'
-#' # Only compare specific groups
-#' markers <- RunWilcoxAUC(SeuratObj, group.by = "Cluster",
-#'                          groups_use = c("Microglia", "Astrocytes"))
+#' # Find condition markers within each cell type
+#' markers <- RunWilcoxAUC(SeuratObj,
+#'                          group.by = "Condition",
+#'                          split.by = "CellType")
 #'
-#' # Top markers per cluster
+#' # Filter results for one cell type
 #' library(dplyr)
-#' top_markers <- markers |>
-#'   filter(padj < 0.05, logFC > 0.5, auc > 0.6) |>
-#'   group.by(group) |>
-#'   slice_max(auc, n = 20)
+#' markers |> filter(CellType == "Microglia", padj < 0.05, auc > 0.6)
+#'
+#' # Find cluster markers within each sample
+#' markers <- RunWilcoxAUC(SeuratObj,
+#'                          group.by = "Cluster",
+#'                          split.by = "Sample")
 #' }
 #'
 #' @export
 RunWilcoxAUC <- function(
     seurat_object,
     group.by   = NULL,
+    split.by   = NULL,
     groups_use = NULL,
     assay      = "RNA",
     layer      = "data",
@@ -84,9 +101,13 @@ RunWilcoxAUC <- function(
     stop("Package 'presto' is required.\n",
          "Install with: remotes::install_github('immunogenomics/presto')")
 
+  meta <- seurat_object@meta.data
+
+  # ── Validate split.by ─────────────────────────────────────────────────────
+  if (!is.null(split.by) && !split.by %in% colnames(meta))
+    stop("'", split.by, "' not found in seurat_object@meta.data.")
+
   # ── Extract expression matrix ─────────────────────────────────────────────
-  # .get_layer_data handles BPCells lazy subset, v3 slot= vs v5 layer=,
-  # and coerces the result to a dgCMatrix.
   mat <- .get_layer_data(seurat_object, assay = assay, layer = layer)
 
   # ── Build cell → group label vector ───────────────────────────────────────
@@ -94,15 +115,12 @@ RunWilcoxAUC <- function(
     idents <- SeuratObject::Idents(seurat_object)
     y <- stats::setNames(as.character(idents), names(idents))
   } else {
-    meta <- seurat_object@meta.data
     if (!group.by %in% colnames(meta))
       stop("'", group.by, "' not found in seurat_object@meta.data.")
     y <- stats::setNames(as.character(meta[[group.by]]), rownames(meta))
   }
 
   # ── Align cells ───────────────────────────────────────────────────────────
-  # Matrix columns and label names must agree.  Subset to the intersection
-  # (handles the case where the assay has fewer cells than the full metadata).
   common <- intersect(colnames(mat), names(y))
   if (length(common) == 0L)
     stop("No cells overlap between expression matrix columns and group labels. ",
@@ -114,7 +132,48 @@ RunWilcoxAUC <- function(
   mat <- mat[, common, drop = FALSE]
   y   <- y[common]
 
-  # ── Filter to requested groups ────────────────────────────────────────────
+  # ── Split path ────────────────────────────────────────────────────────────
+  if (!is.null(split.by)) {
+    split_vals   <- stats::setNames(as.character(meta[[split.by]]), rownames(meta))
+    split_vals   <- split_vals[common]
+    split_levels <- unique(split_vals[!is.na(split_vals)])
+
+    results <- lapply(split_levels, function(lvl) {
+      keep_s  <- !is.na(split_vals) & split_vals == lvl
+      mat_s   <- mat[, keep_s, drop = FALSE]
+      y_s     <- y[keep_s]
+
+      if (!is.null(groups_use)) {
+        keep_g <- y_s %in% groups_use
+        mat_s  <- mat_s[, keep_g, drop = FALSE]
+        y_s    <- y_s[keep_g]
+      }
+
+      n_grp <- length(unique(y_s))
+      if (ncol(mat_s) == 0L || n_grp < 2L) {
+        message("scSidekick: Skipping ", split.by, " = '", lvl,
+                "' (", ncol(mat_s), " cell(s), ", n_grp, " group(s) — need ≥ 2).")
+        return(NULL)
+      }
+
+      message("scSidekick: [", lvl, "] wilcoxauc — ",
+              nrow(mat_s), " features × ", ncol(mat_s), " cells, ",
+              n_grp, " groups",
+              if (!is.null(groups_use)) paste0(" [", paste(groups_use, collapse = ", "), "]") else "",
+              ".")
+
+      res <- presto::wilcoxauc(X = mat_s, y = y_s, ...)
+      res[[split.by]] <- lvl
+      res
+    })
+
+    out <- do.call(rbind, Filter(Negate(is.null), results))
+    # Move split column to front for readability
+    out <- out[, c(split.by, setdiff(colnames(out), split.by)), drop = FALSE]
+    return(out)
+  }
+
+  # ── No-split path ─────────────────────────────────────────────────────────
   if (!is.null(groups_use)) {
     keep <- y %in% groups_use
     if (!any(keep))
@@ -125,14 +184,11 @@ RunWilcoxAUC <- function(
     y   <- y[keep]
   }
 
-  message("scSidekick: Running wilcoxauc - ",
+  message("scSidekick: Running wilcoxauc — ",
           nrow(mat), " features × ", ncol(mat), " cells, ",
           length(unique(y)), " groups",
           if (!is.null(groups_use)) paste0(" [", paste(groups_use, collapse = ", "), "]") else "",
           ".")
 
-  # ── Call presto ───────────────────────────────────────────────────────────
-  # Passing a dgCMatrix dispatches to wilcoxauc.default (or wilcoxauc.dgCMatrix)
-  # via S3 - bypasses the wilcoxauc.Seurat path entirely.  No ::: needed.
   presto::wilcoxauc(X = mat, y = y, ...)
 }

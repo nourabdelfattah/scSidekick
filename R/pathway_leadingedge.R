@@ -298,6 +298,8 @@ VisualizeLeadingEdge <- function(
     stop("Provide 'search_terms' (keyword search) or 'pathways' (exact names).")
   if (missing(output_dir))
     stop("'output_dir' is required.")
+  .nk_warn_donor(seurat_object)
+  le_ctx <- .nk_legend_context(seurat_object)
 
   # ── 1. Subset object ───────────────────────────────────────────────────────
   if (isTRUE(subset_cells)) {
@@ -751,11 +753,16 @@ VisualizeLeadingEdge <- function(
 
   .write_legend_sidecar(pdf_all, paste0(
     hm_desc,
-    " Leading-edge genes from GSEA pathways matching [", term_label, "]. ",
-    "Expression pulled from '", assay, "' assay, '", layer, "' layer. ",
-    "Values are row-mean-centered (each gene shifted to mean 0 across cells/groups). ",
+    " Leading-edge genes from GSEA pathways matching [", term_label, "], ",
+    "dataset: ", le_ctx$n_obs, " ", le_ctx$unit,
+    if (!is.null(le_ctx$n_donors))
+      paste0(" from ", format(le_ctx$n_donors, big.mark = ","), " donors")
+    else "",
+    if (nchar(le_ctx$obj_name) > 0) paste0(" [", le_ctx$obj_name, "]") else "",
+    ". Expression from '", assay, "' assay, '", layer, "' layer. ",
+    "Values are row-mean-centered. ",
     "Color scale: blue = -2, white = 0, red = +2. ",
-    "Genes with mean expression < ", min_expr, " across all cells excluded.",
+    "Genes with mean expression < ", min_expr, " excluded.",
     if (isTRUE(show_pathway_annotation) && n_pathways > 0)
       " Right annotation bar shows source pathway per gene." else "",
     if (!is.null(heatmap_column_split))
@@ -822,12 +829,16 @@ VisualizeLeadingEdge <- function(
         .write_legend_sidecar(pdf_top, paste0(
           "Heatmap of top ", deg_top_n, " DEGs per ", group.by, " group ",
           "(", deg_padj_column, " < ", deg_padj_cutoff, ") that are also ",
-          "leading-edge genes of GSEA pathways matching [", term_label, "]. ",
-          "Expression from '", assay, "' assay, '", layer, "' layer; ",
-          "values are row-mean-centered. ",
+          "leading-edge genes of GSEA pathways matching [", term_label, "]; ",
+          "dataset: ", le_ctx$n_obs, " ", le_ctx$unit,
+          if (!is.null(le_ctx$n_donors))
+            paste0(" from ", format(le_ctx$n_donors, big.mark = ","), " donors")
+          else "",
+          if (nchar(le_ctx$obj_name) > 0) paste0(" [", le_ctx$obj_name, "]") else "",
+          ". Expression from '", assay, "' assay; values are row-mean-centered. ",
           "Color scale: blue = -2, white = 0, red = +2. ",
           if (heatmap_type == "group")
-            paste0("Each column = mean expression across all cells in a ",
+            paste0("Each column = mean expression per ",
                    group.by,
                    if (!is.null(split.by)) paste0(" x ", split.by) else "",
                    " group. Rows hierarchically clustered.")

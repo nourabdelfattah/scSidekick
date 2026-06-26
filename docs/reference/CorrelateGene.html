@@ -11,7 +11,7 @@ levels are supported:"><meta property="og:image" content="https://nourabdelfatta
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,7 @@ levels are supported:"><meta property="og:image" content="https://nourabdelfatta
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -42,6 +43,9 @@ levels are supported:"><meta property="og:image" content="https://nourabdelfatta
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -49,6 +53,7 @@ levels are supported:"><meta property="og:image" content="https://nourabdelfatta
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -73,11 +78,11 @@ levels are supported:</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">CorrelateGene</span><span class="op">(</span></span>
 <span>  <span class="va">seurat_object</span>,</span>
 <span>  <span class="va">gene</span>,</span>
-<span>  <span class="va">group_by</span>,</span>
+<span>  <span class="va">group.by</span>,</span>
 <span>  level <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sc"</span>, <span class="st">"pseudobulk"</span>, <span class="st">"group"</span><span class="op">)</span>,</span>
-<span>  compare_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  sample_column <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  group_column <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  compare.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sample.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  condition.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  assay <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  layer <span class="op">=</span> <span class="st">"data"</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"spearman"</span>, <span class="st">"pearson"</span><span class="op">)</span>,</span>
@@ -101,7 +106,7 @@ levels are supported:</p>
 <dd><p>Character. The gene of interest (GOI).</p></dd>
 
 
-<dt id="arg-group-by">group_by<a class="anchor" aria-label="anchor" href="#arg-group-by"></a></dt>
+<dt id="arg-group-by">group.by<a class="anchor" aria-label="anchor" href="#arg-group-by"></a></dt>
 <dd><p>Character. Cell-type identity column.</p></dd>
 
 
@@ -109,18 +114,18 @@ levels are supported:</p>
 <dd><p>Character. <code>"sc"</code> (default), <code>"pseudobulk"</code>, or <code>"group"</code>.</p></dd>
 
 
-<dt id="arg-compare-by">compare_by<a class="anchor" aria-label="anchor" href="#arg-compare-by"></a></dt>
+<dt id="arg-compare-by">compare.by<a class="anchor" aria-label="anchor" href="#arg-compare-by"></a></dt>
 <dd><p>Character or <code>NULL</code>. Optional metadata column whose levels
 define independent comparison groups (e.g. <code>"Sex"</code>, <code>"Diagnosis"</code>).
 When supplied, correlation is computed separately within each level so you
 can ask which genes are correlated with GOI in group A but not group B.</p></dd>
 
 
-<dt id="arg-sample-column">sample_column<a class="anchor" aria-label="anchor" href="#arg-sample-column"></a></dt>
+<dt id="arg-sample-by">sample.by<a class="anchor" aria-label="anchor" href="#arg-sample-by"></a></dt>
 <dd><p>Character. Donor/sample ID. Required for <code>"pseudobulk"</code>.</p></dd>
 
 
-<dt id="arg-group-column">group_column<a class="anchor" aria-label="anchor" href="#arg-group-column"></a></dt>
+<dt id="arg-condition-by">condition.by<a class="anchor" aria-label="anchor" href="#arg-condition-by"></a></dt>
 <dd><p>Character. Condition column. Required for <code>"group"</code>.</p></dd>
 
 
@@ -162,7 +167,7 @@ that must express a tested gene. Default <code>10</code>.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data frame: <code>gene</code>, <code>cell_type</code>, <code>r</code>, <code>p</code>, <code>padj</code>, <code>n</code>, <code>goi</code>,
-<code>level</code>, <code>method</code>, and (when <code>compare_by</code> is set) <code>compare_group</code>.
+<code>level</code>, <code>method</code>, and (when <code>compare.by</code> is set) <code>compare_group</code>.
 Sorted by cell type then descending <code>|r|</code>.</p>
     </div>
     <div class="section level2">
@@ -175,9 +180,9 @@ dropout. Exploratory; validate hits at pseudobulk level.</p></li>
 cell type, converts to edgeR log-CPM, then runs Spearman across donors.
 Statistically most valid.</p></li>
 <li><p><strong><code>"group"</code></strong>: averages log-normalized expression within each
-<code>group_column x cell_type</code> combination, then correlates across groups.</p></li>
-</ul><p>When <code>compare_by</code> is supplied, the analysis is run separately within each
-level of that variable (e.g. <code>compare_by = "Sex"</code> produces independent
+<code>condition.by x cell_type</code> combination, then correlates across groups.</p></li>
+</ul><p>When <code>compare.by</code> is supplied, the analysis is run separately within each
+level of that variable (e.g. <code>compare.by = "Sex"</code> produces independent
 correlation tables for males and females). Results gain a <code>compare_group</code>
 column and <code><a href="PlotCorrelation.html">PlotCorrelation()</a></code> will lay the groups out side by side.</p>
     </div>

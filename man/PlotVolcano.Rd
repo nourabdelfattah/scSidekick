@@ -6,18 +6,19 @@
 \usage{
 PlotVolcano(
   deg_df,
-  gene_column = NULL,
-  fc_column = NULL,
-  padj_column = NULL,
-  group_column = NULL,
-  fc_cutoff = 0.25,
-  padj_cutoff = 0.05,
-  top_n_labels = 10,
-  highlight_genes = NULL,
+  gene.column = NULL,
+  fc.column = NULL,
+  padj.column = NULL,
+  group.by = NULL,
+  ncol = NULL,
+  fc.cutoff = 0.25,
+  padj.cutoff = 0.05,
+  top.n.labels = 10,
+  highlight.genes = NULL,
   colors = c(up = "#B40426", down = "#3B4CC0", ns = "gray70"),
-  point_size = 1,
-  point_alpha = 0.6,
-  max_overlaps = 20,
+  point.size = 1,
+  point.alpha = 0.6,
+  max.overlaps = 20,
   output_dir = NULL,
   object_name = "",
   subset_name = ""
@@ -28,36 +29,39 @@ PlotVolcano(
 with presto (\code{"feature"/"logFC"/"padj"}) and Seurat
 (\code{"gene"/"avg_log2FC"/"p_val_adj"}).}
 
-\item{gene_column}{Column with gene names. Auto-detected if \code{NULL}.}
+\item{gene.column}{Column with gene names. Auto-detected if \code{NULL}.}
 
-\item{fc_column}{Column with log fold-change. Auto-detected if \code{NULL}.}
+\item{fc.column}{Column with log fold-change. Auto-detected if \code{NULL}.}
 
-\item{padj_column}{Column with adjusted p-value. Auto-detected if \code{NULL}.}
+\item{padj.column}{Column with adjusted p-value. Auto-detected if \code{NULL}.}
 
-\item{group_column}{Optional metadata column to facet by (one panel per
-group level). \code{NULL} = no faceting.}
+\item{group.by}{Optional column to facet by (one panel per group level).
+\code{NULL} = no faceting.}
 
-\item{fc_cutoff}{Absolute log fold-change threshold (vertical dashed lines).
+\item{ncol}{Integer or \code{NULL}. Number of columns in the facet layout
+when \code{group.by} is set. \code{NULL} lets \code{ggplot2} choose.}
+
+\item{fc.cutoff}{Absolute log fold-change threshold (vertical dashed lines).
 Default \code{0.25}.}
 
-\item{padj_cutoff}{Adjusted p-value significance cutoff (horizontal dashed
+\item{padj.cutoff}{Adjusted p-value significance cutoff (horizontal dashed
 line). Default \code{0.05}.}
 
-\item{top_n_labels}{Number of top genes to label per direction (up and down
+\item{top.n.labels}{Number of top genes to label per direction (up and down
 separately). Genes ranked by \eqn{-\log_{10}(padj) \times |logFC|}.
 Default \code{10}.}
 
-\item{highlight_genes}{Character vector of specific genes to always label
+\item{highlight.genes}{Character vector of specific genes to always label
 regardless of their ranking.}
 
 \item{colors}{Named character vector with elements \code{"up"}, \code{"down"},
 and \code{"ns"} (not significant). Defaults to red/blue/gray.}
 
-\item{point_size}{Point size. Default \code{1}.}
+\item{point.size}{Point size. Default \code{1}.}
 
-\item{point_alpha}{Point transparency. Default \code{0.6}.}
+\item{point.alpha}{Point transparency. Default \code{0.6}.}
 
-\item{max_overlaps}{Maximum label overlaps passed to \code{ggrepel}.
+\item{max.overlaps}{Maximum label overlaps passed to \code{ggrepel}.
 Default \code{20}.}
 
 \item{output_dir}{Directory to save a PDF. \code{NULL} = plot only, no save.}

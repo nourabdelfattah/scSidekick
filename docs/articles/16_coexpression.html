@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,6 +59,9 @@
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -67,6 +70,7 @@
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
@@ -110,6 +114,21 @@ high / low (or expressed / zero) based on a gene’s expression, per cell
 type. Feeds directly into <code><a href="../reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code> or
 <code><a href="https://satijalab.org/seurat/reference/FindMarkers.html" class="external-link">FindMarkers()</a></code>.</li>
 </ul>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nourabdelfattah.github.io/scSidekick/">scSidekick</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.satijalab.org/seurat" class="external-link">SeuratData</a></span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">#for this we will load an object with multiple donors/samples</span></span>
+<span><span class="co">#InstallData("panc8")</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"panc8"</span><span class="op">)</span></span>
+<span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/UpdateSeuratObject.html" class="external-link">UpdateSeuratObject</a></span><span class="op">(</span><span class="va">panc8</span><span class="op">)</span></span>
+<span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/NormalizeData.html" class="external-link">NormalizeData</a></span><span class="op">(</span><span class="va">panc8</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">panc8</span><span class="op">$</span><span class="va">donor</span><span class="op">=</span><span class="va">panc8</span><span class="op">$</span><span class="va">orig.ident</span></span>
+<span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PrepObject.html">PrepObject</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"donor"</span>, <span class="st">"celltype"</span><span class="op">)</span>,</span>
+<span>  group.by    <span class="op">=</span> <span class="st">"celltype"</span>,</span>
+<span>  object_name <span class="op">=</span> <span class="st">"panc8"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -119,13 +138,27 @@ type. Feeds directly into <code><a href="../reference/RunGSEA_pseudobulk.html">R
 across individual cells within each cell type. Only genes expressed in
 at least <code>min_pct</code>% of cells in a given cell type are tested
 (<code>expressed_only = TRUE</code> by default).</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cor_sc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene     <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cor_sc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene     <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by <span class="op">=</span> <span class="st">"celltype"</span>,</span>
 <span>  level    <span class="op">=</span> <span class="st">"sc"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cor_sc</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##           gene cell_type          r            p         padj   n   goi level</span></span>
+<span><span class="co">## 1         NME2    acinar -0.3079248 2.033663e-18 2.327934e-14 772 STAT1    sc</span></span>
+<span><span class="co">## 2 LOC100506281    acinar -0.2992826 1.935724e-17 1.107912e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 3       MAN1B1    acinar -0.2945833 6.386592e-17 1.982662e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 4        TAAR5    acinar -0.2942597 6.928145e-17 1.982662e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 5     EIF4EBP3    acinar -0.2860819 5.236258e-16 1.192260e-12 772 STAT1    sc</span></span>
+<span><span class="co">## 6          A2M    acinar -0.2853201 6.300764e-16 1.192260e-12 772 STAT1    sc</span></span>
+<span><span class="co">##     method</span></span>
+<span><span class="co">## 1 spearman</span></span>
+<span><span class="co">## 2 spearman</span></span>
+<span><span class="co">## 3 spearman</span></span>
+<span><span class="co">## 4 spearman</span></span>
+<span><span class="co">## 5 spearman</span></span>
+<span><span class="co">## 6 spearman</span></span></code></pre>
 <p>Each row is one gene in one cell type. Key columns:</p>
 <table class="table">
 <thead><tr class="header">
@@ -179,29 +212,31 @@ negatively correlated genes. Significant genes
 (<code>padj &lt; padj_cutoff</code>) are colored; the top
 <code>label_n</code> in each direction are labeled. Panels are assembled
 with <code><a href="https://patchwork.data-imaginist.com/reference/wrap_plots.html" class="external-link">patchwork::wrap_plots()</a></code>.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotCorrelation.html">PlotCorrelation</a></span><span class="op">(</span><span class="va">cor_sc</span>,</span>
 <span>  n_pos       <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  n_neg       <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  label_n     <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  padj_cutoff <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  r_cutoff    <span class="op">=</span> <span class="fl">0.3</span>,     <span class="co"># draws ±0.3 dotted reference lines</span></span>
-<span>  ncol        <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
-<p>Restrict to specific cell types with <code>cell_type</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<span>  ncol        <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
+<p><img src="16_coexpression_files/figure-html/plot-cor-1.png" width="1152"></p>
+<p>Restrict to specific cell types with <code>cell.type</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotCorrelation.html">PlotCorrelation</a></span><span class="op">(</span><span class="va">cor_sc</span>,</span>
-<span>  cell_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NK"</span>, <span class="st">"Mono"</span><span class="op">)</span>,</span>
+<span>  cell.type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"acinar"</span>, <span class="st">"ductal"</span><span class="op">)</span>,</span>
 <span>  n_pos     <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>  n_neg     <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>  label_n   <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span></code></pre></div>
+<p><img src="16_coexpression_files/figure-html/plot-cor-subset-1.png" width="768"></p>
 <p>Save to PDF (a <code>.legend</code> sidecar is written
 automatically):</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotCorrelation.html">PlotCorrelation</a></span><span class="op">(</span><span class="va">cor_sc</span>,</span>
 <span>  n_pos      <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  n_neg      <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="st">"./Figures"</span>,</span>
-<span>  file_name  <span class="op">=</span> <span class="st">"LYZ_coexpression"</span><span class="op">)</span></span></code></pre></div>
+<span>  file_name  <span class="op">=</span> <span class="st">"STAT1_coexpression"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -211,51 +246,68 @@ automatically):</p>
 (<code>level = "pseudobulk"</code>) aggregates counts to the donor x
 cell-type level first. This removes within-donor cell-count inflation
 and is more appropriate for multi-sample comparisons. Requires
-<code>sample_column</code>.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cor_pb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene          <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by      <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
-<span>  level         <span class="op">=</span> <span class="st">"pseudobulk"</span>,</span>
-<span>  sample_column <span class="op">=</span> <span class="st">"donor"</span>,</span>
-<span>  min_donors    <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<code>sample.by</code>.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cor_pb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene       <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by   <span class="op">=</span> <span class="st">"celltype"</span>,</span>
+<span>  level      <span class="op">=</span> <span class="st">"pseudobulk"</span>,</span>
+<span>  sample.by  <span class="op">=</span> <span class="st">"donor"</span>,</span>
+<span>  min_donors <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="group-average-level">Group-average level<a class="anchor" aria-label="anchor" href="#group-average-level"></a>
 </h3>
 <p><code>level = "group"</code> averages expression within each
-combination of cell type and <code>group_column</code>, then correlates
+combination of cell type and <code>condition.by</code>, then correlates
 across those group-level averages. Useful when donors are few but groups
 are many (e.g. comparing many cell-type x timepoint combinations).</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cor_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene         <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by     <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
-<span>  level        <span class="op">=</span> <span class="st">"group"</span>,</span>
-<span>  group_column <span class="op">=</span> <span class="st">"donor"</span>,</span>
-<span>  min_groups   <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cor_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene         <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by     <span class="op">=</span> <span class="st">"celltype"</span>,</span>
+<span>  level        <span class="op">=</span> <span class="st">"sc"</span>,</span>
+<span>  condition.by <span class="op">=</span> <span class="st">"donor"</span>,</span>
+<span>  min_groups   <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cor_grp</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##           gene cell_type          r            p         padj   n   goi level</span></span>
+<span><span class="co">## 1         NME2    acinar -0.3079248 2.033663e-18 2.327934e-14 772 STAT1    sc</span></span>
+<span><span class="co">## 2 LOC100506281    acinar -0.2992826 1.935724e-17 1.107912e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 3       MAN1B1    acinar -0.2945833 6.386592e-17 1.982662e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 4        TAAR5    acinar -0.2942597 6.928145e-17 1.982662e-13 772 STAT1    sc</span></span>
+<span><span class="co">## 5     EIF4EBP3    acinar -0.2860819 5.236258e-16 1.192260e-12 772 STAT1    sc</span></span>
+<span><span class="co">## 6          A2M    acinar -0.2853201 6.300764e-16 1.192260e-12 772 STAT1    sc</span></span>
+<span><span class="co">##     method</span></span>
+<span><span class="co">## 1 spearman</span></span>
+<span><span class="co">## 2 spearman</span></span>
+<span><span class="co">## 3 spearman</span></span>
+<span><span class="co">## 4 spearman</span></span>
+<span><span class="co">## 5 spearman</span></span>
+<span><span class="co">## 6 spearman</span></span></code></pre>
 <hr>
 </div>
 </div>
 <div class="section level2">
-<h2 id="stratified-analysis-with-compare_by">4. Stratified analysis with <code>compare_by</code><a class="anchor" aria-label="anchor" href="#stratified-analysis-with-compare_by"></a>
+<h2 id="stratified-analysis-with-compare-by">4. Stratified analysis with <code>compare.by</code><a class="anchor" aria-label="anchor" href="#stratified-analysis-with-compare-by"></a>
 </h2>
-<p>Pass <code>compare_by</code> to run the correlation separately within
+<p>Pass <code>compare.by</code> to run the correlation separately within
 each level of a grouping variable (e.g. sex, condition, batch). The
 result gains a <code>compare_group</code> column, and
 <code><a href="../reference/PlotCorrelation.html">PlotCorrelation()</a></code> automatically lays out one column per
 comparison group.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cor_by_donor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene       <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cor_by_dataset</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/CorrelateGene.html">CorrelateGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene       <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by   <span class="op">=</span> <span class="st">"celltype"</span>,</span>
 <span>  level      <span class="op">=</span> <span class="st">"sc"</span>,</span>
-<span>  compare_by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span>
+<span>  compare.by <span class="op">=</span> <span class="st">"dataset"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ncol defaults to the number of comparison groups</span></span>
-<span><span class="fu"><a href="../reference/PlotCorrelation.html">PlotCorrelation</a></span><span class="op">(</span><span class="va">cor_by_donor</span>,</span>
-<span>  cell_type <span class="op">=</span> <span class="st">"Mono"</span>,</span>
+<span><span class="fu"><a href="../reference/PlotCorrelation.html">PlotCorrelation</a></span><span class="op">(</span><span class="va">cor_by_dataset</span>,</span>
+<span>  cell.type <span class="op">=</span> <span class="st">"acinar"</span>,</span>
 <span>  n_pos     <span class="op">=</span> <span class="fl">15</span>,</span>
-<span>  n_neg     <span class="op">=</span> <span class="fl">15</span><span class="op">)</span></span></code></pre></div>
+<span>  n_neg     <span class="op">=</span> <span class="fl">15</span>,ncol <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<p><img src="16_coexpression_files/figure-html/compare-by-1.png" width="768"></p>
 <hr>
 </div>
 <div class="section level2">
@@ -269,22 +321,38 @@ into <code><a href="../reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</
 <div class="section level3">
 <h3 id="default-zero-vs--expressed">Default: zero vs. expressed<a class="anchor" aria-label="anchor" href="#default-zero-vs--expressed"></a>
 </h3>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bmcite</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SplitByGene.html">SplitByGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene     <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
-<span>  split    <span class="op">=</span> <span class="st">"zero_vs_expressed"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># New column "LYZ_split" is now in meta.data:</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">bmcite</span><span class="op">$</span><span class="va">LYZ_split</span>, <span class="va">bmcite</span><span class="op">$</span><span class="va">celltype.l1</span>, useNA <span class="op">=</span> <span class="st">"ifany"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SplitByGene.html">SplitByGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene     <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by <span class="op">=</span> <span class="st">"celltype"</span>,</span>
+<span>  split    <span class="op">=</span> <span class="st">"zero_vs_expressed"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##            celltype</span></span>
+<span><span class="co">## STAT1_split acinar activated_stellate alpha beta delta ductal endothelial</span></span>
+<span><span class="co">##   expressed    772                227  2209 1393   359   1065          43</span></span>
+<span><span class="co">##   zero        1092                247  2406 2286   654    889         253</span></span>
+<span><span class="co">##            celltype</span></span>
+<span><span class="co">## STAT1_split epsilon gamma macrophage mast quiescent_stellate schwann</span></span>
+<span><span class="co">##   expressed      15   306         44   11                 36       8</span></span>
+<span><span class="co">##   zero           15   319         35   45                144      17</span></span></code></pre>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># New column "STAT1_split" is now in meta.data:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">panc8</span><span class="op">$</span><span class="va">STAT1_split</span>, <span class="va">panc8</span><span class="op">$</span><span class="va">celltype</span>, useNA <span class="op">=</span> <span class="st">"ifany"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##            </span></span>
+<span><span class="co">##             acinar activated_stellate alpha beta delta ductal endothelial</span></span>
+<span><span class="co">##   expressed    772                227  2209 1393   359   1065          43</span></span>
+<span><span class="co">##   zero        1092                247  2406 2286   654    889         253</span></span>
+<span><span class="co">##            </span></span>
+<span><span class="co">##             epsilon gamma macrophage mast quiescent_stellate schwann</span></span>
+<span><span class="co">##   expressed      15   306         44   11                 36       8</span></span>
+<span><span class="co">##   zero           15   319         35   45                144      17</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="quantile-split">Quantile split<a class="anchor" aria-label="anchor" href="#quantile-split"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">bmcite</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SplitByGene.html">SplitByGene</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  gene           <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
-<span>  group.by       <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SplitByGene.html">SplitByGene</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  gene           <span class="op">=</span> <span class="st">"STAT1"</span>,</span>
+<span>  group.by       <span class="op">=</span> <span class="st">"celltype"</span>,</span>
 <span>  split          <span class="op">=</span> <span class="st">"quantile"</span>,</span>
 <span>  quantile_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.25</span>, <span class="fl">0.75</span><span class="op">)</span><span class="op">)</span>  <span class="co"># bottom 25% = "low", top 25% = "high"</span></span></code></pre></div>
 <p>Middle cells (between the two quantiles) receive <code>NA</code> and
@@ -294,29 +362,38 @@ extremes.</p>
 <div class="section level3">
 <h3 id="feeding-into-rungsea_pseudobulk">Feeding into <code>RunGSEA_pseudobulk()</code><a class="anchor" aria-label="anchor" href="#feeding-into-rungsea_pseudobulk"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
-<span>  group.by    <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/RunGSEA_pseudobulk.html">RunGSEA_pseudobulk</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  group.by    <span class="op">=</span> <span class="st">"celltype"</span>,</span>
 <span>  sample.by   <span class="op">=</span> <span class="st">"donor"</span>,</span>
-<span>  contrast.by <span class="op">=</span> <span class="st">"LYZ_split"</span>,</span>
-<span>  contrasts   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>expressed_vs_zero <span class="op">=</span> <span class="st">"expressed - zero"</span><span class="op">)</span>,</span>
+<span>  contrast.by <span class="op">=</span> <span class="st">"STAT1_split"</span>,</span>
+<span>  pathway_sets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span> Hallmark <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>category <span class="op">=</span> <span class="st">"H"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  species     <span class="op">=</span> <span class="st">"human"</span>,</span>
-<span>  output_dir  <span class="op">=</span> <span class="st">"./Figures/LYZ_pseudobulk_GSEA"</span><span class="op">)</span></span></code></pre></div>
+<span>  output_dir  <span class="op">=</span> <span class="st">"./Figures/STAT1_pseudobulk_GSEA"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="feeding-into-findmarkers">Feeding into <code>FindMarkers()</code><a class="anchor" aria-label="anchor" href="#feeding-into-findmarkers"></a>
+<h3 id="feeding-into-runwilcoxauc">Feeding into <code>RunWilcoxAUC()</code><a class="anchor" aria-label="anchor" href="#feeding-into-runwilcoxauc"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mono</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">bmcite</span>, <span class="va">celltype.l1</span> <span class="op">==</span> <span class="st">"Mono"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">Seurat</span><span class="fu">::</span><span class="fu"><a href="https://satijalab.org/seurat/reference/FindMarkers.html" class="external-link">FindMarkers</a></span><span class="op">(</span><span class="va">mono</span>,</span>
-<span>  group.by  <span class="op">=</span> <span class="st">"LYZ_split"</span>,</span>
-<span>  ident.1   <span class="op">=</span> <span class="st">"expressed"</span>,</span>
-<span>  ident.2   <span class="op">=</span> <span class="st">"zero"</span>,</span>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunWilcoxAUC.html">RunWilcoxAUC</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  group.by  <span class="op">=</span> <span class="st">"STAT1_split"</span>,split.by<span class="op">=</span><span class="st">"celltype"</span>,</span>
 <span>  min.pct   <span class="op">=</span> <span class="fl">0.1</span>,</span>
 <span>  logfc.threshold <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span></span>
-<span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">markers</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##   celltype  feature     group      avgExpr         logFC statistic       auc</span></span>
+<span><span class="co">## 1    gamma A1BG-AS1 expressed 0.0086168257  0.0073175175   50598.5 0.5183529</span></span>
+<span><span class="co">## 2    gamma     A1BG expressed 0.2699636005  0.1362715557   62992.0 0.6453173</span></span>
+<span><span class="co">## 3    gamma     A1CF expressed 0.5195332278  0.1377585800   59419.0 0.6087139</span></span>
+<span><span class="co">## 4    gamma  A2M-AS1 expressed 0.0139130153  0.0067855068   50098.0 0.5132256</span></span>
+<span><span class="co">## 5    gamma    A2ML1 expressed 0.0052403089 -0.0005868226   50115.0 0.5133997</span></span>
+<span><span class="co">## 6    gamma    A2MP1 expressed 0.0001736141  0.0001736141   48966.5 0.5016340</span></span>
+<span><span class="co">##           pval         padj     pct_in   pct_out</span></span>
+<span><span class="co">## 1 7.617306e-03 2.366026e-02  4.9019608  1.253918</span></span>
+<span><span class="co">## 2 1.376288e-13 1.060389e-11 50.3267974 19.749216</span></span>
+<span><span class="co">## 3 4.934176e-07 4.048545e-06 64.3790850 36.050157</span></span>
+<span><span class="co">## 4 3.659151e-02 9.559750e-02  3.9215686  1.253918</span></span>
+<span><span class="co">## 5 5.738417e-02 1.394056e-01  4.5751634  1.880878</span></span>
+<span><span class="co">## 6 3.087634e-01 5.437977e-01  0.3267974  0.000000</span></span></code></pre>
 <hr>
 </div>
 </div>
@@ -337,7 +414,7 @@ GSEA pipeline (<code>contrast.by</code> accepts the column from
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.3.1 (2023-06-16)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20 (64-bit)</span></span>
@@ -357,11 +434,11 @@ GSEA pipeline (<code>contrast.by</code> accepts the column from
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">## [1] stxBrain.SeuratData_0.1.2 pbmc3k.SeuratData_3.1.4  </span></span>
-<span><span class="co">## [3] ifnb.SeuratData_3.1.0     bmcite.SeuratData_0.3.0  </span></span>
-<span><span class="co">## [5] SeuratData_0.2.2          Seurat_5.2.1             </span></span>
-<span><span class="co">## [7] SeuratObject_5.1.0        sp_2.1-3                 </span></span>
-<span><span class="co">## [9] scSidekick_0.1.0         </span></span>
+<span><span class="co">##  [1] stxBrain.SeuratData_0.1.2 pbmc3k.SeuratData_3.1.4  </span></span>
+<span><span class="co">##  [3] panc8.SeuratData_3.0.2    ifnb.SeuratData_3.1.0    </span></span>
+<span><span class="co">##  [5] bmcite.SeuratData_0.3.0   SeuratData_0.2.2         </span></span>
+<span><span class="co">##  [7] Seurat_5.2.1              SeuratObject_5.1.0       </span></span>
+<span><span class="co">##  [9] sp_2.1-3                  scSidekick_1.0.0         </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
 <span><span class="co">##   [1] RColorBrewer_1.1-3     rstudioapi_0.16.0      jsonlite_2.0.0        </span></span>
@@ -378,32 +455,35 @@ GSEA pipeline (<code>contrast.by</code> accepts the column from
 <span><span class="co">##  [34] future_1.33.2          shiny_1.11.1           digest_0.6.37         </span></span>
 <span><span class="co">##  [37] colorspace_2.1-1       patchwork_1.3.1        tensor_1.5            </span></span>
 <span><span class="co">##  [40] RSpectra_0.16-1        irlba_2.3.5.1          textshaping_0.3.7     </span></span>
-<span><span class="co">##  [43] progressr_0.14.0       spatstat.sparse_3.0-3  httr_1.4.7            </span></span>
-<span><span class="co">##  [46] polyclip_1.10-6        abind_1.4-8            compiler_4.3.1        </span></span>
-<span><span class="co">##  [49] fastDummies_1.7.3      MASS_7.3-60.0.1        rappdirs_0.3.3        </span></span>
-<span><span class="co">##  [52] tools_4.3.1            lmtest_0.9-40          otel_0.2.0            </span></span>
-<span><span class="co">##  [55] httpuv_1.6.16          future.apply_1.11.2    goftest_1.2-3         </span></span>
-<span><span class="co">##  [58] glue_1.8.0             nlme_3.1-164           promises_1.5.0        </span></span>
-<span><span class="co">##  [61] grid_4.3.1             Rtsne_0.17             cluster_2.1.6         </span></span>
-<span><span class="co">##  [64] reshape2_1.4.4         generics_0.1.4         gtable_0.3.6          </span></span>
-<span><span class="co">##  [67] spatstat.data_3.0-4    tidyr_1.3.1            data.table_1.15.4     </span></span>
-<span><span class="co">##  [70] spatstat.geom_3.2-9    RcppAnnoy_0.0.22       ggrepel_0.9.6         </span></span>
-<span><span class="co">##  [73] RANN_2.6.1             pillar_1.11.0          stringr_1.5.1         </span></span>
-<span><span class="co">##  [76] spam_2.10-0            RcppHNSW_0.6.0         later_1.4.2           </span></span>
-<span><span class="co">##  [79] splines_4.3.1          dplyr_1.1.4            lattice_0.22-6        </span></span>
-<span><span class="co">##  [82] survival_3.5-8         deldir_2.0-4           tidyselect_1.2.1      </span></span>
-<span><span class="co">##  [85] miniUI_0.1.1.1         pbapply_1.7-2          knitr_1.45            </span></span>
-<span><span class="co">##  [88] gridExtra_2.3          scattermore_1.2        xfun_0.52             </span></span>
-<span><span class="co">##  [91] matrixStats_1.2.0      stringi_1.8.7          lazyeval_0.2.2        </span></span>
-<span><span class="co">##  [94] yaml_2.3.10            evaluate_0.23          codetools_0.2-20      </span></span>
-<span><span class="co">##  [97] tibble_3.3.0           cli_3.6.5              uwot_0.1.16           </span></span>
-<span><span class="co">## [100] xtable_1.8-4           reticulate_1.35.0      systemfonts_1.0.6     </span></span>
-<span><span class="co">## [103] jquerylib_0.1.4        dichromat_2.0-0.1      Rcpp_1.1.0            </span></span>
-<span><span class="co">## [106] globals_0.16.3         spatstat.random_3.2-3  png_0.1-8             </span></span>
-<span><span class="co">## [109] parallel_4.3.1         pkgdown_2.1.3          ggplot2_3.5.2         </span></span>
-<span><span class="co">## [112] dotCall64_1.1-1        listenv_0.9.1          viridisLite_0.4.2     </span></span>
-<span><span class="co">## [115] scales_1.4.0           ggridges_0.5.6         purrr_1.0.4           </span></span>
-<span><span class="co">## [118] crayon_1.5.2           rlang_1.1.6            cowplot_1.2.0.9000</span></span></code></pre>
+<span><span class="co">##  [43] labeling_0.4.3         progressr_0.14.0       spatstat.sparse_3.0-3 </span></span>
+<span><span class="co">##  [46] httr_1.4.7             polyclip_1.10-6        abind_1.4-8           </span></span>
+<span><span class="co">##  [49] compiler_4.3.1         withr_3.0.2            fastDummies_1.7.3     </span></span>
+<span><span class="co">##  [52] highr_0.10             MASS_7.3-60.0.1        rappdirs_0.3.3        </span></span>
+<span><span class="co">##  [55] tools_4.3.1            lmtest_0.9-40          otel_0.2.0            </span></span>
+<span><span class="co">##  [58] httpuv_1.6.16          future.apply_1.11.2    goftest_1.2-3         </span></span>
+<span><span class="co">##  [61] glue_1.8.0             nlme_3.1-164           promises_1.5.0        </span></span>
+<span><span class="co">##  [64] grid_4.3.1             Rtsne_0.17             cluster_2.1.6         </span></span>
+<span><span class="co">##  [67] reshape2_1.4.4         generics_0.1.4         gtable_0.3.6          </span></span>
+<span><span class="co">##  [70] spatstat.data_3.0-4    tidyr_1.3.1            data.table_1.15.4     </span></span>
+<span><span class="co">##  [73] spatstat.geom_3.2-9    RcppAnnoy_0.0.22       ggrepel_0.9.6         </span></span>
+<span><span class="co">##  [76] RANN_2.6.1             pillar_1.11.0          stringr_1.5.1         </span></span>
+<span><span class="co">##  [79] limma_3.58.1           spam_2.10-0            RcppHNSW_0.6.0        </span></span>
+<span><span class="co">##  [82] later_1.4.2            splines_4.3.1          dplyr_1.1.4           </span></span>
+<span><span class="co">##  [85] lattice_0.22-6         survival_3.5-8         deldir_2.0-4          </span></span>
+<span><span class="co">##  [88] tidyselect_1.2.1       locfit_1.5-9.9         miniUI_0.1.1.1        </span></span>
+<span><span class="co">##  [91] pbapply_1.7-2          knitr_1.45             gridExtra_2.3         </span></span>
+<span><span class="co">##  [94] edgeR_4.0.16           scattermore_1.2        xfun_0.52             </span></span>
+<span><span class="co">##  [97] statmod_1.5.0          matrixStats_1.2.0      stringi_1.8.7         </span></span>
+<span><span class="co">## [100] lazyeval_0.2.2         yaml_2.3.10            evaluate_0.23         </span></span>
+<span><span class="co">## [103] codetools_0.2-20       tibble_3.3.0           cli_3.6.5             </span></span>
+<span><span class="co">## [106] uwot_0.1.16            xtable_1.8-4           reticulate_1.42.0     </span></span>
+<span><span class="co">## [109] systemfonts_1.0.6      jquerylib_0.1.4        dichromat_2.0-0.1     </span></span>
+<span><span class="co">## [112] Rcpp_1.1.0             globals_0.16.3         spatstat.random_3.2-3 </span></span>
+<span><span class="co">## [115] png_0.1-8              parallel_4.3.1         pkgdown_2.1.3         </span></span>
+<span><span class="co">## [118] ggplot2_3.5.2          presto_1.0.0           dotCall64_1.1-1       </span></span>
+<span><span class="co">## [121] listenv_0.9.1          viridisLite_0.4.2      scales_1.4.0          </span></span>
+<span><span class="co">## [124] ggridges_0.5.6         purrr_1.0.4            crayon_1.5.2          </span></span>
+<span><span class="co">## [127] rlang_1.1.6            cowplot_1.2.0.9000</span></span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

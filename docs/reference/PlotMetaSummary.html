@@ -15,7 +15,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -46,6 +47,9 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -53,6 +57,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -96,7 +101,10 @@ count.</p>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  return_data <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  return_flextable <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  return_flextable <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  stats.method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nonparametric"</span>, <span class="st">"parametric"</span>, <span class="st">"auto"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
+<span>  pdf.width <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  pdf.height <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -215,9 +223,33 @@ frame.  Default <code>FALSE</code>.</p></dd>
 
 <dt id="arg-return-flextable">return_flextable<a class="anchor" aria-label="anchor" href="#arg-return-flextable"></a></dt>
 <dd><p>Logical.  Also return a list of formatted
-<code>flextable</code> objects: <code>$donor_table</code> (wide donor-level data) and
-<code>$crosstab</code> (cross-tabulation per variable, rows separated by
-variable).  Requires the <span class="pkg">flextable</span> package.  Default <code>FALSE</code>.</p></dd>
+<code>flextable</code> objects: <code>$donor_table</code> (wide donor-level data),
+<code>$crosstab</code> (n per category level per <code>fill_variable</code> group),
+and <code>$numeric_table</code> (mean ± SD per numeric variable per
+<code>fill_variable</code> group, with each donor weighted equally).
+Requires the <span class="pkg">flextable</span> package.  Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-stats-method">stats.method<a class="anchor" aria-label="anchor" href="#arg-stats-method"></a></dt>
+<dd><p>Character.  Statistical test to add as a <code>p.value</code>
+column in the flextable outputs (requires <code>return_flextable = TRUE</code>
+and <code>fill_variable</code>).</p><dl><dt><code>"nonparametric"</code> (default)</dt>
+<dd><p>Fisher's exact for categorical,
+Wilcoxon / Kruskal-Wallis for numeric.</p></dd>
+
+<dt><code>"parametric"</code></dt>
+<dd><p>Chi-squared for categorical,
+t-test / ANOVA for numeric.</p></dd>
+
+<dt><code>"auto"</code></dt>
+<dd><p>Parametric when Shapiro-Wilk passes (numeric) or
+expected counts &gt;= 5 (categorical); otherwise non-parametric.</p></dd>
+
+<dt><code>"none"</code></dt>
+<dd><p>No statistics added.</p></dd>
+
+
+</dl></dd>
 
 </dl></div>
     <div class="section level2">

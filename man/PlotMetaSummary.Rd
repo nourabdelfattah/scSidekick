@@ -24,7 +24,10 @@ PlotMetaSummary(
   object_name = "",
   file_name = NULL,
   return_data = FALSE,
-  return_flextable = FALSE
+  return_flextable = FALSE,
+  stats.method = c("nonparametric", "parametric", "auto", "none"),
+  pdf.width = NULL,
+  pdf.height = NULL
 )
 }
 \arguments{
@@ -100,9 +103,24 @@ saved PDF.  \code{NULL} (default) auto-deduces from \code{object_name},
 frame.  Default \code{FALSE}.}
 
 \item{return_flextable}{Logical.  Also return a list of formatted
-\code{flextable} objects: \code{$donor_table} (wide donor-level data) and
-\code{$crosstab} (cross-tabulation per variable, rows separated by
-variable).  Requires the \pkg{flextable} package.  Default \code{FALSE}.}
+\code{flextable} objects: \code{$donor_table} (wide donor-level data),
+\code{$crosstab} (n per category level per \code{fill_variable} group),
+and \code{$numeric_table} (mean ± SD per numeric variable per
+\code{fill_variable} group, with each donor weighted equally).
+Requires the \pkg{flextable} package.  Default \code{FALSE}.}
+
+\item{stats.method}{Character.  Statistical test to add as a \code{p.value}
+column in the flextable outputs (requires \code{return_flextable = TRUE}
+and \code{fill_variable}).
+\describe{
+\item{\code{"nonparametric"} (default)}{Fisher's exact for categorical,
+Wilcoxon / Kruskal-Wallis for numeric.}
+\item{\code{"parametric"}}{Chi-squared for categorical,
+t-test / ANOVA for numeric.}
+\item{\code{"auto"}}{Parametric when Shapiro-Wilk passes (numeric) or
+expected counts >= 5 (categorical); otherwise non-parametric.}
+\item{\code{"none"}}{No statistics added.}
+}}
 }
 \value{
 When only the plot is requested (default), a \code{ggplot2} object.
