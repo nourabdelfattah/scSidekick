@@ -64,6 +64,129 @@ AssignCellTypes <- function(object,
   object
 }
 
+#' Add clinical or sample metadata from a data frame to a Seurat object
+#'
+#' Matches a column in \code{seurat_object@meta.data} (typically a donor or
+#' sample ID) against a key column in \code{df}, then copies the requested
+#' columns onto every cell that carries the matching ID.  This is the
+#' data-frame counterpart of \code{\link{AssignCellTypes}}: instead of mapping
+#' cluster IDs to labels you supply a table and columns are broadcast to all
+#' cells sharing each ID.
+#'
+#' @param seurat_object A Seurat object.
+#' @param df A data frame containing clinical or sample-level metadata.
+#' @param by Character. Column in \code{seurat_object@meta.data} whose values
+#'   are matched against \code{df.key}. Typically a donor or sample identifier
+#'   such as \code{"donor.id"}.
+#' @param df.key Character. Column in \code{df} containing the IDs to match.
+#'   Must have unique values (one row per donor/sample).
+#' @param columns Character vector of column names in \code{df} to copy.
+#'   \code{NULL} (default) copies every column except \code{df.key}.
+#' @param prefix Character or \code{NULL}. Optional string prepended to every
+#'   new column name (e.g. \code{"clin."} gives \code{"clin.Age"}).
+#' @param overwrite Logical. If \code{FALSE} (default), columns that already
+#'   exist in \code{meta.data} are skipped with a warning. Set \code{TRUE} to
+#'   replace them.
+#'
+#' @return The Seurat object with the requested columns added to
+#'   \code{meta.data}.
+#' @export
+#' @examples
+#' \dontrun{
+#' clinical <- data.frame(
+#'   PatientID = c("P01", "P02", "P03"),
+#'   Age       = c(52L, 67L, 44L),
+#'   Stage     = c("II", "III", "I"),
+#'   Histology = c("GBM", "GBM", "LGG")
+#' )
+#'
+#' SeuratObj <- AddClinicalMeta(SeuratObj, clinical,
+#'                              by      = "donor.id",
+#'                              df.key  = "PatientID",
+#'                              columns = c("Age", "Stage", "Histology"))
+#' }
+AddClinicalMeta <- function(seurat_object,
+                            df,
+                            by,
+                            df.key,
+                            columns   = NULL,
+                            prefix    = NULL,
+                            overwrite = FALSE) {
+
+  # ── Input validation ────────────────────────────────────────────────────────
+  if (!by %in% colnames(seurat_object@meta.data))
+    stop("'by' column '", by, "' not found in seurat_object@meta.data.")
+  if (!df.key %in% colnames(df))
+    stop("'df.key' column '", df.key, "' not found in df.")
+
+  df <- as.data.frame(df)
+
+  if (anyDuplicated(df[[df.key]]))
+    stop("'df.key' column '", df.key, "' has duplicate values. ",
+         "Each ID must appear exactly once.")
+
+  # ── Resolve columns to copy ─────────────────────────────────────────────────
+  if (is.null(columns)) {
+    columns <- setdiff(colnames(df), df.key)
+  } else {
+    missing_cols <- setdiff(columns, colnames(df))
+    if (length(missing_cols))
+      stop("Column(s) not found in df: ",
+           paste(missing_cols, collapse = ", "))
+    columns <- setdiff(columns, df.key)
+  }
+  if (length(columns) == 0L)
+    stop("No columns to add after excluding df.key.")
+
+  # ── Apply prefix ────────────────────────────────────────────────────────────
+  col_out <- if (!is.null(prefix)) paste0(prefix, columns) else columns
+
+  # ── Handle already-existing columns ────────────────────────────────────────
+  existing <- col_out[col_out %in% colnames(seurat_object@meta.data)]
+  if (length(existing)) {
+    if (!overwrite) {
+      warning("Skipping column(s) already in meta.data ",
+              "(set overwrite = TRUE to replace): ",
+              paste(existing, collapse = ", "))
+      keep    <- !col_out %in% existing
+      columns <- columns[keep]
+      col_out <- col_out[keep]
+    }
+  }
+  if (length(columns) == 0L) {
+    message("AddClinicalMeta: nothing to add (all columns already present).")
+    return(seurat_object)
+  }
+
+  # ── Build lookup table keyed by donor/sample ID ─────────────────────────────
+  lookup_df <- df[, c(df.key, columns), drop = FALSE]
+  rownames(lookup_df) <- as.character(lookup_df[[df.key]])
+  lookup_df[[df.key]] <- NULL
+  colnames(lookup_df) <- col_out
+
+  # ── Match each cell to its ID ───────────────────────────────────────────────
+  cell_keys <- as.character(seurat_object@meta.data[[by]])
+
+  unmatched <- setdiff(unique(cell_keys[!is.na(cell_keys)]),
+                       rownames(lookup_df))
+  if (length(unmatched))
+    message("AddClinicalMeta: ", length(unmatched), " ID(s) in '", by,
+            "' not found in df (will be NA): ",
+            paste(utils::head(unmatched, 5L), collapse = ", "),
+            if (length(unmatched) > 5L)
+              paste0(" ... and ", length(unmatched) - 5L, " more")
+            else "")
+
+  matched              <- lookup_df[cell_keys, , drop = FALSE]
+  rownames(matched)    <- colnames(seurat_object)
+
+  seurat_object <- SeuratObject::AddMetaData(seurat_object, metadata = matched)
+
+  message("AddClinicalMeta: added ", length(col_out), " column(s) [",
+          paste(col_out, collapse = ", "), "]")
+  seurat_object
+}
+
 # ---------------------------------------------------------------------------
 # .prep_rcm_markers()
 # Normalize a marker table to the columns rcellmarker::cellMarker(type="seurat")
@@ -475,6 +598,8 @@ CellTypeAssignmentHelper <- function(
     .nk_setting(seurat_object, "object_name") %||% ""
   if (is.null(output_dir))
     stop("'output_dir' must be supplied, or stored via PrepObject(output_dir = ...).")
+  .nk_warn_donor(seurat_object)
+  ann_ctx <- .nk_legend_context(seurat_object)
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -677,7 +802,11 @@ CellTypeAssignmentHelper <- function(
       grDevices::dev.off()
       message("  Saved: ", f_auto)
       .write_legend_sidecar(f_auto, paste0(
-        "UMAP projections of ", object_name, subset_name,
+        "UMAP projections of ", ann_ctx$n_obs, " ", ann_ctx$unit,
+        if (!is.null(ann_ctx$n_donors))
+          paste0(" from ", format(ann_ctx$n_donors, big.mark = ","), " donors")
+        else "",
+        if (nchar(ann_ctx$obj_name) > 0) paste0(" [", ann_ctx$obj_name, "]") else "",
         " colored by automated cell-type annotation results. ",
         if (run_sctype)
           "scType scores cells against curated tissue-specific gene sets. " else "",
@@ -877,8 +1006,12 @@ CellTypeAssignmentHelper <- function(
     grDevices::dev.off()
     message("  Saved: ", f_sr)
     .write_legend_sidecar(f_sr, paste0(
-      "Multi-panel UMAP summary of cell-type annotation results for ",
-      object_name, subset_name, ". Panels show cluster labels",
+      "Multi-panel UMAP of ", ann_ctx$n_obs, " ", ann_ctx$unit,
+      if (!is.null(ann_ctx$n_donors))
+        paste0(" from ", format(ann_ctx$n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(ann_ctx$obj_name) > 0) paste0(" [", ann_ctx$obj_name, "]") else "",
+      ". Panels show cluster labels",
       if (length(extra_dimplot_cols) > 0)
         paste0(", ", paste(extra_dimplot_cols, collapse = ", ")) else "",
       if (run_singler) paste0(", ", singler_col,
@@ -1028,13 +1161,18 @@ CellTypeAssignmentHelper <- function(
       message("  Saved: ", f_helper)
 
       .write_legend_sidecar(f_helper, paste0(
-        "Combined annotation helper for ", object_name, subset_name, ". ",
-        "Top panel: multi-method UMAP comparison (cluster labels, ",
-        if (run_singler) paste0(singler_col, ", ") else "",
-        if (run_sctype)  "scType, "      else "",
-        if (run_rcellmarker) "rcellmarker, " else "",
-        "and any additional metadata). ",
-        "Subsequent panels: canonical marker dot plots",
+        "Combined annotation helper for ", ann_ctx$n_obs, " ", ann_ctx$unit,
+        if (!is.null(ann_ctx$n_donors))
+          paste0(" from ", format(ann_ctx$n_donors, big.mark = ","), " donors")
+        else "",
+        if (nchar(ann_ctx$obj_name) > 0) paste0(" [", ann_ctx$obj_name, "]") else "",
+        ". Top panel: multi-method UMAP comparison (cluster labels",
+        if (run_singler) paste0(", ", singler_col) else "",
+        if (run_sctype)  ", scType" else "",
+        if (run_rcellmarker) ", rcellmarker" else "",
+        if (length(extra_dimplot_cols) > 0)
+          paste0(", ", paste(extra_dimplot_cols, collapse = ", ")) else "",
+        "). Subsequent panels: canonical marker dot plots",
         if ("Top DE markers" %in% names(dotplot_list))
           paste0(" and top-", top_n_per_cluster, " DE genes per cluster")
         else "",

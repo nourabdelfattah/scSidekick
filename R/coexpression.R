@@ -3,7 +3,7 @@
 #
 # CorrelateGene   - correlate one gene against all others within each cell type
 #                   at single-cell, pseudobulk (donor), or group-average level.
-#                   Optional compare_by: run separately within each group level
+#                   Optional compare.by: run separately within each group level
 #                   (e.g. Sex) so you can compare coexpression patterns across
 #                   groups within cell types.
 # SplitByGene     - add a cell-level metadata column splitting cells into
@@ -40,14 +40,14 @@
 
 # ── Level helpers ─────────────────────────────────────────────────────────────
 
-.cor_gene_sc <- function(seurat_object, gene, group_by, assay, layer,
+.cor_gene_sc <- function(seurat_object, gene, group.by, assay, layer,
                           method, expressed_only, min_pct, min_cells) {
   mat        <- .get_expr_mat(seurat_object, assay, layer)
-  cell_types <- sort(unique(as.character(seurat_object@meta.data[[group_by]])))
+  cell_types <- sort(unique(as.character(seurat_object@meta.data[[group.by]])))
 
   results <- lapply(cell_types, function(ct) {
     cells    <- rownames(seurat_object@meta.data)[
-      seurat_object@meta.data[[group_by]] == ct]
+      seurat_object@meta.data[[group.by]] == ct]
     sub      <- mat[, cells, drop = FALSE]
     goi_vals <- as.numeric(as.matrix(sub[gene, , drop = FALSE]))
 
@@ -66,22 +66,22 @@
     keep_genes <- names(pct_expr)[pct_expr >= min_pct & names(pct_expr) != gene]
     if (!length(keep_genes)) return(NULL)
 
-    gene_mat <- as.matrix(t(sub[keep_genes, , drop = FALSE]))
+    gene_mat <- t(as.matrix(sub[keep_genes, , drop = FALSE]))
     .cor_one_result(goi_vals, gene_mat, keep_genes, ct, method, ncol(sub))
   })
 
   do.call(rbind, Filter(Negate(is.null), results))
 }
 
-.cor_gene_pseudobulk <- function(seurat_object, gene, group_by, sample_column,
+.cor_gene_pseudobulk <- function(seurat_object, gene, group.by, sample.by,
                                   assay, method, min_cells, min_donors) {
   for (pkg in c("edgeR"))
     if (!requireNamespace(pkg, quietly = TRUE))
       stop("Package '", pkg, "' is required for level = 'pseudobulk'.")
 
   seurat_object[[".pb_cor"]] <- paste(
-    seurat_object@meta.data[[sample_column]],
-    seurat_object@meta.data[[group_by]], sep = "||")
+    seurat_object@meta.data[[sample.by]],
+    seurat_object@meta.data[[group.by]], sep = "||")
 
   agg <- tryCatch(
     Seurat::AggregateExpression(seurat_object, assays = assay,
@@ -116,12 +116,12 @@
   do.call(rbind, Filter(Negate(is.null), results))
 }
 
-.cor_gene_group <- function(seurat_object, gene, group_by, group_column,
+.cor_gene_group <- function(seurat_object, gene, group.by, condition.by,
                              assay, layer, method, min_groups) {
   mat   <- .get_expr_mat(seurat_object, assay, layer)
   md    <- seurat_object@meta.data
-  combo <- paste(as.character(md[[group_column]]),
-                 as.character(md[[group_by]]), sep = "||")
+  combo <- paste(as.character(md[[condition.by]]),
+                 as.character(md[[group.by]]), sep = "||")
   combos <- unique(combo)
 
   avg_mat <- do.call(cbind, lapply(combos, function(co)
@@ -129,7 +129,7 @@
   colnames(avg_mat) <- combos
   avg_mat <- as.matrix(avg_mat)
 
-  results <- lapply(sort(unique(as.character(md[[group_by]]))), function(ct) {
+  results <- lapply(sort(unique(as.character(md[[group.by]]))), function(ct) {
     ct_cols <- grep(paste0("\\|\\|", ct, "$"), combos, value = TRUE)
     if (length(ct_cols) < min_groups) {
       message("  Skipping ", ct, ": only ", length(ct_cols), " groups")
@@ -163,23 +163,23 @@
 #'   cell type, converts to edgeR log-CPM, then runs Spearman across donors.
 #'   Statistically most valid.
 #' * **`"group"`**: averages log-normalized expression within each
-#'   `group_column x cell_type` combination, then correlates across groups.
+#'   `condition.by x cell_type` combination, then correlates across groups.
 #'
-#' When `compare_by` is supplied, the analysis is run separately within each
-#' level of that variable (e.g. `compare_by = "Sex"` produces independent
+#' When `compare.by` is supplied, the analysis is run separately within each
+#' level of that variable (e.g. `compare.by = "Sex"` produces independent
 #' correlation tables for males and females). Results gain a `compare_group`
 #' column and [PlotCorrelation()] will lay the groups out side by side.
 #'
 #' @param seurat_object A Seurat object.
 #' @param gene Character. The gene of interest (GOI).
-#' @param group_by Character. Cell-type identity column.
+#' @param group.by Character. Cell-type identity column.
 #' @param level Character. `"sc"` (default), `"pseudobulk"`, or `"group"`.
-#' @param compare_by Character or `NULL`. Optional metadata column whose levels
+#' @param compare.by Character or `NULL`. Optional metadata column whose levels
 #'   define independent comparison groups (e.g. `"Sex"`, `"Diagnosis"`).
 #'   When supplied, correlation is computed separately within each level so you
 #'   can ask which genes are correlated with GOI in group A but not group B.
-#' @param sample_column Character. Donor/sample ID. Required for `"pseudobulk"`.
-#' @param group_column Character. Condition column. Required for `"group"`.
+#' @param sample.by Character. Donor/sample ID. Required for `"pseudobulk"`.
+#' @param condition.by Character. Condition column. Required for `"group"`.
 #' @param assay Character or `NULL`. Assay to use.
 #' @param layer Character. Layer/slot for SC and group levels. Default `"data"`.
 #' @param method Character. `"spearman"` (default) or `"pearson"`.
@@ -193,17 +193,17 @@
 #' @param min_groups Integer. Group level: minimum groups. Default `3`.
 #'
 #' @return A data frame: `gene`, `cell_type`, `r`, `p`, `padj`, `n`, `goi`,
-#'   `level`, `method`, and (when `compare_by` is set) `compare_group`.
+#'   `level`, `method`, and (when `compare.by` is set) `compare_group`.
 #'   Sorted by cell type then descending `|r|`.
 #' @seealso [SplitByGene()], [PlotCorrelation()]
 #' @export
 CorrelateGene <- function(seurat_object,
                            gene,
-                           group_by,
+                           group.by,
                            level          = c("sc", "pseudobulk", "group"),
-                           compare_by     = NULL,
-                           sample_column  = NULL,
-                           group_column   = NULL,
+                           compare.by     = NULL,
+                           sample.by  = NULL,
+                           condition.by   = NULL,
                            assay          = NULL,
                            layer          = "data",
                            method         = c("spearman", "pearson"),
@@ -219,40 +219,40 @@ CorrelateGene <- function(seurat_object,
 
   if (!gene %in% rownames(seurat_object))
     stop("Gene '", gene, "' not found.")
-  if (!group_by %in% colnames(seurat_object@meta.data))
-    stop("'", group_by, "' not found in meta.data.")
-  if (!is.null(compare_by) && !compare_by %in% colnames(seurat_object@meta.data))
-    stop("'", compare_by, "' not found in meta.data.")
+  if (!group.by %in% colnames(seurat_object@meta.data))
+    stop("'", group.by, "' not found in meta.data.")
+  if (!is.null(compare.by) && !compare.by %in% colnames(seurat_object@meta.data))
+    stop("'", compare.by, "' not found in meta.data.")
 
   .run_one <- function(seu) {
     switch(level,
-      sc = .cor_gene_sc(seu, gene, group_by, assay, layer,
+      sc = .cor_gene_sc(seu, gene, group.by, assay, layer,
                          method, expressed_only, min_pct, min_cells),
       pseudobulk = {
-        if (is.null(sample_column))
-          stop("'sample_column' is required for level = 'pseudobulk'.")
-        .cor_gene_pseudobulk(seu, gene, group_by, sample_column,
+        if (is.null(sample.by))
+          stop("'sample.by' is required for level = 'pseudobulk'.")
+        .cor_gene_pseudobulk(seu, gene, group.by, sample.by,
                               assay, method, min_cells, min_donors)
       },
       group = {
-        if (is.null(group_column))
-          stop("'group_column' is required for level = 'group'.")
-        .cor_gene_group(seu, gene, group_by, group_column,
+        if (is.null(condition.by))
+          stop("'condition.by' is required for level = 'group'.")
+        .cor_gene_group(seu, gene, group.by, condition.by,
                          assay, layer, method, min_groups)
       }
     )
   }
 
   message("CorrelateGene: '", gene, "'  level = '", level, "'",
-          if (!is.null(compare_by)) paste0("  compare_by = '", compare_by, "'") else "")
+          if (!is.null(compare.by)) paste0("  compare.by = '", compare.by, "'") else "")
 
-  if (!is.null(compare_by)) {
+  if (!is.null(compare.by)) {
     grp_levels <- sort(unique(stats::na.omit(
-      as.character(seurat_object@meta.data[[compare_by]]))))
+      as.character(seurat_object@meta.data[[compare.by]]))))
     res_list <- lapply(grp_levels, function(grp) {
       cells <- rownames(seurat_object@meta.data)[
-        !is.na(seurat_object@meta.data[[compare_by]]) &
-        seurat_object@meta.data[[compare_by]] == grp]
+        !is.na(seurat_object@meta.data[[compare.by]]) &
+        seurat_object@meta.data[[compare.by]] == grp]
       message("  Group: ", grp, " (", length(cells), " cells)")
       r <- .run_one(seurat_object[, cells])
       if (!is.null(r) && nrow(r)) r$compare_group <- grp
@@ -277,11 +277,11 @@ CorrelateGene <- function(seurat_object,
   rownames(res) <- NULL
 
   # Summary
-  grp_col <- if (!is.null(compare_by)) "compare_group" else NULL
+  grp_col <- if (!is.null(compare.by)) "compare_group" else NULL
   by_cols  <- c("cell_type", grp_col)
   splits   <- split(res, res[, by_cols, drop = FALSE])
   message("Significant genes (padj < 0.05) per cell type",
-          if (!is.null(compare_by)) " x compare group" else "", ":")
+          if (!is.null(compare.by)) " x compare group" else "", ":")
   for (nm in names(splits))
     message("  ", nm, ": ", sum(splits[[nm]]$padj < 0.05, na.rm = TRUE))
 
@@ -297,7 +297,7 @@ CorrelateGene <- function(seurat_object,
 #' Adds a metadata column labeling each cell as `"high"` / `"low"` (or
 #' `"expressed"` / `"zero"`) for a given gene. The split is computed
 #' independently within each cell type. The column can be passed directly as
-#' `group_column` in [RunGSEA_pseudobulk()] or used with `Seurat::FindMarkers`.
+#' `condition.by` in [RunGSEA_pseudobulk()] or used with `Seurat::FindMarkers`.
 #'
 #' **Split modes**
 #' \describe{
@@ -312,7 +312,7 @@ CorrelateGene <- function(seurat_object,
 #'
 #' @param seurat_object A Seurat object.
 #' @param gene Character. Gene to split on.
-#' @param group_by Character. Cell-type identity column.
+#' @param group.by Character. Cell-type identity column.
 #' @param split Character. `"zero_vs_expressed"` (default), `"quantile"`, or
 #'   `"expressed_quantile"`.
 #' @param quantile_range Numeric length-2. Quantile bounds for the two
@@ -327,7 +327,7 @@ CorrelateGene <- function(seurat_object,
 #' @export
 SplitByGene <- function(seurat_object,
                          gene,
-                         group_by,
+                         group.by,
                          split          = c("zero_vs_expressed", "quantile",
                                             "expressed_quantile"),
                          quantile_range = c(0.25, 0.75),
@@ -341,8 +341,8 @@ SplitByGene <- function(seurat_object,
 
   if (!gene %in% rownames(seurat_object))
     stop("Gene '", gene, "' not found.")
-  if (!group_by %in% colnames(seurat_object@meta.data))
-    stop("'", group_by, "' not found in meta.data.")
+  if (!group.by %in% colnames(seurat_object@meta.data))
+    stop("'", group.by, "' not found in meta.data.")
   if (length(quantile_range) != 2 ||
       any(quantile_range < 0 | quantile_range > 1) ||
       quantile_range[1] >= quantile_range[2])
@@ -353,7 +353,7 @@ SplitByGene <- function(seurat_object,
     as.numeric(as.matrix(mat[gene, , drop = FALSE])),
     colnames(mat))
 
-  cell_types <- as.character(seurat_object@meta.data[[group_by]])
+  cell_types <- as.character(seurat_object@meta.data[[group.by]])
   split_vec  <- stats::setNames(rep(NA_character_, nrow(seurat_object@meta.data)),
                                 rownames(seurat_object@meta.data))
 
@@ -395,7 +395,7 @@ SplitByGene <- function(seurat_object,
 
   seurat_object@meta.data[[col_name]] <- split_vec
   tab <- table(split_vec, cell_types, useNA = "no",
-               dnn = c(col_name, group_by))
+               dnn = c(col_name, group.by))
   message("SplitByGene: '", col_name, "'  (split = '", split, "')")
   print(tab)
   seurat_object
@@ -407,7 +407,7 @@ SplitByGene <- function(seurat_object,
 
 #' Volcano plots of CorrelateGene results
 #'
-#' Draws one panel per cell type (and per comparison group when `compare_by`
+#' Draws one panel per cell type (and per comparison group when `compare.by`
 #' was used in [CorrelateGene()]) assembled with [patchwork::wrap_plots()].
 #' Each panel shows the top `n_pos` most positively and top `n_neg` most
 #' negatively correlated genes so that both directions are always represented.
@@ -422,7 +422,7 @@ SplitByGene <- function(seurat_object,
 #' @param padj_cutoff Numeric. Significance threshold. Default `0.05`.
 #' @param r_cutoff Numeric or `NULL`. Optional ±r dotted reference lines.
 #' @param ncol Integer or `NULL`. Columns in the assembled figure. `NULL`
-#'   auto-selects: `n_compare_groups` when `compare_by` was used, else 3.
+#'   auto-selects: `n_compare_groups` when `compare.by` was used, else 3.
 #' @param output_dir Character or `NULL`. Directory to save a PDF.
 #' @param file_name Character or `NULL`. PDF base name.
 #'
@@ -430,7 +430,7 @@ SplitByGene <- function(seurat_object,
 #' @seealso [CorrelateGene()]
 #' @export
 PlotCorrelation <- function(cor_result,
-                             cell_type   = NULL,
+                             cell.type   = NULL,
                              n_pos       = 15L,
                              n_neg       = 15L,
                              label_n     = 5L,
@@ -441,8 +441,8 @@ PlotCorrelation <- function(cor_result,
                              file_name   = NULL) {
 
   df <- cor_result
-  if (!is.null(cell_type))
-    df <- df[df$cell_type %in% cell_type, , drop = FALSE]
+  if (!is.null(cell.type))
+    df <- df[df$cell_type %in% cell.type, , drop = FALSE]
   if (!nrow(df)) stop("No results for the selected cell type(s).")
   df <- df[!is.na(df$r) & !is.na(df$padj), ]
 
@@ -538,7 +538,7 @@ PlotCorrelation <- function(cor_result,
     p
   })
 
-  # Layout: when compare_by was used, arrange as cell_types x compare_groups
+  # Layout: when compare.by was used, arrange as cell_types x compare_groups
   n_panels <- length(plots)
   n_col_out <- ncol %||% (if (has_compare)
     length(unique(df_plot$compare_group)) else min(3L, n_panels))

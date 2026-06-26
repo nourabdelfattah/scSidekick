@@ -212,6 +212,14 @@ RunCellChat <- function(seurat_object       = NULL,
   nc_fmt <- if (!is.null(n_cells_cc))
     format(as.integer(n_cells_cc), big.mark = ",") else NULL
 
+  cc_n_donors <- if (!is.null(seurat_object) && inherits(seurat_object, "Seurat")) {
+    .nk_warn_donor(seurat_object)
+    ctx_tmp <- .nk_legend_context(seurat_object)
+    ctx_tmp$n_donors
+  } else NULL
+  cc_obj_name <- if (!is.null(seurat_object) && inherits(seurat_object, "Seurat"))
+    .nk_setting(seurat_object, "object_name") %||% "" else ""
+
   # ── Write method params so create_analysis_pptx() finds them in output_dir ──
   # n_cells_final is set from seurat_object - overrides whatever the parent params
   # say so the CellChat PPTX reports the correct analyzed cell count.
@@ -359,11 +367,19 @@ RunCellChat <- function(seurat_object       = NULL,
                                label.edge = FALSE,
                                title.name = "Number of interactions")
     grDevices::dev.off()
+    cc_ds_str <- paste0(
+      if (!is.null(nc_fmt)) paste0(nc_fmt, " ", cell_word) else "",
+      if (!is.null(cc_n_donors))
+        paste0(" from ", format(cc_n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(cc_obj_name) > 0) paste0(" [", cc_obj_name, "]") else ""
+    )
     .write_legend_sidecar(f_count, paste0(
-      "Circle plot showing the total number of predicted ligand-receptor ",
-      "interactions between cell populations in ", grp, ". Each node represents ",
-      "a cell type; edge width is proportional to the number of interactions ",
-      "and node size reflects the number of cells in each population."
+      "CellChat circle plot: total number of predicted ligand-receptor interactions ",
+      "between cell populations, condition = ", grp,
+      if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+      ". Edge width is proportional to the number of interactions; ",
+      "node size reflects the number of ", cell_word, " in each population."
     ))
 
     f_weight <- file.path(out_grp, paste0(grp, " Interaction Weights.pdf"))
@@ -374,10 +390,11 @@ RunCellChat <- function(seurat_object       = NULL,
                                title.name = "Interaction weights/strength")
     grDevices::dev.off()
     .write_legend_sidecar(f_weight, paste0(
-      "Circle plot showing the aggregate interaction strength (communication ",
-      "probability) between cell populations in ", grp, ". Edge width reflects ",
-      "the total signaling weight of predicted interactions; node size reflects ",
-      "the number of cells in each population."
+      "CellChat circle plot: aggregate interaction strength (communication probability) ",
+      "between cell populations, condition = ", grp,
+      if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+      ". Edge width reflects total signaling weight; ",
+      "node size reflects the number of ", cell_word, " in each population."
     ))
 
     # ---- Individual groups ----
@@ -395,11 +412,11 @@ RunCellChat <- function(seurat_object       = NULL,
     }
     grDevices::dev.off()
     .write_legend_sidecar(f_indv, paste0(
-      "Panel of circle plots showing outgoing interaction weights from each ",
-      "individual cell population in ", grp, ". Each sub-panel displays ",
-      "interactions initiated by a single sender cell type, revealing dominant ",
-      "communication hubs. Edge weight is scaled to the global maximum across ",
-      "all panels to allow direct comparison."
+      "Panel of CellChat circle plots showing outgoing interaction weights from each ",
+      "individual cell population, condition = ", grp,
+      if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+      ". Each sub-panel shows interactions initiated by one sender cell type; ",
+      "edge weight is scaled to the global maximum for direct comparison."
     ))
 
     # ---- Per-pathway plots ----
@@ -452,11 +469,12 @@ RunCellChat <- function(seurat_object       = NULL,
           silent = TRUE)
       grDevices::dev.off()
       .write_legend_sidecar(f_pw, paste0(
-        "Cell-cell communication networks for the ", pw, " signaling pathway ",
-        "in ", grp, ". Panels show hierarchy, circle, and chord diagram layouts ",
-        "of predicted ligand-receptor interactions, a heatmap of pairwise ",
-        "communication probability, L-R pair contribution scores, and a scatter ",
-        "plot of sender/receiver signaling roles."
+        "CellChat multi-panel visualization of the ", pw,
+        " signaling pathway, condition = ", grp,
+        if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+        ". Panels: (1) signaling role network, (2) hierarchy layout, ",
+        "(3) circle layout, (4) chord diagram, (5) pairwise communication ",
+        "probability heatmap, (6) L-R pair contribution, (7) sender/receiver scatter."
       ))
     }
 
@@ -470,11 +488,11 @@ RunCellChat <- function(seurat_object       = NULL,
       try(print(bp), silent = TRUE)
       grDevices::dev.off()
       .write_legend_sidecar(f_bub, paste0(
-        "Bubble plot of predicted ligand-receptor interactions with ",
-        ids[j], " as the source cell population in ", grp, ". ",
-        "Each bubble represents one L-R pair; bubble size reflects ",
-        "communication probability and color indicates interaction significance. ",
-        "All target cell populations are shown on the y-axis."
+        "CellChat bubble plot: ligand-receptor interactions with ",
+        ids[j], " as sender, condition = ", grp,
+        if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+        ". Each bubble = one L-R pair; size = communication probability; ",
+        "color = interaction significance. All target populations on y-axis."
       ))
     }
 
@@ -485,11 +503,12 @@ RunCellChat <- function(seurat_object       = NULL,
     print(gg1)
     grDevices::dev.off()
     .write_legend_sidecar(f_role, paste0(
-      "Scatter plot of signaling roles across cell populations in ", grp, ". ",
-      "Each point represents a cell type positioned by its outgoing (x-axis) ",
-      "and incoming (y-axis) interaction strength, aggregated across all ",
-      "signaling pathways. Cell types in the upper-right quadrant act as both ",
-      "dominant senders and receivers of intercellular signals."
+      "CellChat scatter plot of signaling roles across cell populations, ",
+      "condition = ", grp,
+      if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+      ". Each point = one cell type, positioned by outgoing (x) and ",
+      "incoming (y) interaction strength aggregated across all signaling pathways. ",
+      "Upper-right quadrant = dominant senders and receivers."
     ))
 
     # ---- Communication patterns ----
@@ -548,12 +567,12 @@ RunCellChat <- function(seurat_object       = NULL,
               silent = TRUE)
           grDevices::dev.off()
           .write_legend_sidecar(f_pat, paste0(
-            "Communication pattern analysis for ", direction, " signals ",
-            "in ", grp, " (k = ", xx, " patterns). The heatmap shows the ",
-            "contribution of each cell type to each latent communication ",
-            "pattern; the river (alluvial) plot links patterns to the ",
-            "signaling pathways they coordinate; the dot plot shows ",
-            "pathway-level enrichment per pattern."
+            "CellChat ", direction, " communication pattern analysis, ",
+            "condition = ", grp, ", k = ", xx, " latent patterns",
+            if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
+            ". Heatmap: cell-type contribution per pattern. ",
+            "River (alluvial) plot: pattern-to-pathway linkage. ",
+            "Dot plot: pathway-level enrichment per pattern."
           ))
         }
       }

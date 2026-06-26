@@ -23,7 +23,7 @@ alongside the GSEA results."><meta property="og:image" content="https://nourabde
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@ alongside the GSEA results."><meta property="og:image" content="https://nourabde
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -54,6 +55,9 @@ alongside the GSEA results."><meta property="og:image" content="https://nourabde
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -61,6 +65,7 @@ alongside the GSEA results."><meta property="og:image" content="https://nourabde
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -128,6 +133,7 @@ alongside the GSEA results.</p>
 <span>  heatmap_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>row_names_side <span class="op">=</span> <span class="st">"left"</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    row_names_max_width <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">15</span>, <span class="st">"cm"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  heatmap_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  save.rds <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  redo_plots <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  caffeinate <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -369,6 +375,13 @@ Examples:</p><ul><li><p><strong>Classic RdBu:</strong>
 <li><p><strong>Tighter scale for subtle signals:</strong>
 <code>circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))</code></p></li>
 </ul></dd>
+
+
+<dt id="arg-resume">resume<a class="anchor" aria-label="anchor" href="#arg-resume"></a></dt>
+<dd><p>Logical. Skip cell types whose GSEA CSV files already exist in
+<code>output_dir</code> (from a previous partial run). Useful when a long run crashed
+mid-way. Cell types with any missing output are rerun; already-complete
+ones are skipped with a message. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-save-rds">save.rds<a class="anchor" aria-label="anchor" href="#arg-save-rds"></a></dt>

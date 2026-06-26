@@ -155,12 +155,31 @@
 #' @param object_name Character.  Label used to prefix output file names.
 #' @param subset_name Character.  Optional subset label appended to output
 #'   file names (e.g. \code{"NoNeurons"}).
+#' @param donor.by Character or \code{NULL}.  Metadata column that identifies
+#'   the biological replicate / library unit -- the donor, patient, mouse, or
+#'   sample from which each cell/spot was obtained.  When set, plotting
+#'   functions include the number of unique donors in figure legends
+#'   (e.g. "8,691 cells from 36 samples").  Pass \code{NA} to clear a
+#'   previously stored value.
+#' @param assay_type Character or \code{NULL}.  Sequencing modality.  Controls
+#'   the observation-level word used in auto-generated legend and methods text.
+#'   Recognized values (same vocabulary as \code{\link{log_analysis_params}}):
+#'   \itemize{
+#'     \item \code{"scRNAseq"} -- "cells" (default)
+#'     \item \code{"snRNAseq"} -- "nuclei"
+#'     \item \code{"Visium"}   -- "spots"
+#'     \item \code{"VisiumHD"} -- "bins"
+#'     \item \code{"Xenium"}   -- "cells"
+#'     \item \code{"Spatial"}  -- "spots"
+#'     \item \code{"scATACseq"}, \code{"scMultiome"} -- "cells"
+#'   }
+#'   Pass \code{NULL} to leave unchanged; \code{NA} to clear.
 #' @param AutoSavePlots Logical or \code{NULL}.  Controls whether plotting
 #'   functions automatically save PDFs to the stored \code{output_dir} when no
 #'   \code{output_dir} is passed explicitly in the function call.
 #'   \itemize{
 #'     \item \code{TRUE} (default when not set): plotting functions walk up and
-#'       use the stored \code{output_dir} automatically — existing behavior.
+#'       use the stored \code{output_dir} automatically -- existing behavior.
 #'     \item \code{FALSE}: the walk-up is suppressed; functions return the plot
 #'       object without saving unless the caller explicitly passes
 #'       \code{output_dir = "..."} in the plotting call.
@@ -185,6 +204,8 @@ PrepObject <- function(
     var_levels    = list(),
     group.by      = NULL,
     split.by      = NULL,
+    donor.by      = NULL,
+    assay_type    = NULL,
     output_dir    = NULL,
     object_name   = NULL,
     subset_name   = NULL,
@@ -314,6 +335,22 @@ PrepObject <- function(
     seurat_object@misc$nk_settings$split.by <-
       if (isTRUE(is.na(split.by))) NULL else as.character(split.by)
 
+  if (!is.null(donor.by)) {
+    if (isTRUE(is.na(donor.by))) {
+      seurat_object@misc$nk_settings$donor.by <- NULL
+    } else {
+      don_col <- as.character(donor.by)
+      if (!don_col %in% colnames(seurat_object@meta.data))
+        warning("donor.by column '", don_col, "' not found in metadata; ",
+                "it will be stored but donor counts may not resolve correctly.")
+      seurat_object@misc$nk_settings$donor.by <- don_col
+    }
+  }
+
+  if (!is.null(assay_type))
+    seurat_object@misc$nk_settings$assay_type <-
+      if (isTRUE(is.na(assay_type))) NULL else as.character(assay_type)
+
   if (!is.null(output_dir))
     seurat_object@misc$nk_settings$output_dir <-
       if (isTRUE(is.na(output_dir))) NULL else as.character(output_dir)
@@ -336,6 +373,10 @@ PrepObject <- function(
     message("  Default group.by:  ", cfg$group.by)
   if (!is.null(cfg$split.by))
     message("  Default split.by:  ", cfg$split.by)
+  if (!is.null(cfg$donor.by))
+    message("  donor.by:  ", cfg$donor.by)
+  if (!is.null(cfg$assay_type))
+    message("  assay_type: ", cfg$assay_type)
   if (!is.null(cfg$output_dir))
     message("  Default output_dir: ", cfg$output_dir)
   if (!is.null(cfg$object_name))

@@ -35,32 +35,36 @@ All three functions accept `group.by`, `split.by`, `layout_method`, and
 
 ## Demo dataset - mouse brain (Visium)
 
-```{r spatial-setup, eval=FALSE}
+```{r spatial-setup,  message=FALSE, warning=FALSE,eval=T}
 library(scSidekick)
 library(Seurat)
 library(SeuratData)
 
-InstallData("stxBrain")
-brain <- LoadData("stxBrain", type = "anterior1")
+#InstallData("stxBrain")
+brain1 <- LoadData("stxBrain", type = "anterior1")
+brain1 <- SCTransform(brain1, assay = "Spatial", verbose = FALSE)
+
+brain2 <- LoadData("stxBrain", type = "posterior1")
+brain2 <- SCTransform(brain2, assay = "Spatial", verbose = FALSE)
+brain<- merge(brain1, brain2)
 
 # Standard processing
-brain <- NormalizeData(brain)
-brain <- FindVariableFeatures(brain)
-brain <- ScaleData(brain)
-brain <- RunPCA(brain)
-brain <- RunUMAP(brain, dims = 1:30)
+DefaultAssay(brain) <- "SCT"
+VariableFeatures(brain) <- c(VariableFeatures(brain), VariableFeatures(brain2))
+brain <- RunPCA(brain, verbose = FALSE)
 brain <- FindNeighbors(brain, dims = 1:30)
-brain <- FindClusters(brain, resolution = 0.5)
+brain <- FindClusters(brain, verbose = FALSE)
+brain <- RunUMAP(brain, dims = 1:30)
 
-# Fake condition column for split demos
+# Fake Celltypes column for  demos
 set.seed(42)
-brain$Condition <- sample(c("WT","KO"), ncol(brain), replace = TRUE)
+brain$Celltypes <- sample(c("Celltype1","Celltype2","Celltype3","Celltype4"), ncol(brain), replace = TRUE)
 
 # Register colors
 brain <- PrepObject(brain,
-  variables   = c("seurat_clusters", "Condition"),
+  variables   = c("seurat_clusters", "Celltypes","region"),
   group.by    = "seurat_clusters",
-  output_dir  = tempdir(),
+  output_dir  = tempdir(),AutoSavePlots = F,
   object_name = "MouseBrain")
 ```
 
@@ -73,9 +77,10 @@ consistently across all spatial figures.
 
 ### 1. Basic spatial cluster map
 
-```{r spatial-dim-basic, eval=FALSE}
+```{r spatial-dim-basic, eval = T, fig.height=5, fig.width=7.5}
 PlotSpatialDimPlots(brain,
   group.by = "seurat_clusters")
+
 ```
 
 Each spot on the tissue section is colored by its cluster assignment. The
@@ -86,9 +91,9 @@ to cluster numbers. The palette comes from `PrepObject`.
 
 Passing a vector to `group.by` produces one spatial map per variable.
 
-```{r spatial-dim-multi, eval=FALSE}
+```{r spatial-dim-multi, eval = T, fig.height=4, fig.width=15,fig.keep="last"}
 PlotSpatialDimPlots(brain,
-  group.by = c("seurat_clusters", "Condition"))
+  group.by = c("seurat_clusters", "Celltypes"),join_plots = T,legendnrow = 2,)
 ```
 
 Two figures are generated: one showing spatial cluster distribution, one
@@ -100,7 +105,7 @@ By default Visium spot sizes are scaled by local spot density. Set
 `uniform_size = TRUE` to use a fixed, equal size for all spots - useful for
 comparing two sections where spot density differs.
 
-```{r spatial-dim-uniform, eval=FALSE}
+```{r spatial-dim-uniform, eval=T, fig.height=5, fig.width=7, warning=FALSE}
 PlotSpatialDimPlots(brain,
   group.by     = "seurat_clusters",
   uniform_size = TRUE)
@@ -112,11 +117,16 @@ PlotSpatialDimPlots(brain,
 vertically, one row per level of `row_var`. Useful when you have multiple
 tissue sections or ROIs stored in the same object.
 
-```{r spatial-dim-metadata, eval=FALSE}
-PlotSpatialDimPlots(brain,
+```{r spatial-dim-metadata, eval=T, fig.height=10, fig.width=8, warning=FALSE}
+#Lets first generate an object where you have multiple conditions/replicates
+brain$rep=1
+brain2=brain
+brain2$rep=2
+braindouble=merge(brain,brain2)
+PlotSpatialDimPlots(braindouble,
   group.by      = "seurat_clusters",
   layout_method = "metadata",
-  row.by = "Condition")
+  row.by = "rep")
 ```
 
 Each row of the output corresponds to one condition level. Columns would
@@ -124,23 +134,26 @@ correspond to levels of `split.by` if provided.
 
 ### 5. Colors from `PrepObject` vs custom
 
-```{r spatial-dim-colors, eval=FALSE}
+```{r spatial-dim-colors, eval = T, fig.height=5, fig.width=15, fig.keep="last"}
 # Colors from PrepObject (default)
-PlotSpatialDimPlots(brain,
+p1=PlotSpatialDimPlots(brain,
   group.by = "seurat_clusters")
 
 # Override with a custom palette
 my_cols <- GetColors(brain, "seurat_clusters")
 my_cols["0"] <- "#FF0000"  # re-color cluster 0
 
-PlotSpatialDimPlots(brain,
+p2=PlotSpatialDimPlots(brain,
   group.by = "seurat_clusters",
   colors   = my_cols)
+
+p1+p2
 ```
 
 ### 6. Saving to disk
 
 ```{r spatial-dim-save, eval=FALSE}
+#to automatically save on disk set PrepObject(AutoSavePlots = T)
 PlotSpatialDimPlots(brain,
   group.by    = "seurat_clusters",
   output_dir  = tempdir(),
@@ -153,9 +166,9 @@ PlotSpatialDimPlots(brain,
 
 ### 1. Basic spatial gene expression
 
-```{r spatial-feat-basic, eval=FALSE}
+```{r spatial-feat-basic, eval=T, fig.height=4, fig.width=15, message=FALSE, warning=FALSE}
 PlotSpatialFeaturePlots(brain,
-  features = c("Hpca", "Ttr"))
+  features = c("Hpca", "Ttr"),join_plots = T)
 ```
 
 Each gene generates one spatial map. Spot color encodes normalized expression
@@ -165,26 +178,28 @@ in their expected anatomical locations.
 
 ### 2. Metadata-driven layout
 
-```{r spatial-feat-metadata, eval=FALSE}
-PlotSpatialFeaturePlots(brain,
+```{r spatial-feat-metadata, eval=T, message=FALSE, warning=FALSE}
+PlotSpatialFeaturePlots(braindouble,
   features      = c("Hpca", "Ttr"),
   layout_method = "metadata",
-  row.by = "Condition")
+  row.by = "rep")
 ```
 
-Rows correspond to the levels of `Condition`. Each gene's spatial pattern is
+Rows correspond to the levels of `Replicate`. Each gene's spatial pattern is
 shown once per condition. This layout is most useful for comparing expression
 between biological groups when each group occupies a distinct tissue section
 in the same object.
 
 ### 3. Saving to disk
 
-```{r spatial-feat-save, eval=FALSE}
+```{r spatial-feat-save, eval = FALSE}
+#to automatically save on disk set PrepObject(AutoSavePlots = T)
+
 PlotSpatialFeaturePlots(brain,
   features    = c("Hpca", "Ttr"),
   output_dir  = tempdir(),
   object_name = "MouseBrain",
-  subset_name = "Anterior1")
+  subset_name = "AllRegions")
 ```
 
 Files are named by gene: e.g. `MouseBrain_Anterior1_spatial_Hpca.pdf`.
@@ -200,11 +215,10 @@ page, ready for a supplementary figure or lab presentation.
 
 ### 1. Basic master map
 
-```{r master-basic, eval=FALSE}
+```{r master-basic, eval=T, fig.height=8, fig.width=12, message=FALSE, warning=FALSE}
 PlotMasterMaps(brain,
-  features   = c("Hpca", "Ttr"),
-  group.by   = "seurat_clusters",
-  output_dir = tempdir())
+  features   = c("Hpca"),
+  group.by   = "seurat_clusters")
 ```
 
 Each gene produces a PDF page with three panels arranged horizontally:
@@ -220,7 +234,7 @@ which clusters drive that expression.
 ```{r master-multi-group, eval=FALSE}
 PlotMasterMaps(brain,
   features   = c("Hpca", "Ttr"),
-  group.by   = c("seurat_clusters", "Condition"),
+  group.by   = c("seurat_clusters", "Celltypes"),
   output_dir = tempdir())
 ```
 

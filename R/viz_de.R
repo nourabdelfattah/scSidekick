@@ -165,25 +165,27 @@
 #' @param deg_df Data frame with differential expression results. Compatible
 #'   with presto (\code{"feature"/"logFC"/"padj"}) and Seurat
 #'   (\code{"gene"/"avg_log2FC"/"p_val_adj"}).
-#' @param gene_column Column with gene names. Auto-detected if \code{NULL}.
-#' @param fc_column Column with log fold-change. Auto-detected if \code{NULL}.
-#' @param padj_column Column with adjusted p-value. Auto-detected if \code{NULL}.
-#' @param group_column Optional metadata column to facet by (one panel per
-#'   group level). \code{NULL} = no faceting.
-#' @param fc_cutoff Absolute log fold-change threshold (vertical dashed lines).
+#' @param gene.column Column with gene names. Auto-detected if \code{NULL}.
+#' @param fc.column Column with log fold-change. Auto-detected if \code{NULL}.
+#' @param padj.column Column with adjusted p-value. Auto-detected if \code{NULL}.
+#' @param group.by Optional column to facet by (one panel per group level).
+#'   \code{NULL} = no faceting.
+#' @param ncol Integer or \code{NULL}. Number of columns in the facet layout
+#'   when \code{group.by} is set. \code{NULL} lets \code{ggplot2} choose.
+#' @param fc.cutoff Absolute log fold-change threshold (vertical dashed lines).
 #'   Default \code{0.25}.
-#' @param padj_cutoff Adjusted p-value significance cutoff (horizontal dashed
+#' @param padj.cutoff Adjusted p-value significance cutoff (horizontal dashed
 #'   line). Default \code{0.05}.
-#' @param top_n_labels Number of top genes to label per direction (up and down
+#' @param top.n.labels Number of top genes to label per direction (up and down
 #'   separately). Genes ranked by \eqn{-\log_{10}(padj) \times |logFC|}.
 #'   Default \code{10}.
-#' @param highlight_genes Character vector of specific genes to always label
+#' @param highlight.genes Character vector of specific genes to always label
 #'   regardless of their ranking.
 #' @param colors Named character vector with elements \code{"up"}, \code{"down"},
 #'   and \code{"ns"} (not significant). Defaults to red/blue/gray.
-#' @param point_size Point size. Default \code{1}.
-#' @param point_alpha Point transparency. Default \code{0.6}.
-#' @param max_overlaps Maximum label overlaps passed to \code{ggrepel}.
+#' @param point.size Point size. Default \code{1}.
+#' @param point.alpha Point transparency. Default \code{0.6}.
+#' @param max.overlaps Maximum label overlaps passed to \code{ggrepel}.
 #'   Default \code{20}.
 #' @param output_dir Directory to save a PDF. \code{NULL} = plot only, no save.
 #' @param object_name Label prefix for the output file name.
@@ -195,18 +197,19 @@
 #' @export
 PlotVolcano <- function(
     deg_df,
-    gene_column     = NULL,
-    fc_column       = NULL,
-    padj_column     = NULL,
-    group_column    = NULL,
-    fc_cutoff       = 0.25,
-    padj_cutoff     = 0.05,
-    top_n_labels    = 10,
-    highlight_genes = NULL,
+    gene.column     = NULL,
+    fc.column       = NULL,
+    padj.column     = NULL,
+    group.by        = NULL,
+    ncol            = NULL,
+    fc.cutoff       = 0.25,
+    padj.cutoff     = 0.05,
+    top.n.labels    = 10,
+    highlight.genes = NULL,
     colors          = c(up = "#B40426", down = "#3B4CC0", ns = "gray70"),
-    point_size      = 1,
-    point_alpha     = 0.6,
-    max_overlaps    = 20,
+    point.size      = 1,
+    point.alpha     = 0.6,
+    max.overlaps    = 20,
     output_dir      = NULL,
     object_name     = "",
     subset_name     = ""
@@ -215,9 +218,9 @@ PlotVolcano <- function(
     stop("'deg_df' must be a non-empty data frame.")
 
   # ── Auto-detect columns ──────────────────────────────────────────────────
-  gene_col  <- gene_column  %||% .detect_col(deg_df, c("feature","gene","Gene","Symbol","name"))
-  fc_col    <- fc_column    %||% .detect_col(deg_df, c("logFC","log2FC","avg_log2FC","log2FoldChange","FC"))
-  padj_col  <- padj_column  %||% .detect_col(deg_df, c("padj","p_val_adj","p.adjust","FDR","adj.P.Val"))
+  gene_col  <- gene.column  %||% .detect_col(deg_df, c("feature","gene","Gene","Symbol","name"))
+  fc_col    <- fc.column    %||% .detect_col(deg_df, c("logFC","log2FC","avg_log2FC","log2FoldChange","FC"))
+  padj_col  <- padj.column  %||% .detect_col(deg_df, c("padj","p_val_adj","p.adjust","FDR","adj.P.Val"))
 
   missing <- c(
     if (is.null(gene_col)) "gene column",
@@ -226,7 +229,7 @@ PlotVolcano <- function(
   )
   if (length(missing))
     stop("Could not auto-detect: ", paste(missing, collapse = ", "),
-         ". Please specify the relevant *_column parameter(s).")
+         ". Please specify the relevant *.column parameter(s).")
 
   df <- deg_df
   df$._gene  <- as.character(df[[gene_col]])
@@ -237,44 +240,35 @@ PlotVolcano <- function(
 
   # ── Classify direction ───────────────────────────────────────────────────
   df$._dir <- dplyr::case_when(
-    df$._fc >  fc_cutoff & df$._padj < padj_cutoff ~ "up",
-    df$._fc < -fc_cutoff & df$._padj < padj_cutoff ~ "down",
+    df$._fc >  fc.cutoff & df$._padj < padj.cutoff ~ "up",
+    df$._fc < -fc.cutoff & df$._padj < padj.cutoff ~ "down",
     TRUE ~ "ns"
   )
 
   # ── Select genes to label ────────────────────────────────────────────────
   df$._score <- df$._neglog10padj * abs(df$._fc)
-  label_df <- df[df$._dir != "ns", ]
 
-  top_up   <- utils::head(
-    label_df[order(-label_df$._score[label_df$._dir == "up"]), ][label_df[order(-label_df$._score), ]$._dir == "up", ],
-    top_n_labels
-  )
-  top_dn   <- utils::head(
-    label_df[order(-label_df$._score[label_df$._dir == "down"]), ][label_df[order(-label_df$._score), ]$._dir == "down", ],
-    top_n_labels
-  )
-
-  # Simpler approach - top by score per direction
-  if (!is.null(group_column) && group_column %in% colnames(df)) {
+  if (!is.null(group.by) && group.by %in% colnames(df)) {
     label_genes <- do.call(rbind, lapply(
-      split(df, df[[group_column]]),
+      split(df, df[[group.by]]),
       function(g) {
-        up_g  <- utils::head(g[g$._dir == "up"  & order(g$._score[g$._dir == "up"],   decreasing = TRUE), ], top_n_labels)
-        dn_g  <- utils::head(g[g$._dir == "down" & order(g$._score[g$._dir == "down"], decreasing = TRUE), ], top_n_labels)
+        up_idx <- which(g$._dir == "up")
+        dn_idx <- which(g$._dir == "down")
+        up_g   <- g[up_idx[order(g$._score[up_idx], decreasing = TRUE)[seq_len(min(top.n.labels, length(up_idx)))]], ]
+        dn_g   <- g[dn_idx[order(g$._score[dn_idx], decreasing = TRUE)[seq_len(min(top.n.labels, length(dn_idx)))]], ]
         rbind(up_g, dn_g)
       }
     ))
   } else {
     up_idx <- which(df$._dir == "up")
     dn_idx <- which(df$._dir == "down")
-    top_up_idx <- up_idx[order(df$._score[up_idx], decreasing = TRUE)[seq_len(min(top_n_labels, length(up_idx)))]]
-    top_dn_idx <- dn_idx[order(df$._score[dn_idx], decreasing = TRUE)[seq_len(min(top_n_labels, length(dn_idx)))]]
+    top_up_idx <- up_idx[order(df$._score[up_idx], decreasing = TRUE)[seq_len(min(top.n.labels, length(up_idx)))]]
+    top_dn_idx <- dn_idx[order(df$._score[dn_idx], decreasing = TRUE)[seq_len(min(top.n.labels, length(dn_idx)))]]
     label_genes <- df[c(top_up_idx, top_dn_idx), ]
   }
 
-  if (!is.null(highlight_genes)) {
-    extra <- df[df$._gene %in% highlight_genes, ]
+  if (!is.null(highlight.genes)) {
+    extra <- df[df$._gene %in% highlight.genes, ]
     label_genes <- unique(rbind(label_genes, extra))
   }
 
@@ -296,7 +290,7 @@ PlotVolcano <- function(
     y     = .data[["._neglog10padj"]],
     color = .data[["._dir"]]
   )) +
-    ggplot2::geom_point(size = point_size, alpha = point_alpha) +
+    ggplot2::geom_point(size = point.size, alpha = point.alpha) +
     ggplot2::scale_color_manual(
       values = cols,
       labels = c(up   = paste0("Up (", n_up, ")"),
@@ -304,9 +298,9 @@ PlotVolcano <- function(
                  ns   = "Not significant"),
       name   = NULL
     ) +
-    ggplot2::geom_vline(xintercept = c(-fc_cutoff, fc_cutoff),
+    ggplot2::geom_vline(xintercept = c(-fc.cutoff, fc.cutoff),
                         linetype = "dashed", color = "gray40", linewidth = 0.4) +
-    ggplot2::geom_hline(yintercept = -log10(padj_cutoff),
+    ggplot2::geom_hline(yintercept = -log10(padj.cutoff),
                         linetype = "dashed", color = "gray40", linewidth = 0.4) +
     ggplot2::xlim(-max_fc, max_fc) +
     ggplot2::ylim(0, max_nlp) +
@@ -323,15 +317,16 @@ PlotVolcano <- function(
       fontface    = "bold",
       color       = "black",
       box.padding = 0.35,
-      max.overlaps = max_overlaps,
+      max.overlaps = max.overlaps,
       segment.size = 0.2,
       show.legend = FALSE
     )
   }
 
   # Facet
-  if (!is.null(group_column) && group_column %in% colnames(df)) {
-    p <- p + ggplot2::facet_wrap(stats::as.formula(paste("~", group_column)))
+  if (!is.null(group.by) && group.by %in% colnames(df)) {
+    p <- p + ggplot2::facet_wrap(stats::as.formula(paste("~", group.by)),
+                                  ncol = ncol)
   }
 
   # ── Save ─────────────────────────────────────────────────────────────────
@@ -339,10 +334,13 @@ PlotVolcano <- function(
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     pfx   <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0],
                    collapse = "_")
-    grp_n <- if (!is.null(group_column)) length(unique(df[[group_column]])) else 1
+    grp_n <- if (!is.null(group.by) && group.by %in% colnames(df))
+      length(unique(df[[group.by]])) else 1L
+    n_col_out <- ncol %||% min(grp_n, 4L)
+    n_row_out <- ceiling(grp_n / n_col_out)
     pdf(file.path(output_dir, paste0(pfx, " volcano.pdf")),
-        width  = max(5, grp_n * 4),
-        height = 5)
+        width  = max(5, n_col_out * 4),
+        height = max(5, n_row_out * 5))
     print(p)
     grDevices::dev.off()
   }

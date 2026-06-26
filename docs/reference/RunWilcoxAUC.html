@@ -7,7 +7,10 @@ syntax.  RunWilcoxAUC bypasses that path: it pulls the matrix through
 .get_layer_data() (which handles BPCells lazy subsetting, Seurat v3
 slot= vs v5 layer=, and sparse → dgCMatrix coercion) and then
 calls presto::wilcoxauc(matrix, y) so S3 dispatch lands on
-wilcoxauc.default directly - no internal ::: access needed."><meta property="og:description" content="A drop-in replacement for presto::wilcoxauc(seurat_object, ...) that
+wilcoxauc.default directly - no internal ::: access needed.
+When split.by is supplied the test is run independently within each
+level of that column (e.g. each cell type), and the results are combined into
+a single data frame with an extra column named after split.by."><meta property="og:description" content="A drop-in replacement for presto::wilcoxauc(seurat_object, ...) that
 works reliably with BPCells-backed and Seurat v5 multi-layer objects.
 The standard presto::wilcoxauc.Seurat method extracts the expression
 matrix internally in a way that can error with lazy matrices or v5 layer
@@ -15,7 +18,10 @@ syntax.  RunWilcoxAUC bypasses that path: it pulls the matrix through
 .get_layer_data() (which handles BPCells lazy subsetting, Seurat v3
 slot= vs v5 layer=, and sparse → dgCMatrix coercion) and then
 calls presto::wilcoxauc(matrix, y) so S3 dispatch lands on
-wilcoxauc.default directly - no internal ::: access needed."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+wilcoxauc.default directly - no internal ::: access needed.
+When split.by is supplied the test is run independently within each
+level of that column (e.g. each cell type), and the results are combined into
+a single data frame with an extra column named after split.by."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -23,7 +29,7 @@ wilcoxauc.default directly - no internal ::: access needed."><meta property="og:
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +50,7 @@ wilcoxauc.default directly - no internal ::: access needed."><meta property="og:
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -54,6 +61,9 @@ wilcoxauc.default directly - no internal ::: access needed."><meta property="og:
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -61,6 +71,7 @@ wilcoxauc.default directly - no internal ::: access needed."><meta property="og:
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -84,6 +95,9 @@ syntax.  <code>RunWilcoxAUC</code> bypasses that path: it pulls the matrix throu
 <code>slot=</code> vs v5 <code>layer=</code>, and sparse → dgCMatrix coercion) and then
 calls <code>presto::wilcoxauc(matrix, y)</code> so S3 dispatch lands on
 <code>wilcoxauc.default</code> directly - no internal <code>:::</code> access needed.</p>
+<p>When <code>split.by</code> is supplied the test is run independently within each
+level of that column (e.g. each cell type), and the results are combined into
+a single data frame with an extra column named after <code>split.by</code>.</p>
     </div>
 
     <div class="section level2">
@@ -91,6 +105,7 @@ calls <code>presto::wilcoxauc(matrix, y)</code> so S3 dispatch lands on
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">RunWilcoxAUC</span><span class="op">(</span></span>
 <span>  <span class="va">seurat_object</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  split.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  groups_use <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  assay <span class="op">=</span> <span class="st">"RNA"</span>,</span>
 <span>  layer <span class="op">=</span> <span class="st">"data"</span>,</span>
@@ -109,13 +124,23 @@ calls <code>presto::wilcoxauc(matrix, y)</code> so S3 dispatch lands on
 
 <dt id="arg-group-by">group.by<a class="anchor" aria-label="anchor" href="#arg-group-by"></a></dt>
 <dd><p>Character. Metadata column whose levels define the
-comparison groups (e.g. <code>"Cluster"</code>, <code>"Assignment"</code>).
+comparison groups (e.g. <code>"Condition"</code>, <code>"Assignment"</code>).
 When <code>NULL</code>, <code><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Idents</a></code> is used.</p></dd>
+
+
+<dt id="arg-split-by">split.by<a class="anchor" aria-label="anchor" href="#arg-split-by"></a></dt>
+<dd><p>Character or <code>NULL</code>. Metadata column to split on before
+running the test.  The test is run independently within each level
+(e.g. <code>split.by = "CellType"</code> finds condition markers per cell type).
+The output gains a column named after <code>split.by</code> identifying each
+level.  Levels with fewer than 2 groups after filtering are skipped with a
+message.  Default <code>NULL</code> (no split).</p></dd>
 
 
 <dt id="arg-groups-use">groups_use<a class="anchor" aria-label="anchor" href="#arg-groups-use"></a></dt>
 <dd><p>Character vector or <code>NULL</code>. Restrict the test to
-a subset of <code>group.by</code> levels.  <code>NULL</code> = all levels.</p></dd>
+a subset of <code>group.by</code> levels.  Applied within each split level when
+<code>split.by</code> is set.  <code>NULL</code> = all levels.</p></dd>
 
 
 <dt id="arg-assay">assay<a class="anchor" aria-label="anchor" href="#arg-assay"></a></dt>
@@ -144,7 +169,9 @@ Default <code>FALSE</code>.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>data.frame</code> with one row per (feature × group) combination
 containing <code>auc</code>, <code>pval</code>, <code>padj</code>, <code>logFC</code>,
-<code>pct_in</code>, <code>pct_out</code> - the standard <span class="pkg">presto</span> output.</p>
+<code>pct_in</code>, <code>pct_out</code> - the standard <span class="pkg">presto</span> output.
+When <code>split.by</code> is set, an additional column named after
+<code>split.by</code> identifies which split level each row came from.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -158,18 +185,21 @@ containing <code>auc</code>, <code>pval</code>, <code>padj</code>, <code>logFC</
 <span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Specify a metadata column</span></span>
-<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span>, group.by <span class="op">=</span> <span class="st">"Cluster"</span><span class="op">)</span></span>
+<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span>, group.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Only compare specific groups</span></span>
-<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span>, group.by <span class="op">=</span> <span class="st">"Cluster"</span>,</span>
-<span>                         groups_use <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Microglia"</span>, <span class="st">"Astrocytes"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Find condition markers within each cell type</span></span>
+<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span>,</span>
+<span>                         group.by <span class="op">=</span> <span class="st">"Condition"</span>,</span>
+<span>                         split.by <span class="op">=</span> <span class="st">"CellType"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Top markers per cluster</span></span>
+<span><span class="co"># Filter results for one cell type</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="va">top_markers</span> <span class="op">&lt;-</span> <span class="va">markers</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">padj</span> <span class="op">&lt;</span> <span class="fl">0.05</span>, <span class="va">logFC</span> <span class="op">&gt;</span> <span class="fl">0.5</span>, <span class="va">auc</span> <span class="op">&gt;</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">group.by</span><span class="op">(</span><span class="va">group</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_max</a></span><span class="op">(</span><span class="va">auc</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">markers</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">CellType</span> <span class="op">==</span> <span class="st">"Microglia"</span>, <span class="va">padj</span> <span class="op">&lt;</span> <span class="fl">0.05</span>, <span class="va">auc</span> <span class="op">&gt;</span> <span class="fl">0.6</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Find cluster markers within each sample</span></span>
+<span><span class="va">markers</span> <span class="op">&lt;-</span> <span class="fu">RunWilcoxAUC</span><span class="op">(</span><span class="va">SeuratObj</span>,</span>
+<span>                         group.by <span class="op">=</span> <span class="st">"Cluster"</span>,</span>
+<span>                         split.by <span class="op">=</span> <span class="st">"Sample"</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="co"># }</span></span>
 <span></span></code></pre></div>
     </div>

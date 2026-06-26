@@ -15,6 +15,11 @@ GenerateFeatureMaps(
   row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
+  legend.side = "right",
+  legend.direction = "vertical",
+  join_plots = FALSE,
+  join_nrow = NULL,
+  join_ncol = NULL,
   output_dir = NULL,
   object_name = "",
   subset_name = "",
@@ -45,6 +50,11 @@ PlotFeaturePlots(
   row.by = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
+  legend.side = "right",
+  legend.direction = "vertical",
+  join_plots = FALSE,
+  join_nrow = NULL,
+  join_ncol = NULL,
   output_dir = NULL,
   object_name = "",
   subset_name = "",
@@ -84,6 +94,20 @@ PlotFeaturePlots(
 column whose levels define the rows of the grid.}
 
 \item{colors}{Character vector. Color gradient from low to high expression.}
+
+\item{legend.side}{Character. Where to place the legend panel: \code{"right"}
+(default), \code{"left"}, \code{"bottom"}, or \code{"top"}.}
+
+\item{legend.direction}{Character. Internal layout of legend entries:
+\code{"vertical"} (default, entries stacked) or \code{"horizontal"}
+(entries in rows). Also controls colorbar orientation.}
+
+\item{join_plots}{Logical. When \code{features} has more than one gene, combine
+all per-gene figures into a single page/PDF instead of one each. Default
+\code{FALSE}.}
+
+\item{join_nrow, join_ncol}{Integer or \code{NULL}. Grid layout for \code{join_plots}.
+\code{NULL} auto-arranges into a near-square grid.}
 
 \item{output_dir}{Character or \code{NULL}. Directory to write PDFs. If \code{NULL},
 the plot is returned instead of saved.}
@@ -141,7 +165,8 @@ or \code{"p.format"} (shows \code{p = 0.023}).}
 }
 \value{
 Invisibly returns the last assembled plot when \code{output_dir = NULL};
-otherwise writes PDFs and returns \code{NULL} invisibly.
+otherwise writes PDFs and returns \code{NULL} invisibly. When
+\code{join_plots = TRUE}, invisibly returns the combined tiled figure.
 }
 \description{
 Loops over \code{features}, generates a \code{\link[Seurat:FeaturePlot]{Seurat::FeaturePlot()}} split by

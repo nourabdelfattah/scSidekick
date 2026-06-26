@@ -371,17 +371,28 @@ PlotAtlasWheel <- function(
     message("scSidekick: Saved ", basename(fpath),
             " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
 
+    ao_n_obs    <- format(nrow(md), big.mark = ",")
+    ao_unit     <- if (inherits(meta, "Seurat")) .nk_unit_label(meta) else "cells"
+    ao_obj_name <- if (nchar(object_name) > 0) object_name else
+      if (inherits(meta, "Seurat")) (.nk_setting(meta, "object_name") %||% "") else ""
+    ao_n_donors <- if (!is.null(patient_by) && patient_by %in% colnames(md))
+      length(unique(md[[patient_by]])) else NULL
     .write_legend_sidecar(fpath, paste0(
-      "Circular dataset overview wheel showing ",
-      group.by, " composition",
-      if (!is.null(study_by)) paste0(", with contributing studies (", study_by, ") labeled inside each wedge") else "",
-      ". Each wedge represents one ", group.by, " level; wedge width is uniform (does not encode cell count).",
-      if (show_stats) paste0(" Center shows total cell count, donor count, and group count.") else "",
-      if (!is.null(patient_by)) paste0(" Donor counts are based on unique ", patient_by, " values.") else "",
+      "Circular dataset overview wheel of ",
+      ao_n_obs, " ", ao_unit,
+      if (!is.null(ao_n_donors))
+        paste0(" from ", format(ao_n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(ao_obj_name) > 0) paste0(" [", ao_obj_name, "]") else "",
+      ", showing ", group.by, " composition",
+      if (!is.null(study_by))
+        paste0(", with contributing ", study_by, " labels inside each wedge")
+      else "",
+      ". Each wedge represents one ", group.by,
+      " level; wedge width is uniform and does not encode cell count.",
       if (!is.null(facet.by))
         paste0(" Separate wheels are shown for each level of ", facet.by, ".")
-      else "",
-      if (nchar(object_name) > 0) paste0(" Dataset: ", object_name, ".") else ""
+      else ""
     ))
   }
 

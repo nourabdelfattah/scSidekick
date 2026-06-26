@@ -957,6 +957,8 @@ RunSCssGSEA <- function(
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   file_prefix <- trimws(paste(object_name, subset_name))
   fit         <- match.arg(fit, c("ANOVA", "Kruskal"))
+  .nk_warn_donor(seurat_object)
+  sc_ctx <- .nk_legend_context(seurat_object)
 
   # ── 0. Optional cell subsetting ─────────────────────────────────────────────
   if (isTRUE(subset_cells)) {
@@ -1327,9 +1329,14 @@ RunSCssGSEA <- function(
   .write_legend_sidecar(pdf_ht, paste0(
     "Heatmap of mean row-z-scored ",
     if (method == "ucell") "UCell" else "ssGSEA",
-    " enrichment scores per ", group.by,
+    " enrichment scores for ", sc_ctx$n_obs, " ", sc_ctx$unit,
+    if (!is.null(sc_ctx$n_donors))
+      paste0(" from ", format(sc_ctx$n_donors, big.mark = ","), " donors")
+    else "",
+    if (nchar(sc_ctx$obj_name) > 0) paste0(" [", sc_ctx$obj_name, "]") else "",
+    ", grouped by ", group.by,
     if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-    ". Scores computed with ",
+    ". Method: ",
     if (method == "ucell")
       paste0("UCell (rank-based U statistic; max rank: ", ucell_max_rank, ")")
     else
@@ -1338,8 +1345,8 @@ RunSCssGSEA <- function(
     if (show_only_significant)
       paste0(" (BH-adjusted p < ", p_cutoff, " by one-way ", fit, ")")
     else "",
-    ". Rows: gene sets; columns: group means (one column per ", group.by, " level). ",
-    "Color scale: row z-score, symmetric around 0 (blue = low, white = 0, red = high)."
+    ". Rows: gene sets; columns: group means. ",
+    "Color scale: row z-score, symmetric around 0 (blue = low, red = high)."
   ))
 
   # ── 10b. Boxplots ─────────────────────────────────────────────────────────────
@@ -1360,12 +1367,16 @@ RunSCssGSEA <- function(
       pdf_path     = pdf_bx
     )
     .write_legend_sidecar(pdf_bx, paste0(
-      "Boxplots of per-cell ",
+      "Boxplots of per-", sc_ctx$unit, " ",
       if (method == "ucell") "UCell" else "ssGSEA",
-      " enrichment scores for ",
-      length(show_pws), " pathway(s)",
+      " enrichment scores for ", sc_ctx$n_obs, " ", sc_ctx$unit,
+      if (!is.null(sc_ctx$n_donors))
+        paste0(" from ", format(sc_ctx$n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(sc_ctx$obj_name) > 0) paste0(" [", sc_ctx$obj_name, "]") else "",
+      ", ", length(show_pws), " pathway(s)",
       if (show_only_significant)
-        paste0(" (selected at BH-adjusted p < ", p_cutoff, " by one-way ", fit, ")")
+        paste0(" (BH-adjusted p < ", p_cutoff, " by one-way ", fit, ")")
       else "",
       ". Each page = one pathway. x-axis: ",
       if (!is.null(split.by))
@@ -1373,7 +1384,7 @@ RunSCssGSEA <- function(
       else
         group.by,
       "; y-axis: ",
-      if (method == "ucell") "UCell score (per cell)." else "ssGSEA enrichment score (per cell).",
+      if (method == "ucell") "UCell score." else "ssGSEA enrichment score.",
       if (add_pvalues) " BH-adjusted p-value brackets shown (ggpubr)." else ""
     ))
   }

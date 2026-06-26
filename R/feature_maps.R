@@ -274,6 +274,16 @@
 #' @param row.by Character or `NULL`. In `"metadata"` layout, the metadata
 #'   column whose levels define the rows of the grid.
 #' @param colors Character vector. Color gradient from low to high expression.
+#' @param legend.side Character. Where to place the legend panel: \code{"right"}
+#'   (default), \code{"left"}, \code{"bottom"}, or \code{"top"}.
+#' @param legend.direction Character. Internal layout of legend entries:
+#'   \code{"vertical"} (default, entries stacked) or \code{"horizontal"}
+#'   (entries in rows). Also controls colorbar orientation.
+#' @param join_plots Logical. When `features` has more than one gene, combine
+#'   all per-gene figures into a single page/PDF instead of one each. Default
+#'   `FALSE`.
+#' @param join_nrow,join_ncol Integer or `NULL`. Grid layout for `join_plots`.
+#'   `NULL` auto-arranges into a near-square grid.
 #' @param output_dir Character or `NULL`. Directory to write PDFs. If `NULL`,
 #'   the plot is returned instead of saved.
 #' @param object_name Character. Label appended to PDF filenames. Default `""`.
@@ -312,7 +322,8 @@
 #'   `FALSE` (shows `ns` in gray).
 #'
 #' @return Invisibly returns the last assembled plot when `output_dir = NULL`;
-#'   otherwise writes PDFs and returns `NULL` invisibly.
+#'   otherwise writes PDFs and returns `NULL` invisibly. When
+#'   `join_plots = TRUE`, invisibly returns the combined tiled figure.
 #' @export
 GenerateFeatureMaps <- function(seurat_object,
                                  assay         = "RNA",
@@ -325,6 +336,11 @@ GenerateFeatureMaps <- function(seurat_object,
                                                    "#D1E5F0", "#FDDBC7",
                                                    "#F4A582", "#D6604D",
                                                    "#B2182B", "#67001F"),
+                                 legend.side      = "right",
+                                 legend.direction = "vertical",
+                                 join_plots    = FALSE,
+                                 join_nrow     = NULL,
+                                 join_ncol     = NULL,
                                  output_dir       = NULL,
                                  object_name      = "",
                                  subset_name   = "",
@@ -354,11 +370,14 @@ GenerateFeatureMaps <- function(seurat_object,
   if (!plot_type %in% c("violin", "box", "both"))
     stop("plot_type must be 'violin', 'box', or 'both'.")
 
-  # Walk up to PrepObject-stored defaults when not explicitly supplied
-  output_dir  <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  # Walk up to PrepObject-stored defaults only when the caller omitted it entirely.
+  # An explicit output_dir = NULL means "show, don't save."
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
+  .nk_warn_donor(seurat_object)
 
   # ── Multiple split.by: recurse once per variable ───────────────────────────
   if (!is.null(split.by) && length(split.by) > 1L) {
@@ -488,7 +507,9 @@ GenerateFeatureMaps <- function(seurat_object,
     }
   }
 
-  last_plot <- NULL
+  last_plot   <- NULL
+  do_join     <- isTRUE(join_plots) && length(features) > 1L
+  join_collect <- if (do_join) list() else NULL
 
   for (i in seq_along(features)) {
     gene      <- features[i]
@@ -520,13 +541,17 @@ GenerateFeatureMaps <- function(seurat_object,
       colors = colors, limits = c(0, color_lim), na.value = "red"
     )
 
+    lgd_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
     legend <- ggpubr::get_legend(
       basic[[1]] + theme_NourMin() + Seurat::NoAxes() +
         ggplot2::guides(color = ggplot2::guide_colourbar(
           title          = gene,
           title.position = "top",
-          title.theme    = ggplot2::element_text(size = 10)
-        ))
+          title.theme    = ggplot2::element_text(size = 10),
+          direction      = legend.direction
+        )) +
+        ggplot2::theme(legend.position  = lgd_pos,
+                       legend.direction = legend.direction)
     )
 
     n_plots <- length(basic)
@@ -687,19 +712,34 @@ GenerateFeatureMaps <- function(seurat_object,
     # ====================================================================
     spacer  <- ggpubr::ggparagraph(text = " ", size = 0)
     box_w   <- max(1.3, n_cols * 0.35)    # boxplot column width (proportional)
+    has_box <- add_boxplot && !is.null(split.by) && !is.null(box_panel)
 
-    if (add_boxplot && !is.null(split.by) && !is.null(box_panel)) {
-      CustomPlot <- ggpubr::ggarrange(
-        spacer, inner_grid, box_panel, legend,
-        nrow = 1, ncol = 4,
-        widths = c(0.03, n_cols, box_w, 0.5)
-      )
+    if (legend.side %in% c("right", "left")) {
+      # Legend as a column: keep existing left-right layout
+      if (has_box) {
+        parts  <- if (legend.side == "right") list(spacer, inner_grid, box_panel, legend)
+                   else list(legend, spacer, inner_grid, box_panel)
+        ws     <- if (legend.side == "right") c(0.03, n_cols, box_w, 0.5)
+                   else c(0.5, 0.03, n_cols, box_w)
+        CustomPlot <- ggpubr::ggarrange(plotlist = parts, nrow = 1, ncol = 4, widths = ws)
+      } else {
+        parts  <- if (legend.side == "right") list(spacer, inner_grid, legend)
+                   else list(legend, spacer, inner_grid)
+        ws     <- if (legend.side == "right") c(0.03, n_cols, 0.5)
+                   else c(0.5, 0.03, n_cols)
+        CustomPlot <- ggpubr::ggarrange(plotlist = parts, nrow = 1, ncol = 3, widths = ws)
+      }
     } else {
-      CustomPlot <- ggpubr::ggarrange(
-        spacer, inner_grid, legend,
-        nrow = 1, ncol = 3,
-        widths = c(0.03, n_cols, 0.5)
-      )
+      # Legend as a row: build main panels row, then stack with legend
+      main_parts <- if (has_box) list(spacer, inner_grid, box_panel)
+                     else list(spacer, inner_grid)
+      main_ws    <- if (has_box) c(0.03, n_cols, box_w) else c(0.03, n_cols)
+      main_row   <- ggpubr::ggarrange(plotlist = main_parts, nrow = 1,
+                                       ncol = length(main_parts), widths = main_ws)
+      parts      <- if (legend.side == "bottom") list(main_row, legend)
+                     else list(legend, main_row)
+      CustomPlot <- ggpubr::ggarrange(plotlist = parts, nrow = 2, ncol = 1,
+                                       heights = c(n_rows * 3, 1.2))
     }
 
     # ---- Legend text for InspectPlot / PPTX sidecar ----
@@ -728,25 +768,41 @@ GenerateFeatureMaps <- function(seurat_object,
              else "")
     } else ""
 
-    leg_txt <- sprintf(
-      paste0("UMAP feature plot showing expression of %s in %s%s%s. ",
-             "Color scale: low (dark blue) to high (dark red), capped at ",
-             "the per-gene maximum (%.2f). Each panel represents one %s level; ",
-             "legend shows the shared color bar.%s"),
-      gene,
-      if (nchar(object_name) > 0) object_name else "the dataset",
-      split_desc, row_desc,
-      color_lim,
-      if (!is.null(split.by)) split.by else "group",
+    fm_ctx  <- .nk_legend_context(seurat_object)
+    leg_txt <- paste0(
+      .nk_obs_sentence(fm_ctx,
+                       reduction = reduction,
+                       split.by  = split.by,
+                       row.by    = if (!is.null(row.by)) row.by else NULL),
+      ", showing log-normalized expression of ", gene, ". ",
+      "Color scale: low (dark blue) to high (dark red), capped at the ",
+      "per-gene maximum (", round(color_lim, 2), "). ",
+      if (!is.null(split.by))
+        paste0("Each UMAP panel represents one ", split.by, " level. ")
+      else "",
       box_desc
     )
     attr(CustomPlot, "legend_text") <- leg_txt
 
     # ---- Save or return ----
-    if (!is.null(output_dir)) {
-      box_extra <- if (add_boxplot && !is.null(split.by)) box_w else 0
-      pdf_h     <- n_rows * 3
-      pdf_w     <- (n_cols * 3) + 2 + box_extra
+    box_extra  <- if (has_box) box_w else 0
+    grid_h_in  <- n_rows * 3
+    grid_w_in  <- (n_cols * 3) + 2 + box_extra
+    legend_col <- 2.0   # colorbar column width in inches
+    legend_row <- 1.2   # colorbar row height in inches
+    if (legend.side %in% c("right", "left")) {
+      pdf_w <- grid_w_in + legend_col
+      pdf_h <- grid_h_in
+    } else {
+      pdf_w <- max(grid_w_in, 6)
+      pdf_h <- grid_h_in + legend_row
+    }
+
+    if (do_join) {
+      # join_plots: defer saving/printing until every gene's panel is built
+      attr(CustomPlot, "nk_pdf_dims") <- c(pdf_w, pdf_h)
+      join_collect[[gene]] <- CustomPlot
+    } else if (!is.null(output_dir)) {
       fname     <- file.path(
         output_dir,
         paste0(gene,
@@ -778,6 +834,51 @@ GenerateFeatureMaps <- function(seurat_object,
     message(sprintf("Plotted %s (%d of %d) - layout: %dx%d%s",
                     gene, i, length(features), n_rows, n_cols,
                     if (add_boxplot && !is.null(split.by)) " + boxplot" else ""))
+  }
+
+  # ── join_plots: tile every per-gene plot into one figure ──────────────────
+  if (do_join) {
+    n <- length(join_collect)
+    if (is.null(join_ncol) && is.null(join_nrow)) {
+      ncol_j <- ceiling(sqrt(n)); nrow_j <- ceiling(n / ncol_j)
+    } else if (is.null(join_ncol)) {
+      nrow_j <- join_nrow; ncol_j <- ceiling(n / nrow_j)
+    } else {
+      ncol_j <- join_ncol; nrow_j <- ceiling(n / ncol_j)
+    }
+
+    combined <- patchwork::wrap_plots(
+      lapply(join_collect, function(p) patchwork::wrap_elements(full = p)),
+      nrow = nrow_j, ncol = ncol_j
+    )
+
+    one_dim <- attr(join_collect[[1]], "nk_pdf_dims") %||% c(12, 6)
+    pdf_w   <- ncol_j * one_dim[1]
+    pdf_h   <- nrow_j * one_dim[2]
+
+    if (!is.null(output_dir)) {
+      fname <- file.path(output_dir,
+                         paste0(paste(features, collapse = "-"),
+                                " FeatureMaps ", object_name,
+                                if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
+                                ".pdf"))
+      grDevices::pdf(fname, width = pdf_w, height = pdf_h)
+      print(combined)
+      grDevices::dev.off()
+      jn_ctx <- .nk_legend_context(seurat_object)
+      .write_legend_sidecar(fname, paste0(
+        .nk_obs_sentence(jn_ctx, reduction = reduction, split.by = split.by),
+        ", showing log-normalized expression of ",
+        paste(features, collapse = ", "),
+        ", arranged in a ", nrow_j, " x ", ncol_j, " grid. ",
+        "Each panel uses its own per-gene color scale capped at that gene's ",
+        "maximum expression (dark blue = low, dark red = high)."
+      ))
+      return(invisible(combined))
+    }
+
+    print(combined)
+    return(invisible(combined))
   }
 
   invisible(last_plot)

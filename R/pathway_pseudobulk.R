@@ -190,6 +190,10 @@
 #'     \item \strong{Tighter scale for subtle signals:}
 #'       `circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))`
 #'   }
+#' @param resume Logical. Skip cell types whose GSEA CSV files already exist in
+#'   `output_dir` (from a previous partial run). Useful when a long run crashed
+#'   mid-way. Cell types with any missing output are rerun; already-complete
+#'   ones are skipped with a message. Default `FALSE`.
 #' @param save.rds Logical. Save the pseudobulk counts, sample metadata, GSEA
 #'   results, and ssGSEA results as `RunGSEA_pseudobulk_results.rds` in
 #'   `output_dir`. Required for `redo_plots = TRUE`. Default `TRUE`.
@@ -272,6 +276,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                                        show_row_dend       = FALSE,
                                                        row_names_max_width = grid::unit(15, "cm")),
                                heatmap_colors   = NULL,
+                               resume           = FALSE,
                                save.rds         = TRUE,
                                redo_plots       = FALSE,
                                caffeinate       = FALSE) {
@@ -282,6 +287,40 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   group.by    <- group.by    %||% identity_column
   sample.by   <- sample.by   %||% sample_column
   contrast.by <- contrast.by %||% group_column
+
+  # Auto-detect precomputed pseudobulk from seurat_object@misc if not supplied.
+  # Only the list($counts, $samples) format produced by RunGSEA_pseudobulk is
+  # usable here. ComputePseudobulk stores mean expression as a flat data frame
+  # (incompatible: not raw counts), so those slots are intentionally ignored.
+  if (is.null(pseudobulk) && !is.null(seurat_object) &&
+      inherits(seurat_object, "Seurat") &&
+      !is.null(seurat_object@misc[["pseudobulk"]])) {
+    pb_slot <- seurat_object@misc[["pseudobulk"]]
+    # Build the expected key from sample.by + group.by + contrast.by
+    key_parts <- c(sample.by, group.by, contrast.by)
+    key_parts <- key_parts[lengths(list(key_parts)) > 0 & nzchar(key_parts)]
+    pb_key    <- paste(key_parts, collapse = "+")
+    candidate <- pb_slot[[pb_key]]
+    if (!is.null(candidate)) {
+      if (is.list(candidate) && !is.data.frame(candidate) &&
+          !is.null(candidate$counts) && !is.null(candidate$samples)) {
+        message("RunGSEA_pseudobulk: auto-detected precomputed pseudobulk slot '",
+                pb_key, "' from seurat_object@misc.")
+        pseudobulk <- candidate
+      } else {
+        message("RunGSEA_pseudobulk: slot '", pb_key, "' in @misc is not in the ",
+                "expected format (list with $counts and $samples). ",
+                "This slot was likely created by ComputePseudobulk() which stores ",
+                "mean expression -- RunGSEA_pseudobulk() requires raw counts. ",
+                "Falling back to aggregation from seurat_object.")
+      }
+    } else {
+      available <- paste(names(pb_slot), collapse = ", ")
+      message("RunGSEA_pseudobulk: pseudobulk slot '", pb_key,
+              "' not found in @misc. Available slots: ", available,
+              ". Falling back to aggregation from seurat_object.")
+    }
+  }
 
   # subset.by: run the full pipeline once per level, saving results in subdirectories
   if (!is.null(subset.by) && !is.null(seurat_object)) {
@@ -356,6 +395,17 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   if (run.ssgsea && !requireNamespace("GSVA", quietly = TRUE)) {
     warning("GSVA not available; skipping ssGSEA."); run.ssgsea <- FALSE
   }
+
+  pb_ctx_str <- if (!is.null(seurat_object) && inherits(seurat_object, "Seurat")) {
+    .nk_warn_donor(seurat_object)
+    ctx <- .nk_legend_context(seurat_object)
+    paste0(ctx$n_obs, " ", ctx$unit,
+      if (!is.null(ctx$n_donors))
+        paste0(" from ", format(ctx$n_donors, big.mark = ","), " donors")
+      else "",
+      if (nchar(ctx$obj_name) > 0) paste0(" [", ctx$obj_name, "]") else "")
+  } else ""
+
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   # ── redo_plots: reload saved results and re-run only visualisations ────────
@@ -370,6 +420,14 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     gsea  <- saved$gsea
     ssg   <- saved$ssgsea
     samp  <- saved$samples
+
+    if (is.null(gsea) || nrow(gsea) == 0L) {
+      stop(
+        "redo_plots = TRUE but the saved RDS contains no GSEA results (0 rows).\n",
+        "The previous run was likely incomplete or failed before GSEA finished.\n",
+        "Set redo_plots = FALSE and resume = FALSE to rerun the full pipeline."
+      )
+    }
     # User-provided contrasts take priority. Only fall back to the saved list
     # when the caller did not supply their own, so that re-running with a new
     # contrast list does not require deleting the RDS first.
@@ -401,11 +459,12 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 
           message("  NES heatmap: ", cn, " / ", db)
           .pb_nes_heatmap(sub, cn, db, db_dir, top_n_heatmap, heatmap_params,
-                          heatmap_colors = heatmap_colors, run_label = run_label)
+                          heatmap_colors = heatmap_colors, run_label = run_label,
+                          ctx_str = pb_ctx_str)
 
           for (ct in unique(sub$cell_type)) {
             fg <- sub[sub$cell_type == ct, , drop = FALSE]
-            .pb_lollipop(fg, db, ct, cn, db_dir, run_label = run_label)
+            .pb_lollipop(fg, db, ct, cn, db_dir, run_label = run_label, ctx_str = pb_ctx_str)
           }
         }
       }
@@ -424,7 +483,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
               nes.cutoff     = nes.cutoff,
               heatmap_params = heatmap_params,
               heatmap_colors = heatmap_colors,
-              run_label      = run_label)
+              run_label      = run_label,
+              ctx_str        = pb_ctx_str)
           }
         }
       }
@@ -488,7 +548,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                           heatmap_colors  = heatmap_colors,
                           run_label       = run_label,
                           contrast_label  = contrast.by,
-                          row_selection   = row_sel_r)
+                          row_selection   = row_sel_r,
+                          ctx_str         = pb_ctx_str)
 
           if (!is.null(res_ct) && nrow(res_ct) > 0)
             .ssgsea_boxplot(sc, res_ct, s, db, ct, db_dir,
@@ -496,7 +557,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                             group_colors = group_colors,
                             top_n        = top_n_ssgsea,
                             contrasts    = contrasts,
-                            use.padj     = ssgsea.use.padj)
+                            use.padj     = ssgsea.use.padj,
+                            ctx_str      = pb_ctx_str)
         }
       }
     }
@@ -602,6 +664,17 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   }
 
   ## ---- pseudobulk: reuse precomputed, or aggregate (sum counts per sample x ident) ----
+  # When resume = TRUE and a saved RDS exists, reuse the stored pseudobulk
+  # counts and sample metadata rather than re-aggregating from the Seurat object.
+  if (isTRUE(resume) && is.null(pseudobulk)) {
+    rds_path_resume <- file.path(output_dir, "RunGSEA_pseudobulk_results.rds")
+    if (file.exists(rds_path_resume)) {
+      message("resume: loading pseudobulk from saved RDS (skipping aggregation)...")
+      saved_pb  <- readRDS(rds_path_resume)
+      pseudobulk <- list(counts = saved_pb$pseudobulk, samples = saved_pb$samples)
+    }
+  }
+
   original_contrast_levels <- NULL
   original_split_levels    <- NULL
   contrast_src_levels      <- NULL   # factor levels from contrast.by in Seurat metadata
@@ -622,10 +695,16 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
         # Legacy 2-part format: sample || cell_type (group from metadata)
         if (is.null(samp$sample))    samp$sample    <- sub("\\|\\|.*", "", samp$.pb)
         if (is.null(samp$cell_type)) samp$cell_type <- sub(".*\\|\\|", "", samp$.pb)
-        if (is.null(samp$group) && !is.null(contrast.by) && contrast.by %in% colnames(samp))
-          samp$group <- samp[[contrast.by]]
       }
     }
+    # Always resolve samp$group from contrast.by if still missing - this must
+    # run even when sample/cell_type were already present (guard above skipped).
+    if (is.null(samp$group) && !is.null(contrast.by) && contrast.by %in% colnames(samp))
+      samp$group <- samp[[contrast.by]]
+    if (is.null(samp$group))
+      stop("Cannot determine group column for pseudobulk. ",
+           "Supply contrast.by matching a column in pseudobulk$samples, or ",
+           "ensure pseudobulk$samples contains a 'group' column.")
     rownames(samp) <- samp$.pb; samp <- samp[colnames(agg), ]
   } else {
     if (is.null(seurat_object)) stop("Provide either `seurat_object` or a precomputed `pseudobulk`.")
@@ -733,8 +812,20 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     src_levels <- levels(seurat_object@meta.data[[group.by]])
     idents <- c(src_levels[src_levels %in% idents], setdiff(idents, src_levels))
   }
-  gsea_all <- list()           # long NES table
+  gsea_all  <- list()           # long NES table
+  csv_label <- if (!is.null(run_label)) paste0(" [", make.names(run_label), "]") else ""
   for (ct in idents) {
+    # resume: skip cell types whose CSVs already exist for every contrast x db
+    if (isTRUE(resume)) {
+      expected <- unlist(lapply(names(contrasts), function(cn)
+        lapply(names(fgsea_dbs), function(db)
+          file.path(output_dir, cn, db,
+                    paste0(db, " ", make.names(ct), " ", cn, csv_label, ".csv")))))
+      if (length(expected) > 0L && all(file.exists(expected))) {
+        message("  resume: skip ", ct, " (all CSVs already exist)")
+        next
+      }
+    }
     keep_s <- rownames(samp)[samp$cell_type == ct & (is.na(samp$n_cells) | samp$n_cells >= min.cells)]
     s <- samp[keep_s, , drop = FALSE]; s$group <- droplevels(s$group)
     if (any(table(s$group) < min.samples.per.group) || nlevels(s$group) < 2) {
@@ -780,10 +871,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
         gsea_all[[paste(ct,cn,db)]] <- fg
         # per cell-type/contrast/db CSV + lollipop, mirroring RunGSEA layout
         db_dir <- file.path(output_dir, cn, db); dir.create(db_dir, recursive = TRUE, showWarnings = FALSE)
-        csv_label <- if (!is.null(run_label)) paste0(" [", make.names(run_label), "]") else ""
         utils::write.csv(fg[order(-fg$NES), ],
                          file.path(db_dir, paste0(db, " ", make.names(ct), " ", cn, csv_label, ".csv")), row.names = FALSE)
-        .pb_lollipop(fg, db, ct, cn, db_dir, run_label = run_label)
+        .pb_lollipop(fg, db, ct, cn, db_dir, run_label = run_label, ctx_str = pb_ctx_str)
       }
     }
     message("  ", ct, ": ", length(valid), " contrasts x ", length(fgsea_dbs), " DBs")
@@ -803,7 +893,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       sub <- gsea[gsea$contrast == cn & gsea$db == db, ]
       if (!nrow(sub)) next
       .pb_nes_heatmap(sub, cn, db, file.path(output_dir, cn, db), top_n_heatmap, heatmap_params,
-                      heatmap_colors = heatmap_colors, run_label = run_label)
+                      heatmap_colors = heatmap_colors, run_label = run_label,
+                      ctx_str = pb_ctx_str)
     }
     ## ---- summary NES heatmap: pathways x contrasts, per cell type per db ----
     if (length(unique(gsea$contrast)) > 1L) {
@@ -818,7 +909,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           nes.cutoff     = nes.cutoff,
           heatmap_params = heatmap_params,
           heatmap_colors = heatmap_colors,
-          run_label      = run_label)
+          run_label      = run_label,
+          ctx_str        = pb_ctx_str)
       }
     }
   }
@@ -832,7 +924,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                     heatmap_params = heatmap_params,
                                     heatmap_colors = heatmap_colors,
                                     run_label      = run_label,
-                                    use.padj       = ssgsea.use.padj)
+                                    use.padj       = ssgsea.use.padj,
+                                    resume         = resume,
+                                    ctx_str        = pb_ctx_str)
 
   if (save.rds) saveRDS(
     list(pseudobulk = agg, samples = samp, gsea = gsea, ssgsea = ssg, contrasts = contrasts),
@@ -919,7 +1013,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 }
 
 #' @keywords internal
-.pb_lollipop <- function(fg, db, ct, cn, db_dir, n = 15, run_label = NULL) {
+.pb_lollipop <- function(fg, db, ct, cn, db_dir, n = 15, run_label = NULL, ctx_str = "") {
   fg <- fg[fg$padj < 0.25, , drop = FALSE]; if (!nrow(fg)) return(invisible())
   fg <- fg[order(-abs(fg$NES)), ][seq_len(min(n, nrow(fg))), ]
   fg$pw <- gsub("_", " ", sub("^[A-Z]+_", "", fg$pathway))
@@ -935,13 +1029,17 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   fp <- file.path(db_dir, paste0(db, " - ", make.names(ct), " ", cn, lbl_part, " lollipop.pdf"))
   ggplot2::ggsave(fp, p, width = 6, height = 4.5)
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
-    "Lollipop of top ", nrow(fg), " gene sets (", db, ") for ", ct, ", contrast ", cn,
-    " (donor-level pseudobulk, limma-voom moderated t pre-ranking, fgsea). NES>0 = enriched in the first term of the contrast."))
+    "Pseudobulk GSEA lollipop for the ", db, " database, cell type = ", ct,
+    ", contrast: ", cn,
+    if (nzchar(ctx_str)) paste0(". Dataset: ", ctx_str) else "",
+    ". Bars are ranked by Normalized Enrichment Score (NES); positive NES = enriched in the first ",
+    "term of the contrast (donor-level pseudobulk, limma-voom t-statistic pre-ranking, fgsea). ",
+    "Top ", nrow(fg), " gene sets shown."))
 }
 
 #' @keywords internal
 .pb_nes_heatmap <- function(sub, cn, db, db_dir, top_n, heatmap_params = list(),
-                            heatmap_colors = NULL, run_label = NULL) {
+                            heatmap_colors = NULL, run_label = NULL, ctx_str = "") {
   dir.create(db_dir, recursive = TRUE, showWarnings = FALSE)
 
   # Build NES and padj matrices (pathways × cell types)
@@ -1008,13 +1106,12 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   )
 
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
-    "Heatmap of pseudobulk GSEA Normalized Enrichment Scores (", db,
-    ") for contrast ", cn, " across cell types. ",
-    "Rows = top ", nrow(m), " gene sets by max |NES| across cell types. ",
-    "Method: donor-level pseudobulk, edgeR TMM normalization, ",
-    "limma-voom moderated t-statistic pre-ranking, fgsea. ",
-    "NES > 0 = enriched in the first term of the contrast. ",
-    "Overlaid significance stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
+    "Pseudobulk GSEA NES heatmap (", db, "), contrast: ", cn,
+    if (nzchar(ctx_str)) paste0(". Dataset: ", ctx_str) else "",
+    ". Rows = top ", nrow(m), " gene sets by max |NES| across cell types (columns). ",
+    "Method: edgeR TMM normalization, limma-voom moderated t-statistic pre-ranking, fgsea. ",
+    "Positive NES = enriched in the first term of the contrast. ",
+    "Stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
 }
 
 # ---------------------------------------------------------------------------
@@ -1030,7 +1127,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                      nes.cutoff     = 1.0,
                                      heatmap_params = list(),
                                      heatmap_colors = NULL,
-                                     run_label      = NULL) {
+                                     run_label      = NULL,
+                                     ctx_str        = "") {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) return(invisible())
 
   sub <- gsea_db[gsea_db$cell_type == ct, , drop = FALSE]
@@ -1118,10 +1216,11 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   )
 
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
-    "Summary NES heatmap for ", ct, " cells (", db, " database). ",
-    "Rows = union of top ", top_n, " pathways per contrast",
-    if (nes.cutoff > 0) paste0(", filtered to max |NES| >= ", nes.cutoff) else "", ". ",
-    "Columns = all contrasts tested. ",
+    "Pseudobulk GSEA summary NES heatmap for ", ct, " (", db, " database)",
+    if (nzchar(ctx_str)) paste0(". Dataset: ", ctx_str) else "",
+    ". Rows = union of top ", top_n, " pathways per contrast",
+    if (nes.cutoff > 0) paste0(", filtered to max |NES| >= ", nes.cutoff) else "",
+    "; columns = all contrasts tested. ",
     "Stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
 
   invisible(m_sub)
@@ -1135,7 +1234,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                        heatmap_params = list(),
                        heatmap_colors = NULL,
                        run_label      = NULL,
-                       use.padj       = TRUE) {
+                       use.padj       = TRUE,
+                       resume         = FALSE,
+                       ctx_str        = "") {
 
   # Resolve group_colors once so the heatmap and boxplot always use identical
   # colors regardless of which helper is called first or whether the user
@@ -1155,7 +1256,19 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   }
 
   out <- list()
+  lbl_part_resume <- if (!is.null(run_label)) paste0(" [", make.names(run_label), "]") else ""
   for (ct in sort(unique(samp$cell_type))) {
+    if (isTRUE(resume)) {
+      expected_ssgsea <- vapply(names(fgsea_dbs), function(db)
+        file.path(output_dir, "ssGSEA", db,
+                  paste0("ssGSEA ", db, " ", make.names(ct), lbl_part_resume, " scores.csv")),
+        character(1L))
+      if (length(expected_ssgsea) > 0L && all(file.exists(expected_ssgsea))) {
+        message("  resume: skip ssGSEA ", ct, " (all CSVs already exist)")
+        next
+      }
+    }
+
     ks <- rownames(samp)[samp$cell_type == ct &
                          (is.na(samp$n_cells) | samp$n_cells >= min.cells)]
     s <- samp[ks, , drop = FALSE]; s$group <- droplevels(s$group)
@@ -1261,7 +1374,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                       heatmap_params  = heatmap_params,
                       heatmap_colors  = heatmap_colors,
                       run_label       = run_label,
-                      row_selection   = row_sel)
+                      row_selection   = row_sel,
+                      ctx_str         = ctx_str)
 
       if (!is.null(res))
         .ssgsea_boxplot(sc, res, s, db, ct, db_dir,
@@ -1269,7 +1383,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                         group_colors = group_colors,
                         top_n        = top_n,
                         contrasts    = contrasts,
-                        use.padj     = use.padj)
+                        use.padj     = use.padj,
+                        ctx_str      = ctx_str)
     }
   }
   if (length(out)) do.call(rbind, out) else NULL
@@ -1287,7 +1402,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                              heatmap_colors  = NULL,
                              run_label       = NULL,
                              contrast_label  = NULL,
-                             row_selection   = NULL) {
+                             row_selection   = NULL,
+                             ctx_str         = "") {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) return(invisible())
   if (!requireNamespace("circlize",       quietly = TRUE)) return(invisible())
 
@@ -1408,12 +1524,12 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   row_desc <- if (!is.null(row_selection)) row_selection else
     paste0("top ", nrow(m), " pathways by score variance across donors")
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
-    "Heatmap of single-sample GSEA (ssGSEA) enrichment scores for ", ct,
-    " cells, ", db, " gene-set database. ",
-    "Rows: ", row_desc, "; ",
-    "columns: individual donors ordered by group. ",
+    "ssGSEA enrichment score heatmap for ", ct, " (", db, " database)",
+    if (nzchar(ctx_str)) paste0(". Dataset: ", ctx_str) else "",
+    ". Rows: ", row_desc,
+    "; columns: individual donors ordered by group. ",
     "Blue = low/negative enrichment; red = high/positive enrichment. ",
-    "Scores computed using GSVA::gsva() on log-CPM pseudobulk expression."
+    "Scores computed with GSVA::gsva() on log-CPM pseudobulk expression."
   ))
   invisible(ht)
 }
@@ -1427,7 +1543,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                              group_colors = NULL,
                              top_n        = 15L,
                              contrasts    = NULL,
-                             use.padj     = TRUE) {
+                             use.padj     = TRUE,
+                             ctx_str      = "") {
   sig_col <- if (isTRUE(use.padj)) "padj" else "p"
   # Pathway selection: use pre-computed shared set when provided so the
   # boxplot and heatmap show the same rows.
@@ -1557,10 +1674,11 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 
   sig_label_long <- if (isTRUE(use.padj)) "BH-adjusted p < 0.05" else "raw p < 0.05"
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
-    "Boxplots of ssGSEA enrichment scores for the top ", n_pw,
-    " significantly differentially enriched pathways in ", ct,
-    " cells (", db, " database; ", sig_label_long, "). ",
-    "Each panel shows score distributions per group across individual donors."
+    "ssGSEA score boxplots for the top ", n_pw,
+    " significantly enriched pathways in ", ct, " (", db, " database; ",
+    sig_label_long, ")",
+    if (nzchar(ctx_str)) paste0(". Dataset: ", ctx_str) else "",
+    ". Each panel shows score distributions per group across individual donors."
   ))
   invisible(combined)
 }

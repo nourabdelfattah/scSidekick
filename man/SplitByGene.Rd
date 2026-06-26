@@ -7,7 +7,7 @@
 SplitByGene(
   seurat_object,
   gene,
-  group_by,
+  group.by,
   split = c("zero_vs_expressed", "quantile", "expressed_quantile"),
   quantile_range = c(0.25, 0.75),
   assay = NULL,
@@ -20,7 +20,7 @@ SplitByGene(
 
 \item{gene}{Character. Gene to split on.}
 
-\item{group_by}{Character. Cell-type identity column.}
+\item{group.by}{Character. Cell-type identity column.}
 
 \item{split}{Character. \code{"zero_vs_expressed"} (default), \code{"quantile"}, or
 \code{"expressed_quantile"}.}
@@ -42,7 +42,7 @@ Seurat object with a new metadata column. Prints a count table.
 Adds a metadata column labeling each cell as \code{"high"} / \code{"low"} (or
 \code{"expressed"} / \code{"zero"}) for a given gene. The split is computed
 independently within each cell type. The column can be passed directly as
-\code{group_column} in \code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}} or used with \code{Seurat::FindMarkers}.
+\code{condition.by} in \code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}} or used with \code{Seurat::FindMarkers}.
 }
 \details{
 \strong{Split modes}

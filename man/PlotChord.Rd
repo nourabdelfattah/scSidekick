@@ -2,18 +2,22 @@
 % Please edit documentation in R/viz_composition.R
 \name{PlotChord}
 \alias{PlotChord}
-\title{Chord Diagram Between Two Categorical Variables}
+\title{Chord Diagram Across Two or More Categorical Variables}
 \usage{
 PlotChord(
   data,
-  var1,
-  var2,
+  variables = NULL,
+  var1 = NULL,
+  var2 = NULL,
   donor.by = NULL,
   facet.by = NULL,
   ncol_facet = NULL,
   canvas_padding = 0.3,
+  colors = NULL,
   var1_colors = NULL,
   var2_colors = NULL,
+  group.gap = 15,
+  sector.gap = 2,
   alpha = 0.8,
   label_cex = 0.8,
   directional = FALSE,
@@ -26,70 +30,69 @@ PlotChord(
 \arguments{
 \item{data}{A Seurat object or a plain \code{data.frame}/\code{tibble}.}
 
-\item{var1}{Character. First variable (e.g. \code{"BraakStage"}).  Sectors
-for \code{var1} levels appear first in the diagram.}
+\item{variables}{Character vector of two or more metadata column names, in
+the order they should appear around the chord circle.}
 
-\item{var2}{Character. Second variable (e.g. \code{"ThalPhase"}).}
+\item{var1, var2}{Deprecated aliases kept for backward compatibility.  Use
+\code{variables} instead.}
 
 \item{donor.by}{Character or \code{NULL}.  Column identifying the donor /
 patient.  When supplied, metadata is deduplicated to one row per donor so
-arc widths reflect \emph{donor counts} - the right choice for any
-patient-level pathological or clinical variable.  Default \code{NULL}.}
+arc widths reflect \emph{donor counts}.  Default \code{NULL}.}
 
 \item{facet.by}{Character or \code{NULL}.  Metadata column to facet by -
-one chord diagram per level, arranged side-by-side in a grid.  Default
-\code{NULL}.}
+one chord diagram per level, arranged side-by-side in a grid.}
 
-\item{ncol_facet}{Integer or \code{NULL}.  Number of columns in the chord
-grid when \code{facet.by} is used.  Auto-computed (max 3) if \code{NULL}.}
+\item{ncol_facet}{Integer or \code{NULL}.  Columns in the facet grid.
+Auto-computed (max 3) if \code{NULL}.}
 
-\item{canvas_padding}{Numeric.  Extra space added around the chord circle
-(in canvas units) to prevent sector labels from being clipped.  The
-canvas runs from \code{-1 - padding} to \code{1 + padding} on each axis.
-Default \code{0.3}.  Increase to e.g. \code{0.5} for very long labels.}
+\item{canvas_padding}{Numeric.  Extra space around the chord circle to
+prevent label clipping.  Default \code{0.3}.}
 
-\item{var1_colors}{Named character vector for \code{var1} levels.
+\item{colors}{Named list of color vectors, one element per variable name
+(e.g. \code{list(CellType = c(...), Diagnosis = c(...))}).
 Auto-assigned if \code{NULL}.}
 
-\item{var2_colors}{Named character vector for \code{var2} levels.
-Auto-assigned if \code{NULL}.}
+\item{var1_colors, var2_colors}{Deprecated.  Use \code{colors} instead.}
+
+\item{group.gap}{Numeric. Gap in degrees between \code{variables[1]} sectors
+and \code{variables[2]} sectors on the chord circle.  Default \code{15}.}
+
+\item{sector.gap}{Numeric. Gap in degrees between individual sectors within
+each variable.  Default \code{2}.}
 
 \item{alpha}{Numeric. Chord fill opacity (0-1).  Default \code{0.8}.}
 
-\item{label_cex}{Numeric. Sector label font size multiplier.  Default
-\code{0.8}.}
+\item{label_cex}{Numeric. Sector label size multiplier.  Default \code{0.8}.}
 
-\item{directional}{Logical.  Draw directional arrows from \code{var1} to
-\code{var2}.  Default \code{FALSE}.}
+\item{directional}{Logical.  Draw directional arrows.  Default \code{FALSE}.}
 
 \item{output_dir}{Directory to save a PDF.  \code{NULL} = no save.}
 
 \item{object_name}{Label prefix for the output filename.}
 
-\item{pdf_width, pdf_height}{PDF dimensions \emph{per panel} in inches.
-Total PDF width = \code{pdf_width × ncol}; total height = \code{pdf_height
-  × nrow}.  Default \code{7 x 7}.}
+\item{pdf_width, pdf_height}{PDF dimensions per panel in inches.  Default
+\code{7 x 7}.}
 }
 \value{
-The contingency matrix, or a named list of matrices when
-\code{facet.by} is used (invisibly).
+The contingency matrix (2 variables) or link data frame (3+
+variables), or a named list of those when \code{facet.by} is used
+(invisibly).
 }
 \description{
-Draws a chord diagram showing the connectivity between two metadata
-variables (e.g. cell-type assignment and sample).  Each arc represents the
-number of cells shared between a level of \code{var1} and a level of
-\code{var2}.  Uses \pkg{circlize}.
+Draws a chord diagram showing connectivity across two or more metadata
+variables (e.g. cell type, diagnosis, sex).  Arc widths are proportional to
+cell (or donor) counts.  Uses \pkg{circlize}.
+
+With two variables the diagram is a standard bidirectional chord between
+the two sector sets.  With three or more variables, adjacent pairs are
+linked in sequence (A-B, B-C, ...) so the diagram reads like a circular
+alluvial: sectors are grouped by variable around the circle and chords only
+connect adjacent variables.  Sector labels show the level name only (the
+variable prefix is used internally to keep names unique but is stripped in
+the plot).
 
 Because \pkg{circlize} draws to the active graphics device (base R
-graphics), this function returns the contingency matrix invisibly rather
-than a \code{ggplot2} object.
-
-When \code{facet.by} is supplied, chord diagrams are arranged
-\strong{side-by-side in a grid} on a single PDF page using
-\code{par(fig = ..., new = TRUE)}.  The PDF width/height scale
-automatically with the number of panels.  The filename includes
-\code{"by_{facet.by}"}.
-
-\code{canvas_padding} expands the circlize canvas so long sector labels are
-never clipped - increase it if you still see clipping.
+graphics), this function returns the link object invisibly rather than a
+\code{ggplot2} object.
 }

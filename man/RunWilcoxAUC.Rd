@@ -7,6 +7,7 @@
 RunWilcoxAUC(
   seurat_object,
   group.by = NULL,
+  split.by = NULL,
   groups_use = NULL,
   assay = "RNA",
   layer = "data",
@@ -18,11 +19,19 @@ RunWilcoxAUC(
 \item{seurat_object}{A Seurat object.}
 
 \item{group.by}{Character. Metadata column whose levels define the
-comparison groups (e.g. \code{"Cluster"}, \code{"Assignment"}).
+comparison groups (e.g. \code{"Condition"}, \code{"Assignment"}).
 When \code{NULL}, \code{\link[Seurat]{Idents}} is used.}
 
+\item{split.by}{Character or \code{NULL}. Metadata column to split on before
+running the test.  The test is run independently within each level
+(e.g. \code{split.by = "CellType"} finds condition markers per cell type).
+The output gains a column named after \code{split.by} identifying each
+level.  Levels with fewer than 2 groups after filtering are skipped with a
+message.  Default \code{NULL} (no split).}
+
 \item{groups_use}{Character vector or \code{NULL}. Restrict the test to
-a subset of \code{group.by} levels.  \code{NULL} = all levels.}
+a subset of \code{group.by} levels.  Applied within each split level when
+\code{split.by} is set.  \code{NULL} = all levels.}
 
 \item{assay}{Character. Assay to extract. Default \code{"RNA"}.}
 
@@ -42,6 +51,8 @@ Default \code{FALSE}.}
 A \code{data.frame} with one row per (feature × group) combination
 containing \code{auc}, \code{pval}, \code{padj}, \code{logFC},
 \code{pct_in}, \code{pct_out} - the standard \pkg{presto} output.
+When \code{split.by} is set, an additional column named after
+\code{split.by} identifies which split level each row came from.
 }
 \description{
 A drop-in replacement for \code{presto::wilcoxauc(seurat_object, ...)} that
@@ -54,6 +65,10 @@ syntax.  \code{RunWilcoxAUC} bypasses that path: it pulls the matrix through
 \code{slot=} vs v5 \code{layer=}, and sparse → dgCMatrix coercion) and then
 calls \code{presto::wilcoxauc(matrix, y)} so S3 dispatch lands on
 \code{wilcoxauc.default} directly - no internal \code{:::} access needed.
+
+When \code{split.by} is supplied the test is run independently within each
+level of that column (e.g. each cell type), and the results are combined into
+a single data frame with an extra column named after \code{split.by}.
 }
 \examples{
 \dontrun{
@@ -61,18 +76,21 @@ calls \code{presto::wilcoxauc(matrix, y)} so S3 dispatch lands on
 markers <- RunWilcoxAUC(SeuratObj)
 
 # Specify a metadata column
-markers <- RunWilcoxAUC(SeuratObj, group.by = "Cluster")
+markers <- RunWilcoxAUC(SeuratObj, group.by = "Condition")
 
-# Only compare specific groups
-markers <- RunWilcoxAUC(SeuratObj, group.by = "Cluster",
-                         groups_use = c("Microglia", "Astrocytes"))
+# Find condition markers within each cell type
+markers <- RunWilcoxAUC(SeuratObj,
+                         group.by = "Condition",
+                         split.by = "CellType")
 
-# Top markers per cluster
+# Filter results for one cell type
 library(dplyr)
-top_markers <- markers |>
-  filter(padj < 0.05, logFC > 0.5, auc > 0.6) |>
-  group.by(group) |>
-  slice_max(auc, n = 20)
+markers |> filter(CellType == "Microglia", padj < 0.05, auc > 0.6)
+
+# Find cluster markers within each sample
+markers <- RunWilcoxAUC(SeuratObj,
+                         group.by = "Cluster",
+                         split.by = "Sample")
 }
 
 }

@@ -220,6 +220,7 @@ GroupHeatmap <- function(
     .nk_setting(seurat_object, "object_name") %||% ""
   subset_name <- if (nchar(subset_name) > 0) subset_name else
     .nk_setting(seurat_object, "subset_name") %||% ""
+  .nk_warn_donor(seurat_object)
 
   # ── 0. Validate ─────────────────────────────────────────────────────────────
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE))
@@ -709,22 +710,30 @@ GroupHeatmap <- function(
     message("scSidekick: Saved to ", pdf_path,
             " (", round(dev_w, 1), " × ", round(dev_h, 1), " in)")
 
+    gh_ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(pdf_path, paste0(
       "Heatmap of ", if (scale_method == "none") "mean" else
         paste0(scale_method, "-scaled mean"),
       " expression for ", nrow(expr_mat), " features across ",
-      ncol(expr_mat), " column groups defined by ",
-      paste(group.by, collapse = ", "),
+      ncol(expr_mat), " column groups. ",
+      "Data: ", gh_ctx$n_obs, " ", gh_ctx$unit,
+      if (!is.null(gh_ctx$n_donors))
+        paste0(" from ", format(gh_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(gh_ctx$obj_name) > 0) paste0(" [", gh_ctx$obj_name, "]") else "",
+      ", grouped by ", paste(group.by, collapse = " and "),
       if (!is.null(column_split_by))
-        paste0(", faceted by ", column_split_by) else "",
+        paste0(", with columns split by ", column_split_by)
+      else "",
       ". ",
       if (add_dot)
-        "Dot size encodes the percent of cells expressing each gene. " else "",
+        paste0("Dot size encodes the percentage of ", gh_ctx$unit,
+               " expressing each gene. ")
+      else "",
       if (!is.null(feature_split))
-        "Rows are split into labelled feature groups. " else "",
-      "Top color bars annotate each column's ",
-      paste(group.by, collapse = ", "), " identity",
-      if (nchar(object_name) > 0) paste0(". Dataset: ", object_name) else "", "."
+        "Rows are partitioned into labeled feature groups. " else "",
+      "Column annotation bars indicate the ",
+      paste(group.by, collapse = " and "), " identity of each group."
     ))
   }
 

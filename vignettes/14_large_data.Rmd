@@ -1,11 +1,11 @@
 ---
-title: "scSidekick - Large Datasets: BPCells, Sketch & Pseudobulk"
+title: "scSidekick - Large Datasets: BPCells, Sketch, Pseudobulk & Clinical Metadata"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{scSidekick - Large Datasets: BPCells, Sketch & Pseudobulk}
+  %\VignetteIndexEntry{scSidekick - Large Datasets: BPCells, Sketch, Pseudobulk & Clinical Metadata}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -149,7 +149,54 @@ PlotPseudoBulk(obj,
 
 ---
 
-## 4. Pathway analysis at scale
+## 4. Adding clinical metadata - `AddClinicalMeta()`
+
+Large cohort studies always ship with a separate clinical table (age, disease
+status, treatment arm, etc.) keyed by donor or sample ID.
+`AddClinicalMeta()` joins that table onto every cell in one call, matching on
+any column in `meta.data` - no manual `match()` loops needed.
+
+```{r clinical-meta}
+# Build a small illustrative clinical table from bmcite's actual donor IDs
+donors   <- unique(bmcite$donor)
+clinical <- data.frame(
+  DonorID    = donors,
+  Age        = c(34L, 27L, 45L, 52L, 38L, 61L, 29L, 47L)[seq_along(donors)],
+  Disease    = rep_len(c("AML", "Normal"), length(donors)),
+  stringsAsFactors = FALSE
+)
+
+# One call broadcasts each donor's clinical data to all its cells
+bmcite <- AddClinicalMeta(bmcite, clinical,
+                          by     = "donor",
+                          df.key = "DonorID")
+
+head(bmcite[[c("donor", "Age", "Disease")]], 4)
+```
+
+The `columns` argument lets you pick specific fields, and `prefix` namespaces
+them if you are joining multiple tables:
+
+```{r clinical-multi, eval=FALSE}
+# Join only selected columns
+obj <- AddClinicalMeta(obj, clinical,
+                       by      = "donor.id",
+                       df.key  = "PatientID",
+                       columns = c("Age", "IDH_status", "Grade"))
+
+# Join a second table with a prefix to avoid name collisions
+obj <- AddClinicalMeta(obj, imaging,
+                       by      = "donor.id",
+                       df.key  = "PatientID",
+                       prefix  = "mri.")
+```
+
+Once the columns are on the object you can use them anywhere - `split.by`,
+`group.by`, `facet_col` in survival plots, or as covariates in pseudobulk DE.
+
+---
+
+## 5. Pathway analysis at scale
 
 Two routes, both designed for big objects:
 
@@ -193,6 +240,9 @@ RunSCssGSEA(obj,
 - Prefer **pseudobulk** (`ComputePseudobulk` -> `PlotPseudoBulk`,
   `RunGSEA_pseudobulk`) for differential and pathway analysis across samples -
   it's both faster and statistically sounder than per-cell tests.
+- Use `AddClinicalMeta()` to join sample-level covariates (age, disease,
+  treatment) before any split or facet operation - the columns become available
+  everywhere once they are on the object.
 
 ---
 

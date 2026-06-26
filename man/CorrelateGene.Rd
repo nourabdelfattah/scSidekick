@@ -7,11 +7,11 @@
 CorrelateGene(
   seurat_object,
   gene,
-  group_by,
+  group.by,
   level = c("sc", "pseudobulk", "group"),
-  compare_by = NULL,
-  sample_column = NULL,
-  group_column = NULL,
+  compare.by = NULL,
+  sample.by = NULL,
+  condition.by = NULL,
   assay = NULL,
   layer = "data",
   method = c("spearman", "pearson"),
@@ -27,18 +27,18 @@ CorrelateGene(
 
 \item{gene}{Character. The gene of interest (GOI).}
 
-\item{group_by}{Character. Cell-type identity column.}
+\item{group.by}{Character. Cell-type identity column.}
 
 \item{level}{Character. \code{"sc"} (default), \code{"pseudobulk"}, or \code{"group"}.}
 
-\item{compare_by}{Character or \code{NULL}. Optional metadata column whose levels
+\item{compare.by}{Character or \code{NULL}. Optional metadata column whose levels
 define independent comparison groups (e.g. \code{"Sex"}, \code{"Diagnosis"}).
 When supplied, correlation is computed separately within each level so you
 can ask which genes are correlated with GOI in group A but not group B.}
 
-\item{sample_column}{Character. Donor/sample ID. Required for \code{"pseudobulk"}.}
+\item{sample.by}{Character. Donor/sample ID. Required for \code{"pseudobulk"}.}
 
-\item{group_column}{Character. Condition column. Required for \code{"group"}.}
+\item{condition.by}{Character. Condition column. Required for \code{"group"}.}
 
 \item{assay}{Character or \code{NULL}. Assay to use.}
 
@@ -61,7 +61,7 @@ that must express a tested gene. Default \code{10}.}
 }
 \value{
 A data frame: \code{gene}, \code{cell_type}, \code{r}, \code{p}, \code{padj}, \code{n}, \code{goi},
-\code{level}, \code{method}, and (when \code{compare_by} is set) \code{compare_group}.
+\code{level}, \code{method}, and (when \code{compare.by} is set) \code{compare_group}.
 Sorted by cell type then descending \verb{|r|}.
 }
 \description{
@@ -78,11 +78,11 @@ dropout. Exploratory; validate hits at pseudobulk level.
 cell type, converts to edgeR log-CPM, then runs Spearman across donors.
 Statistically most valid.
 \item \strong{\code{"group"}}: averages log-normalized expression within each
-\verb{group_column x cell_type} combination, then correlates across groups.
+\verb{condition.by x cell_type} combination, then correlates across groups.
 }
 
-When \code{compare_by} is supplied, the analysis is run separately within each
-level of that variable (e.g. \code{compare_by = "Sex"} produces independent
+When \code{compare.by} is supplied, the analysis is run separately within each
+level of that variable (e.g. \code{compare.by = "Sex"} produces independent
 correlation tables for males and females). Results gain a \code{compare_group}
 column and \code{\link[=PlotCorrelation]{PlotCorrelation()}} will lay the groups out side by side.
 }

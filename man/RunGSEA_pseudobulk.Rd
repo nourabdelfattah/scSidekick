@@ -44,6 +44,7 @@ RunGSEA_pseudobulk(
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
   heatmap_colors = NULL,
+  resume = FALSE,
   save.rds = TRUE,
   redo_plots = FALSE,
   caffeinate = FALSE
@@ -222,6 +223,11 @@ Examples:
 \item \strong{Tighter scale for subtle signals:}
 \code{circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
 }}
+
+\item{resume}{Logical. Skip cell types whose GSEA CSV files already exist in
+\code{output_dir} (from a previous partial run). Useful when a long run crashed
+mid-way. Cell types with any missing output are rerun; already-complete
+ones are skipped with a message. Default \code{FALSE}.}
 
 \item{save.rds}{Logical. Save the pseudobulk counts, sample metadata, GSEA
 results, and ssGSEA results as \code{RunGSEA_pseudobulk_results.rds} in

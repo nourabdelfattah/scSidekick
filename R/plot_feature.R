@@ -288,6 +288,7 @@ PlotFeature <- function(data,
       if (.nk_autosave(data)) .nk_setting(data, "output_dir") else NULL
     object_name <- if (nchar(object_name) > 0) object_name else
       .nk_setting(data, "object_name") %||% ""
+    .nk_warn_donor(data)
   }
 
   # ── Extract metadata ──────────────────────────────────────────────────────
@@ -554,29 +555,36 @@ PlotFeature <- function(data,
     message("scSidekick: Saved to ", fpath,
             " (", round(pdf_w, 1), " × ", round(pdf_h, 1), " in)")
 
+    pf_seurat <- inherits(data, "Seurat")
+    pf_ctx    <- if (pf_seurat) .nk_legend_context(data) else
+      list(unit = "cells", n_obs = format(nrow(meta), big.mark = ","),
+           obj_name = object_name, n_donors = NULL)
     .write_legend_sidecar(fpath, paste0(
       switch(plot_type,
         violin = "Violin plot",  box  = "Box plot",
-        both   = "Violin-box plot", bar = "Bar chart (mean ± SE)"),
+        both   = "Violin-box plot", bar = "Bar chart (mean +/- SE)"),
       " of ", paste(valid_features, collapse = ", "),
-      " grouped by ", group.by,
+      " across ", pf_ctx$n_obs, " ", pf_ctx$unit,
+      if (!is.null(pf_ctx$n_donors))
+        paste0(" from ", format(pf_ctx$n_donors, big.mark = ","), " samples")
+      else "",
+      if (nchar(pf_ctx$obj_name) > 0) paste0(" [", pf_ctx$obj_name, "]") else "",
+      ", grouped by ", group.by,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      if (!is.null(row.by))   paste0(", rows by ", row.by)   else "",
-      ". Gene expression values are log-normalized counts.",
+      if (!is.null(row.by))   paste0(", with rows by ", row.by) else "",
+      ". Values are log-normalized expression counts.",
       if (plot_type %in% c("box", "both"))
-        " Box plot elements: center line = median; box limits = 25th-75th percentile (IQR); whiskers extend to the furthest observation within 1.5x IQR from the box; outliers beyond this range are not shown."
+        " Box elements: center line = median; box = IQR; whiskers extend to 1.5x IQR."
       else "",
       if (add_stats)
-        " Statistical comparisons: Wilcoxon rank-sum test (brackets show significance)."
+        " Statistical comparisons: Wilcoxon rank-sum test with significance brackets."
       else "",
       if (!is.null(exclude) && length(exclude) > 0)
-        paste0(" The following groups were excluded before plotting: ",
+        paste0(" Excluded: ",
                paste(mapply(function(col, vals)
                  paste0(col, " = ", paste(vals, collapse = ", ")),
                  names(exclude), exclude), collapse = "; "), ".")
-      else "",
-      if (!is.null(object_name) && nchar(object_name) > 0)
-        paste0(" Dataset: ", object_name, ".") else ""
+      else ""
     ))
   }
 

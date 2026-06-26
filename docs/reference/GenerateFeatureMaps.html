@@ -11,7 +11,7 @@ strips legends from individual panels, and attaches a single shared legend."><me
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,7 @@ strips legends from individual panels, and attaches a single shared legend."><me
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -42,6 +43,9 @@ strips legends from individual panels, and attaches a single shared legend."><me
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -49,6 +53,7 @@ strips legends from individual panels, and attaches a single shared legend."><me
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/nourabdelfattah/scSidekick" aria-label="GitHub"><span class="fa fab fa-github"></span></a></li>
       </ul></div>
 
@@ -80,6 +85,11 @@ strips legends from individual panels, and attaches a single shared legend.</p>
 <span>  row.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#053061"</span>, <span class="st">"#2166AC"</span>, <span class="st">"#D1E5F0"</span>, <span class="st">"#FDDBC7"</span>, <span class="st">"#F4A582"</span>, <span class="st">"#D6604D"</span>, <span class="st">"#B2182B"</span>,</span>
 <span>    <span class="st">"#67001F"</span><span class="op">)</span>,</span>
+<span>  legend.side <span class="op">=</span> <span class="st">"right"</span>,</span>
+<span>  legend.direction <span class="op">=</span> <span class="st">"vertical"</span>,</span>
+<span>  join_plots <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  join_nrow <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  join_ncol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
@@ -110,6 +120,11 @@ strips legends from individual panels, and attaches a single shared legend.</p>
 <span>  row.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#053061"</span>, <span class="st">"#2166AC"</span>, <span class="st">"#D1E5F0"</span>, <span class="st">"#FDDBC7"</span>, <span class="st">"#F4A582"</span>, <span class="st">"#D6604D"</span>, <span class="st">"#B2182B"</span>,</span>
 <span>    <span class="st">"#67001F"</span><span class="op">)</span>,</span>
+<span>  legend.side <span class="op">=</span> <span class="st">"right"</span>,</span>
+<span>  legend.direction <span class="op">=</span> <span class="st">"vertical"</span>,</span>
+<span>  join_plots <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  join_nrow <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  join_ncol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
@@ -168,6 +183,28 @@ column whose levels define the rows of the grid.</p></dd>
 
 <dt id="arg-colors">colors<a class="anchor" aria-label="anchor" href="#arg-colors"></a></dt>
 <dd><p>Character vector. Color gradient from low to high expression.</p></dd>
+
+
+<dt id="arg-legend-side">legend.side<a class="anchor" aria-label="anchor" href="#arg-legend-side"></a></dt>
+<dd><p>Character. Where to place the legend panel: <code>"right"</code>
+(default), <code>"left"</code>, <code>"bottom"</code>, or <code>"top"</code>.</p></dd>
+
+
+<dt id="arg-legend-direction">legend.direction<a class="anchor" aria-label="anchor" href="#arg-legend-direction"></a></dt>
+<dd><p>Character. Internal layout of legend entries:
+<code>"vertical"</code> (default, entries stacked) or <code>"horizontal"</code>
+(entries in rows). Also controls colorbar orientation.</p></dd>
+
+
+<dt id="arg-join-plots">join_plots<a class="anchor" aria-label="anchor" href="#arg-join-plots"></a></dt>
+<dd><p>Logical. When <code>features</code> has more than one gene, combine
+all per-gene figures into a single page/PDF instead of one each. Default
+<code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-join-nrow-join-ncol">join_nrow, join_ncol<a class="anchor" aria-label="anchor" href="#arg-join-nrow-join-ncol"></a></dt>
+<dd><p>Integer or <code>NULL</code>. Grid layout for <code>join_plots</code>.
+<code>NULL</code> auto-arranges into a near-square grid.</p></dd>
 
 
 <dt id="arg-output-dir">output_dir<a class="anchor" aria-label="anchor" href="#arg-output-dir"></a></dt>
@@ -263,7 +300,8 @@ or <code>"p.format"</code> (shows <code>p = 0.023</code>).</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Invisibly returns the last assembled plot when <code>output_dir = NULL</code>;
-otherwise writes PDFs and returns <code>NULL</code> invisibly.</p>
+otherwise writes PDFs and returns <code>NULL</code> invisibly. When
+<code>join_plots = TRUE</code>, invisibly returns the combined tiled figure.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

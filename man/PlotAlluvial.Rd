@@ -20,6 +20,12 @@ PlotAlluvial(
   group_colors = NULL,
   split_colors = NULL,
   axes_colors = list(),
+  axis.labels = NULL,
+  facet.spacing = 1,
+  horizontal = FALSE,
+  label.inside = FALSE,
+  title.size = 13,
+  title.rotation = 0,
   output_dir = NULL,
   object_name = "",
   pdf_width = 7,
@@ -76,6 +82,30 @@ Auto-assigned if \code{NULL}.}
 \item{axes_colors}{Named \code{list} of color vectors, keyed by column
 name (e.g. \code{list(BraakStage = BraakColors, ThalPhase = ThalColors)}).
 Takes precedence over \code{group_colors}/\code{split_colors}.}
+
+\item{axis.labels}{Character vector of display labels for the axes, in the
+same order as \code{axes}.  Use this to show short/readable names instead
+of raw column names (e.g. \code{c("AD neuropath.", "Cognitive status",
+  "Dementia")}).  \code{NULL} = use column names as-is.}
+
+\item{facet.spacing}{Numeric (0-1+). Scale factor applied to the auto-computed
+left and right panel margins when \code{facet.by} is used.  Values below
+1 shrink the gap between panels (try \code{0.5}); values above 1 widen it.
+Default \code{1} (no change).}
+
+\item{horizontal}{Logical. If \code{TRUE}, rotate the diagram 90 degrees so
+axis bars run horizontally using \code{coord_flip()}.  Best combined with
+\code{label.inside = TRUE}.  Default \code{FALSE}.}
+
+\item{label.inside}{Logical. If \code{TRUE}, place category labels centered
+inside the colored bars in white text instead of outside.  Default
+\code{FALSE}.}
+
+\item{title.size}{Numeric. Font size for the axis name labels (e.g. "Sex",
+"Group").  Default \code{13}.}
+
+\item{title.rotation}{Numeric. Rotation angle (degrees) for the axis name
+labels.  Default \code{0} (horizontal).}
 
 \item{output_dir}{Directory to save a PDF.  \code{NULL} = no save.}
 

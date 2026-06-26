@@ -7,8 +7,11 @@
 SummarizeMetadata(
   data,
   id_columns,
+  columns = NULL,
+  group.by = NULL,
   numeric_func = mean,
   numeric_na_rm = TRUE,
+  spread = NULL,
   pivot = FALSE
 )
 }
@@ -20,12 +23,30 @@ uniquely identify a donor or sample (e.g.
 \code{c("Donor.ID")} or \code{c("Donor.ID", "Visit")}).
 One output row is produced per unique combination.}
 
+\item{columns}{Character vector of column names to include in the summary.
+\code{NULL} (default) includes all columns except \code{id_columns}.
+\code{id_columns} are always retained regardless of this setting.}
+
+\item{group.by}{Optional column name to aggregate the patient-level result
+up to a group level.  When supplied, a two-stage aggregation is performed:
+(1) cells are collapsed to one row per \code{id_columns} combination
+(current behavior), then (2) those patient-level rows are averaged by
+\code{group.by}, giving each patient equal weight regardless of cell
+count.  The returned data frame has one row per \code{group.by} level and
+gains an \code{n_patients} column.  Default \code{NULL} (single-stage).}
+
 \item{numeric_func}{Function to summarize numeric columns.  Must accept a
 numeric vector and return a single value.  Default \code{mean}.  Common
 alternatives: \code{median}, \code{max}, \code{function(x) sd(x, na.rm = TRUE)}.}
 
 \item{numeric_na_rm}{Logical.  Pass \code{na.rm = TRUE} to
 \code{numeric_func}.  Default \code{TRUE}.}
+
+\item{spread}{Character or \code{NULL}.  When \code{"sd"} or \code{"sem"},
+adds a companion column for each numeric variable (e.g. \code{Age_sd} or
+\code{Age_sem}).  At the patient level these are computed across cells;
+when \code{group.by} is also supplied they reflect the spread of patient
+means across patients in each group.  Default \code{NULL} (no spread).}
 
 \item{pivot}{Logical.  If \code{TRUE}, the result is pivoted to long format
 (one row per ID × variable combination).  Default \code{FALSE} (wide).}

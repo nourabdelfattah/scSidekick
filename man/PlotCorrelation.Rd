@@ -6,7 +6,7 @@
 \usage{
 PlotCorrelation(
   cor_result,
-  cell_type = NULL,
+  cell.type = NULL,
   n_pos = 15L,
   n_neg = 15L,
   label_n = 5L,
@@ -20,9 +20,6 @@ PlotCorrelation(
 \arguments{
 \item{cor_result}{Data frame returned by \code{\link[=CorrelateGene]{CorrelateGene()}}.}
 
-\item{cell_type}{Character vector or \code{NULL}. Cell types to plot (all by
-default).}
-
 \item{n_pos}{Integer. Top positive genes to show per panel. Default \code{15}.}
 
 \item{n_neg}{Integer. Top negative genes to show per panel. Default \code{15}.}
@@ -35,17 +32,20 @@ Default \code{5} (5 positive + 5 negative).}
 \item{r_cutoff}{Numeric or \code{NULL}. Optional ±r dotted reference lines.}
 
 \item{ncol}{Integer or \code{NULL}. Columns in the assembled figure. \code{NULL}
-auto-selects: \code{n_compare_groups} when \code{compare_by} was used, else 3.}
+auto-selects: \code{n_compare_groups} when \code{compare.by} was used, else 3.}
 
 \item{output_dir}{Character or \code{NULL}. Directory to save a PDF.}
 
 \item{file_name}{Character or \code{NULL}. PDF base name.}
+
+\item{cell_type}{Character vector or \code{NULL}. Cell types to plot (all by
+default).}
 }
 \value{
 A patchwork object (invisibly when saved).
 }
 \description{
-Draws one panel per cell type (and per comparison group when \code{compare_by}
+Draws one panel per cell type (and per comparison group when \code{compare.by}
 was used in \code{\link[=CorrelateGene]{CorrelateGene()}}) assembled with \code{\link[patchwork:wrap_plots]{patchwork::wrap_plots()}}.
 Each panel shows the top \code{n_pos} most positively and top \code{n_neg} most
 negatively correlated genes so that both directions are always represented.

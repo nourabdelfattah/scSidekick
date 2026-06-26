@@ -311,8 +311,9 @@ RunInferCNV <- function(seurat_object,
          "  BiocManager::install('infercnv')")
 
   # ── Resolve output directory ───────────────────────────────────────────────
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
   if (is.null(output_dir))
     stop("'output_dir' must be supplied or stored via PrepObject(output_dir = ...).")
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -463,8 +464,9 @@ RunCopyKAT <- function(seurat_object,
          "  devtools::install_github('navinlabcode/copykat')")
 
   # ── Resolve output directory ───────────────────────────────────────────────
-  output_dir <- output_dir %||%
-    if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+  if (missing(output_dir))
+    output_dir <- if (.nk_autosave(seurat_object))
+      .nk_setting(seurat_object, "output_dir") else NULL
   if (is.null(output_dir))
     stop("'output_dir' must be supplied or stored via PrepObject(output_dir = ...).")
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)

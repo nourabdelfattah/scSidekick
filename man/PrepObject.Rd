@@ -13,6 +13,8 @@ PrepObject(
   var_levels = list(),
   group.by = NULL,
   split.by = NULL,
+  donor.by = NULL,
+  assay_type = NULL,
   output_dir = NULL,
   object_name = NULL,
   subset_name = NULL,
@@ -63,6 +65,27 @@ previously stored value.}
 Downstream functions use this as the default \code{split.by}.  Pass
 \code{NA} to explicitly disable the stored default (even if one exists).}
 
+\item{donor.by}{Character or \code{NULL}.  Metadata column that identifies
+the biological replicate / library unit -- the donor, patient, mouse, or
+sample from which each cell/spot was obtained.  When set, plotting
+functions include the number of unique donors in figure legends
+(e.g. "8,691 cells from 36 samples").  Pass \code{NA} to clear a
+previously stored value.}
+
+\item{assay_type}{Character or \code{NULL}.  Sequencing modality.  Controls
+the observation-level word used in auto-generated legend and methods text.
+Recognized values (same vocabulary as \code{\link{log_analysis_params}}):
+\itemize{
+\item \code{"scRNAseq"} -- "cells" (default)
+\item \code{"snRNAseq"} -- "nuclei"
+\item \code{"Visium"}   -- "spots"
+\item \code{"VisiumHD"} -- "bins"
+\item \code{"Xenium"}   -- "cells"
+\item \code{"Spatial"}  -- "spots"
+\item \code{"scATACseq"}, \code{"scMultiome"} -- "cells"
+}
+Pass \code{NULL} to leave unchanged; \code{NA} to clear.}
+
 \item{output_dir}{Character.  Store the preferred output directory for
 saving PDFs and plots.  All downstream scSidekick functions walk up to
 this value when their own \code{output_dir} argument is \code{NULL}.
@@ -78,7 +101,7 @@ functions automatically save PDFs to the stored \code{output_dir} when no
 \code{output_dir} is passed explicitly in the function call.
 \itemize{
 \item \code{TRUE} (default when not set): plotting functions walk up and
-use the stored \code{output_dir} automatically — existing behavior.
+use the stored \code{output_dir} automatically -- existing behavior.
 \item \code{FALSE}: the walk-up is suppressed; functions return the plot
 object without saving unless the caller explicitly passes
 \code{output_dir = "..."} in the plotting call.
