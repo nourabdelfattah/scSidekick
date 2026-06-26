@@ -9,12 +9,20 @@ articles:
   05_heatmaps_dotplots: 05_heatmaps_dotplots.html
   06_cell_annotation: 06_cell_annotation.html
   07_spatial: 07_spatial.html
-  08_pathway_analysis: 08_pathway_analysis.html
-  09_cellchat: 09_cellchat.html
-  10_reporting_utilities: 10_reporting_utilities.html
-  11_metadata_composition: 11_metadata_composition.html
-  12_large_data: 12_large_data.html
-last_built: 2026-06-10T18:06Z
+  08_pathway_gsea: 08_pathway_gsea.html
+  09_pathway_pseudobulk: 09_pathway_pseudobulk.html
+  10_pathway_enrichment: 10_pathway_enrichment.html
+  11_cellchat: 11_cellchat.html
+  12_reporting_utilities: 12_reporting_utilities.html
+  13_metadata_composition: 13_metadata_composition.html
+  14_large_data: 14_large_data.html
+  15_survival: 15_survival.html
+  16_coexpression: 16_coexpression.html
+  17_cnv: 17_cnv.html
+  18_cnmf: 18_cnmf.html
+  19_ura: 19_ura.html
+  example_workflow: example_workflow.html
+last_built: 2026-06-26T16:54Z
 urls:
   reference: https://nourabdelfattah.github.io/scSidekick/reference
   article: https://nourabdelfattah.github.io/scSidekick/articles

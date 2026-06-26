@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/04_feature_expression.html">04 - Feature Expression</a></li>
     <li><a class="dropdown-item" href="../articles/05_heatmaps_dotplots.html">05 - Heatmaps &amp; Dot Plots</a></li>
     <li><a class="dropdown-item" href="../articles/13_metadata_composition.html">13 - Metadata &amp; Composition</a></li>
+    <li><a class="dropdown-item" href="../articles/16_coexpression.html">16 - Co-expression Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Analysis</h6></li>
     <li><a class="dropdown-item" href="../articles/06_cell_annotation.html">06 - Cell Annotation</a></li>
@@ -58,6 +59,9 @@
     <li><a class="dropdown-item" href="../articles/11_cellchat.html">11 - Cell-Cell Communication</a></li>
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -157,7 +161,7 @@ arguments used. You never have to remember what a figure showed.</p>
 <code class="sourceCode R"><span><span class="co"># Read back the auto-generated legend:</span></span>
 <span><span class="va">legend_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">fig_dir</span>, pattern <span class="op">=</span> <span class="st">"\\.legend$"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">legend_file</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## UMAP feature plot showing expression of CD3E in bmcite. Colour scale: low (dark blue) to high (dark red), capped at the per-gene maximum (3.89). Each panel represents one group level; legend shows the shared colour bar.</span></span></code></pre>
+<pre><code><span><span class="co">## UMAP feature plot showing expression of CD3E in bmcite. Color scale: low (dark blue) to high (dark red), capped at the per-gene maximum (3.89). Each panel represents one group level; legend shows the shared color bar.</span></span></code></pre>
 <p>You can also log legends or analysis parameters yourself with
 <code><a href="../reference/log_figure_legend.html">log_figure_legend()</a></code> and <code><a href="../reference/log_analysis_params.html">log_analysis_params()</a></code>
 when you build a custom figure outside the package.</p>
@@ -462,7 +466,7 @@ feeds straight into <code><a href="../reference/create_analysis_pptx.html">creat
 <span><span class="co">## [100] xfun_0.52              matrixStats_1.2.0      stringi_1.8.7         </span></span>
 <span><span class="co">## [103] lazyeval_0.2.2         yaml_2.3.10            evaluate_0.23         </span></span>
 <span><span class="co">## [106] codetools_0.2-20       tibble_3.3.0           cli_3.6.5             </span></span>
-<span><span class="co">## [109] uwot_0.1.16            xtable_1.8-4           reticulate_1.35.0     </span></span>
+<span><span class="co">## [109] uwot_0.1.16            xtable_1.8-4           reticulate_1.42.0     </span></span>
 <span><span class="co">## [112] systemfonts_1.0.6      jquerylib_0.1.4        dichromat_2.0-0.1     </span></span>
 <span><span class="co">## [115] Rcpp_1.1.0             globals_0.16.3         spatstat.random_3.2-3 </span></span>
 <span><span class="co">## [118] png_0.1-8              parallel_4.3.1         pkgdown_2.1.3         </span></span>

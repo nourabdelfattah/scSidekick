@@ -60,6 +60,8 @@
     <li><a class="dropdown-item" href="../articles/14_large_data.html">14 - Large Datasets</a></li>
     <li><a class="dropdown-item" href="../articles/15_survival.html">15 - Survival Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
+    <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
+    <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -144,7 +146,7 @@ as PDFs</li>
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
 <span>  split.by   <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span>  output_dir <span class="op">=</span> <span class="st">"~/Desktop/TestGSEA"</span><span class="op">)</span></span></code></pre></div>
 <p><code>group.by</code> defines the groups being compared (e.g. cell
 types, clusters). <code>split.by = NULL</code> runs a single GSEA on the
 whole object. Set <code>split.by</code> to a broad cell-type column

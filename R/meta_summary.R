@@ -262,7 +262,9 @@ PlotMetaSummary <- function(data,
                              object_name        = "",
                              file_name          = NULL,
                              return_data        = FALSE,
-                             return_flextable   = FALSE) {
+                             return_flextable   = FALSE,
+                             pdf.width          = NULL,
+                             pdf.height         = NULL) {
 
   count_unit <- match.arg(count_unit)
 
@@ -597,15 +599,15 @@ PlotMetaSummary <- function(data,
 
     n_row_facets <- if (!is.null(row_variable))
       length(unique(as.character(meta[[row_variable]]))) else 1L
-    pdf_h <- n_row_facets * 3 + 1.5
+    pdf_h <- pdf.height %||% (n_row_facets * 3 + 1.5)
 
     if (!is.null(column_variable)) {
       n_col_facets <- length(unique(as.character(meta[[column_variable]])))
-      pdf_w        <- max(4.0, n_col_facets * 2.5 + 2.5)
+      pdf_w        <- pdf.width %||% max(4.0, n_col_facets * 2.5 + 2.5)
     } else {
       n_x_ticks    <- vapply(variables, function(v)
         length(unique(as.character(meta[[v]]))), integer(1))
-      pdf_w        <- sum(pmax(n_x_ticks * 0.35, 1.5)) + 2.5
+      pdf_w        <- pdf.width %||% (sum(pmax(n_x_ticks * 0.35, 1.5)) + 2.5)
     }
 
     if (!is.null(file_name) && nzchar(file_name)) {

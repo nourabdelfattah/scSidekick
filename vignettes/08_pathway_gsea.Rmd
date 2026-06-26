@@ -63,7 +63,7 @@ bmcite <- PrepObject(bmcite,
 res <- RunGSEA(bmcite,
   group.by   = "celltype.l1",
   split.by   = NULL,
-  output_dir = tempdir())
+  output_dir = "~/Desktop/TestGSEA")
 ```
 
 `group.by` defines the groups being compared (e.g. cell types, clusters).

@@ -24,7 +24,9 @@ PlotMetaSummary(
   object_name = "",
   file_name = NULL,
   return_data = FALSE,
-  return_flextable = FALSE
+  return_flextable = FALSE,
+  pdf.width = NULL,
+  pdf.height = NULL
 )
 }
 \arguments{
