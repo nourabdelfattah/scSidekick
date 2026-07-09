@@ -78,6 +78,6 @@ device.
 Produces a publication-ready volcano plot from a DEG data frame (presto,
 \code{FindMarkers}, or any table with logFC and adjusted p-value columns).
 Automatically detects column names for common output formats.  Points are
-colored by direction × significance; top genes per direction are labelled
+colored by direction × significance; top genes per direction are labeled
 with \code{ggrepel}.
 }

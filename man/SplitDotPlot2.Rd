@@ -77,9 +77,11 @@ plasma.}
 there.}
 
 \item{file_name}{Character or \code{NULL}. Base name (no extension) for the
-saved PDF. \code{NULL} (default) auto-deduces the name from the
-\code{markers_df} variable name, falling back to
-\code{object_name_group.by_SplitDotPlot}.}
+saved PDF. \code{NULL} (default) auto-generates a name that includes the
+\code{markers_df} variable name (when detectable) followed by
+\code{group.by} and \code{split.by}, e.g.
+\code{<markers>_<group.by>_<split.by>_SplitDotPlot}, so different
+groupings and splits never overwrite each other.}
 }
 \value{
 A ggplot2 object (invisibly when saved to disk).

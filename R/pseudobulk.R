@@ -321,7 +321,11 @@ ComputePseudobulk <- function(seurat_object,
 #' subsequent plots instant.
 #'
 #' @param seurat_object A Seurat object.
-#' @param features Character vector.  Gene names to plot.
+#' @param features Character vector.  Gene names and/or numeric \code{meta.data}
+#'   columns (e.g. a module score, QC metric, or pseudotime).  Numeric metadata
+#'   columns are aggregated to donor level (per-group mean) exactly like gene
+#'   expression, so they get the same boxplots and statistics - unlike
+#'   \code{\link{PlotMetaSummary}}, which shows numeric metadata without stats.
 #' @param group.by Character.  Categorical metadata column shown on the x-axis
 #'   (e.g. \code{"Cognitive.Status"} or \code{"Condition"}).
 #' @param donor.by Character.  Metadata column that identifies one biological
@@ -338,8 +342,14 @@ ComputePseudobulk <- function(seurat_object,
 #' @param show_n Logical.  Annotate each x-axis group with the number of
 #'   donors (or pseudobulk samples) in that group after all filtering.
 #'   Shown as \code{n=X} below the x-axis ticks.  Default \code{TRUE}.
-#' @param add_stats Logical.  Add Wilcoxon significance brackets via
-#'   \pkg{ggsignif}.  Default \code{FALSE}.
+#' @param add_stats Logical.  Add significance brackets via \pkg{ggsignif}.
+#'   Default \code{FALSE}.
+#' @param test Character.  Test used for the brackets: \code{"wilcox.test"}
+#'   (default) or \code{"t.test"}.  Note that at small donor counts the
+#'   rank-based Wilcoxon test is discrete and cannot reach \code{p < 0.05}
+#'   (e.g. 3 vs 3 has a minimum two-sided p of ~0.1, so brackets are always
+#'   \code{ns}); \code{"t.test"} is usually the better choice for donor-level
+#'   pseudobulk with few, roughly continuous replicates.
 #' @param comparisons List of length-2 character vectors specifying pairs.
 #'   \code{NULL} (default) tests all pairs, or all vs \code{ref_group}.
 #' @param ref_group Character or \code{NULL}.  Reference group for comparisons.
@@ -407,6 +417,7 @@ PlotPseudoBulk <- function(seurat_object,
                             min_cells    = 0L,
                             show_n       = TRUE,
                             add_stats    = FALSE,
+                            test         = c("wilcox.test", "t.test"),
                             comparisons  = NULL,
                             ref_group    = NULL,
                             hide_ns      = FALSE,
@@ -426,6 +437,7 @@ PlotPseudoBulk <- function(seurat_object,
                             pdf_height   = NULL) {
 
   label_format <- match.arg(label_format)
+  test         <- match.arg(test)
 
   # ── Walk-up PrepObject defaults ───────────────────────────────────────────
   output_dir  <- output_dir %||%
@@ -442,6 +454,17 @@ PlotPseudoBulk <- function(seurat_object,
   if (length(missing_cols) > 0L)
     stop("Column(s) not found in metadata: ",
          paste(missing_cols, collapse = ", "))
+
+  # ── Split requested features into genes vs. numeric metadata ───────────────
+  # A requested feature that is a numeric meta.data column (a module score, a
+  # QC metric, pseudotime, ...) is aggregated to donor level exactly like gene
+  # expression, so it gets the same pseudobulk boxplots AND stats. This is the
+  # piece PlotMetaSummary lacks: it shows numeric metadata but has no stats.
+  features_req  <- features                       # keep original request order
+  is_meta_feat  <- vapply(features, function(f)
+    f %in% colnames(meta) && is.numeric(meta[[f]]), logical(1))
+  meta_features <- features[is_meta_feat]
+  features      <- features[!is_meta_feat]         # gene path below = genes only
 
   # ── Full pseudobulk grouping (donor + all facet / x-axis columns) ─────────
   pb_group_by <- unique(c(donor.by, group.by, split.by, row.by))
@@ -497,9 +520,10 @@ PlotPseudoBulk <- function(seurat_object,
     valid_features <- c(in_cache, valid_missing)
   }
 
-  if (length(valid_features) == 0L)
-    stop("No valid gene features found. Check spelling and assay name ",
-         "(assay = \"", assay, "\").")
+  if (length(valid_features) == 0L && length(meta_features) == 0L)
+    stop("No valid features found. Check spelling and assay name ",
+         "(assay = \"", assay, "\"); note only numeric meta.data columns and ",
+         "genes can be plotted.")
 
   # ── Compute missing genes on the fly if cache incomplete ──────────────────
   missing_genes <- setdiff(valid_features, in_cache)
@@ -527,6 +551,32 @@ PlotPseudoBulk <- function(seurat_object,
     )
     cache <- tmp@misc$pseudobulk[[cache_key]]
   }
+
+  # ── Numeric metadata features: aggregate to donor level, attach to cache ────
+  # When only metadata features are requested there is no gene cache, so build
+  # a grouping skeleton (one row per pseudobulk group + n_cells) directly from
+  # the metadata. Then aggregate each numeric column to its per-group mean and
+  # attach it as a column, so it flows through min_cells / exclusions / plotting
+  # identically to a gene.
+  if (length(meta_features) > 0L) {
+    if (is.null(cache)) {
+      cache <- unique(meta[, pb_group_by, drop = FALSE])
+      rownames(cache) <- NULL
+      cell_key0  <- do.call(paste, c(meta[pb_group_by],  sep = "\r"))
+      cache_key0 <- do.call(paste, c(cache[pb_group_by], sep = "\r"))
+      cache$n_cells <- as.integer(table(cell_key0)[cache_key0])
+    }
+    cell_key  <- do.call(paste, c(meta[pb_group_by],  sep = "\r"))
+    cache_key_vec <- do.call(paste, c(cache[pb_group_by], sep = "\r"))
+    for (mf in meta_features) {
+      grp_means    <- tapply(meta[[mf]], cell_key,
+                             function(v) mean(v, na.rm = TRUE))
+      cache[[mf]]  <- as.numeric(grp_means[cache_key_vec])
+    }
+  }
+
+  # Final plotting set, in the user's original request order.
+  valid_features <- intersect(features_req, unique(c(valid_features, meta_features)))
 
   # ── Apply min_cells filter ────────────────────────────────────────────────
   if (min_cells > 0L && "n_cells" %in% colnames(cache)) {
@@ -614,7 +664,10 @@ PlotPseudoBulk <- function(seurat_object,
       df$Row   <- factor(as.character(cache[[row.by]]),   levels = row_lvls)
     df <- df[!is.na(df$Value), , drop = FALSE]
 
-    y_lab <- paste0(feat, "\n(mean log-norm. per ", donor.by, ")")
+    y_lab <- if (feat %in% meta_features)
+      paste0(feat, "\n(mean per ", donor.by, ")")
+    else
+      paste0(feat, "\n(mean log-norm. per ", donor.by, ")")
 
     p <- ggplot2::ggplot(df, ggplot2::aes(x = Group, y = Value, fill = Group))
 
@@ -651,8 +704,9 @@ PlotPseudoBulk <- function(seurat_object,
       if (length(all_pairs) > 0L) {
         sig_args <- list(
           comparisons   = all_pairs,
-          test          = "wilcox.test",
-          test.args     = list(exact = FALSE),
+          test          = test,
+          # `exact` is a wilcox.test-only argument; t.test would error on it.
+          test.args     = if (test == "wilcox.test") list(exact = FALSE) else list(),
           step_increase = 0.08,
           tip_length    = 0.01,
           size          = 0.4,

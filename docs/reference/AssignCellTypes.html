@@ -46,6 +46,7 @@ NA."><meta property="og:image" content="https://nourabdelfattah.github.io/scSide
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -127,7 +128,7 @@ present in <code>assignments</code>. <code>NULL</code> (default) leaves them as
 <span>  Inhibitory_Neurons <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C06"</span>,<span class="st">"C08"</span><span class="op">)</span>,</span>
 <span>  Astrocytes         <span class="op">=</span> <span class="st">"C05"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co"># Unassigned clusters labelled "Tumor"</span></span>
+<span><span class="co"># Unassigned clusters labeled "Tumor"</span></span>
 <span><span class="va">SeuratObj</span> <span class="op">&lt;-</span> <span class="fu">AssignCellTypes</span><span class="op">(</span><span class="va">SeuratObj</span>, <span class="va">Assign</span>,</span>
 <span>                             cluster_col <span class="op">=</span> <span class="st">"Cluster"</span>,</span>
 <span>                             new_col     <span class="op">=</span> <span class="st">"GlobalAssignment"</span>,</span>

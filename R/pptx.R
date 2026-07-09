@@ -152,7 +152,7 @@
       "Bar plot showing the number of {cell_or_nucleus} classified for retention ('keep') or ",
       "removal per sample based on miQC quality scoring. miQC fits a probabilistic ",
       "mixture model on mitochondrial content and gene count distributions to flag ",
-      "low-quality or damaged cells. Only cells labelled 'keep' were carried forward."
+      "low-quality or damaged cells. Only cells labeled 'keep' were carried forward."
     )
   ),
   list(
@@ -250,7 +250,7 @@
       "{n_clusters} clusters (resolution {resolution}). Dot size indicates the percentage ",
       "of {cell_or_nucleus} expressing each gene within the cluster; dot color reflects the mean ",
       "scaled expression level (Viridis plasma color scale). Genes are grouped and ",
-      "labelled by the cluster for which they were identified as top markers."
+      "labeled by the cluster for which they were identified as top markers."
     )
   ),
   list(
@@ -620,9 +620,13 @@ log_analysis_params <- function(obj,
                                 output_dir,
                                 dataset     = "",
                                 subset_name = "",
-                                assay_type  = "scRNAseq",
+                                assay_type  = NULL,
                                 params_json = file.path(output_dir,
                                                         "analysis_params.json")) {
+  # Auto-detect assay_type from PrepObject settings when not supplied
+  if (is.null(assay_type))
+    assay_type <- tryCatch(obj@misc$nk_settings$assay_type, error = function(e) NULL) %||%
+                  "scRNAseq"
 
   if (!requireNamespace("jsonlite", quietly = TRUE))
     stop("Package 'jsonlite' is required. Install with: install.packages('jsonlite')")
@@ -644,17 +648,23 @@ log_analysis_params <- function(obj,
 
   if (!is.null(em)) {
     s <- em$summary
-    params_log$resolution    <- s$clustering$resolution
-    params_log$pcs_used      <- s$umap$dims
-    params_log$harmony_vars  <- s$integration$params$group_by
-    params_log$n_cells_final <- s$n_cells
+    params_log$resolution     <- s$clustering$resolution
+    params_log$pcs_used       <- s$umap$dims
+    params_log$harmony_vars   <- s$integration$params$group_by
+    params_log$harmony_pcs    <- s$integration$params$n_pcs
+    params_log$n_cells_final  <- s$n_cells
     params_log$n_clusters    <- s$clustering$n_clusters
     params_log$methods_text  <- em$methods_text
 
   } else {
     cmds  <- names(obj@commands)
-    get_p <- function(cmd, param)
-      if (cmd %in% cmds) obj@commands[[cmd]]@params[[param]] else NULL
+    get_p <- function(cmd, param) {
+      hit <- if (cmd %in% cmds) cmd else {
+        m <- grep(paste0("^", cmd, "(\\.|$)"), cmds, perl = TRUE, value = TRUE)
+        if (length(m)) m[1L] else NULL
+      }
+      if (!is.null(hit)) obj@commands[[hit]]@params[[param]] else NULL
+    }
 
     umap_dims <- get_p("RunUMAP",       "dims")
     fn_dims   <- get_p("FindNeighbors", "dims")
@@ -663,11 +673,26 @@ log_analysis_params <- function(obj,
 
     params_log$resolution    <- get_p("FindClusters", "resolution")
     params_log$pcs_used      <- pcs_used
-    params_log$harmony_vars  <- if ("RunHarmony" %in% cmds)
-                                  get_p("RunHarmony", "group.by.vars") else NULL
+
+    harm_cmds <- grep("RunHarmony|harmony", cmds, ignore.case = TRUE, value = TRUE)
+    has_harmony <- length(harm_cmds) > 0 || "harmony" %in% names(obj@reductions)
+    if (has_harmony) {
+      harm_grp <- NULL
+      for (hc in harm_cmds) {
+        harm_grp <- obj@commands[[hc]]@params[["group.by.vars"]] %||%
+                    obj@commands[[hc]]@params[["group.by"]]
+        if (!is.null(harm_grp)) break
+      }
+      fn_dims_h   <- get_p("FindNeighbors", "dims")
+      umap_dims_h <- get_p("RunUMAP",       "dims")
+      params_log$harmony_vars <- harm_grp
+      params_log$harmony_pcs  <- if (!is.null(fn_dims_h))   max(fn_dims_h) else
+                                  if (!is.null(umap_dims_h)) max(umap_dims_h) else NULL
+    }
+
     params_log$n_cells_final <- ncol(obj)
     params_log$n_clusters    <- if ("seurat_clusters" %in% colnames(obj@meta.data))
-                                  length(levels(obj@meta.data$seurat_clusters)) else NULL
+                                  length(unique(obj@meta.data$seurat_clusters)) else NULL
   }
 
   # ---- Always add these ----
@@ -743,7 +768,7 @@ log_figure_legend <- function(out_dir, filename, text) {
 #' Build a PowerPoint summary from an analysis output folder
 #'
 #' Collects all PDFs in `output_dir`, converts them to images with
-#' [magick::image_read_pdf()], groups them into labelled sections based on
+#' [magick::image_read_pdf()], groups them into labeled sections based on
 #' filename patterns, and assembles a polished `.pptx` via the
 #' [officer][officer::officer-package] package.
 #'
@@ -961,6 +986,39 @@ create_analysis_pptx <- function(
       officer::fpar(officer::ftext("Methods paragraph (draft):", subhead_fp)),
       officer::fpar(officer::ftext(params$methods_text, methods_fp))
     ))
+  }
+  # Render any additional method-specific methods text stored under keys like
+  # gsea_methods_text, gsea_pb_methods_text, cellchat_methods_text, etc.
+  # These are written by sub-functions (RunGSEA, RunCellChat, ...) and do NOT
+  # overwrite the base methods_text from log_analysis_params().
+  # Known prefixes map to professionally cased section headers; unknown keys
+  # fall back to a simple title-case of the prefix.
+  mt_labels <- c(
+    gsea        = "GSEA",
+    gsea_pb     = "Pseudobulk GSEA",
+    ssgsea      = "Single-cell ssGSEA",
+    cellchat    = "CellChat",
+    cnmf        = "cNMF",
+    leadingedge = "Leading-edge",
+    enrichment  = "Enrichment (ORA)",
+    sub         = "Additional analysis"
+  )
+  extra_mt_keys <- grep("_methods_text$", names(params), value = TRUE)
+  for (mt_key in extra_mt_keys) {
+    mt_val <- params[[mt_key]]
+    if (!is.null(mt_val) && nchar(mt_val %||% "") > 0) {
+      prefix <- sub("_methods_text$", "", mt_key)
+      label_raw <- mt_labels[[prefix]] %||% {
+        r <- gsub("_", " ", prefix)
+        paste0(toupper(substring(r, 1, 1)), substring(r, 2))
+      }
+      label_str <- paste0(label_raw, " methods (draft):")
+      overview_blocks <- c(overview_blocks, list(
+        officer::fpar(officer::ftext("", body_fp)),
+        officer::fpar(officer::ftext(label_str, subhead_fp)),
+        officer::fpar(officer::ftext(mt_val, methods_fp))
+      ))
+    }
   }
 
   prs <- officer::ph_with(prs,

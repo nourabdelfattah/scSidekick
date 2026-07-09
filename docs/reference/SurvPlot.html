@@ -80,6 +80,7 @@ p-value for full reproducibility."><meta property="og:image" content="https://no
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -222,7 +223,7 @@ Delete the <code>.rds</code> file to force a fresh download.</p></dd>
 
 
 <dt id="arg-genes">genes<a class="anchor" aria-label="anchor" href="#arg-genes"></a></dt>
-<dd><p>Character vector of gene symbols to analyse in single-gene
+<dd><p>Character vector of gene symbols to analyze in single-gene
 mode.  Each gene produces one set of KM panels.  Genes absent from
 <code>expr_mat</code> trigger a warning and are skipped.</p></dd>
 
@@ -258,7 +259,7 @@ full details of each option.</p></dd>
 <dt id="arg-split-value">split_value<a class="anchor" aria-label="anchor" href="#arg-split-value"></a></dt>
 <dd><p>Numeric cutoff used when <code>split_method = "value"</code>.
 Samples with expression / score \(\geq\) <code>split_value</code> are
-labelled <strong>High</strong>; all others are <strong>Low</strong>.  Commonly set to
+labeled <strong>High</strong>; all others are <strong>Low</strong>.  Commonly set to
 <code>0</code> for gene-set enrichment scores.</p></dd>
 
 
@@ -309,13 +310,13 @@ row.</p></dd>
 
 
 <dt id="arg-palette">palette<a class="anchor" aria-label="anchor" href="#arg-palette"></a></dt>
-<dd><p>Character vector of length \(\geq 2\).  Colours for the
+<dd><p>Character vector of length \(\geq 2\).  Colors for the
 <strong>High</strong> and <strong>Low</strong> groups respectively.  Default:
-<code>c("Red", "Blue")</code>.  Any R colour name or hex code is accepted.</p></dd>
+<code>c("Red", "Blue")</code>.  Any R color name or hex code is accepted.</p></dd>
 
 
 <dt id="arg-quartile-palette">quartile_palette<a class="anchor" aria-label="anchor" href="#arg-quartile-palette"></a></dt>
-<dd><p>Character vector of length \(\geq 4\).  Colours
+<dd><p>Character vector of length \(\geq 4\).  Colors
 for Q1 through Q4 when <code>split_method = "quartile"</code>.  Default is a
 blue-to-red diverging scale:
 <code>c("#2166AC", "#92C5DE", "#F4A582", "#D6604D")</code>.</p></dd>
@@ -555,7 +556,7 @@ used in most published survival analyses.</p></dd>
 <dt><code>"quartile"</code></dt>
 <dd><p>Divides samples into four equally-sized groups
 (Q1 = lowest 25\<!-- %, Q4 = highest 25\\%) using \code{quantile()}.  Produces -->
-four KM curves per panel coloured by <code>quartile_palette</code>.  Useful
+four KM curves per panel colored by <code>quartile_palette</code>.  Useful
 for detecting non-linear dose–response relationships.</p></dd>
 
 <dt><code>"value"</code></dt>

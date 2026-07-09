@@ -9,7 +9,7 @@ log_analysis_params(
   output_dir,
   dataset = "",
   subset_name = "",
-  assay_type = "scRNAseq",
+  assay_type = NULL,
   params_json = file.path(output_dir, "analysis_params.json")
 )
 }

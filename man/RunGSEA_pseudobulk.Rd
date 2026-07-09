@@ -30,6 +30,7 @@ RunGSEA_pseudobulk(
   pathway_sets = list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
     subcategory = "CP:KEGG"), Reactome = list(category = "C2", subcategory =
     "CP:REACTOME"), WP = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")),
+  search_terms = NULL,
   species = "human",
   output_dir,
   assay = NULL,
@@ -150,6 +151,15 @@ must have a \code{category} field and an optional \code{subcategory} field
 (see \code{\link[msigdbr:msigdbr_collections]{msigdbr::msigdbr_collections()}}). The element name becomes the
 label used in output filenames. Default: Hallmark, KEGG, Reactome,
 WikiPathways. Ignored when \code{gene_sets} or \code{deg_df} is supplied.}
+
+\item{search_terms}{Optional keyword filter for gene-set names (case-
+insensitive, regex), applied after fetching each database in \code{pathway_sets}
+(or to the names of a custom \code{gene_sets} list). Two forms: a character
+vector is an OR search where any set matching at least one term is kept
+(e.g. \code{c("APOPTOSIS", "CELL_DEATH")}); a list of character vectors is a
+union of AND-groups where all terms in an element must appear in the same
+name (e.g. \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")}). Ignored when
+\code{deg_df} is supplied. \code{NULL} (default) tests all gene sets.}
 
 \item{species}{Character. Species name passed to \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}.
 Use \code{"human"} or \code{"mouse"} (shorthand accepted) or any full name returned

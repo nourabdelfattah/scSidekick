@@ -73,7 +73,7 @@ PlotQCMetrics(SeuratObj,
 
 ---
 
-## 3. Filter & Summarise
+## 3. Filter & Summarize
 
 ```{r filter,eval=F}
 SeuratObj <- subset(SeuratObj,
@@ -107,7 +107,7 @@ SeuratObj <- PrepObject(SeuratObj,
 
 ---
 
-## 5. Normalise, Reduce, Cluster
+## 5. Normalize, Reduce, Cluster
 
 ```{r process,eval=F}
 SeuratObj <- SeuratObj %>%

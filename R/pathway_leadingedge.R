@@ -200,7 +200,7 @@ StackedVlnPlot <- function(
 #'   \code{split.by}), or \code{"group"} for a compact group-mean heatmap
 #'   with one column per \code{group.by} x \code{split.by} combination.
 #' @param heatmap_column_split Character or \code{NULL}. Metadata column used
-#'   to split heatmap columns into labelled sections (e.g. a diagnosis or
+#'   to split heatmap columns into labeled sections (e.g. a diagnosis or
 #'   timepoint variable). Only applies when \code{heatmap_type = "cell"}.
 #'   Default \code{NULL}.
 #' @param show_pathway_annotation Logical. When \code{TRUE} (default), a
@@ -858,7 +858,7 @@ VisualizeLeadingEdge <- function(
             features  = genes_dp,
             dot.scale = 5, scale = TRUE
           ) +
-            ggplot2::scale_colour_viridis_c(option = "plasma") +
+            ggplot2::scale_color_viridis_c(option = "plasma") +
             ggplot2::theme_minimal() +
             Seurat::RotatedAxis() +
             ggplot2::theme(axis.title = ggplot2::element_blank())
@@ -1063,7 +1063,7 @@ VisualizeLeadingEdge <- function(
     add_feature_maps     = isTRUE(add_feature_maps),
     deg_padj_cutoff      = if (!is.null(deg_df)) deg_padj_cutoff else NA,
     deg_top_n            = if (!is.null(deg_df)) deg_top_n else NA,
-    methods_text         = paste0(
+    leadingedge_methods_text = paste0(
       "Leading-edge genes were extracted from ", length(gsea_files_valid),
       " GSEA result CSV(s) for pathways matching [", term_label, "]. ",
       length(le_genes), " unique leading-edge genes identified; ",

@@ -50,6 +50,7 @@ join_plots = TRUE tiles them into a single page.'><meta property="og:image" cont
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -91,6 +92,7 @@ one figure per metadata variable in <code>group_by_vars</code>. Supports the sam
 <span>  outlier_prob <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  size_override <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  uniform_size <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calcptsizesc <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  number_labels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  legendnrow <span class="op">=</span> <span class="fl">3</span>,</span>
@@ -118,6 +120,7 @@ one figure per metadata variable in <code>group_by_vars</code>. Supports the sam
 <span>  outlier_prob <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  size_override <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  uniform_size <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calcptsizesc <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  number_labels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  legendnrow <span class="op">=</span> <span class="fl">3</span>,</span>
@@ -178,6 +181,12 @@ to all images; a named list applies per image.</p></dd>
 <dt id="arg-uniform-size">uniform_size<a class="anchor" aria-label="anchor" href="#arg-uniform-size"></a></dt>
 <dd><p>Logical. Use the median point size across all images.
 Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-calcptsizesc">calcptsizesc<a class="anchor" aria-label="anchor" href="#arg-calcptsizesc"></a></dt>
+<dd><p>Numeric. Scaling constant for automatic point-size
+calculation; larger values yield larger spots. Radius-aware, so the same
+value works across Visium and Visium HD. Default <code>100</code>.</p></dd>
 
 
 <dt id="arg-colors">colors<a class="anchor" aria-label="anchor" href="#arg-colors"></a></dt>

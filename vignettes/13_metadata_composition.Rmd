@@ -69,7 +69,7 @@ metadata: `lane`, `donor`, `celltype.l1`, and `celltype.l2`.
 Point `SummarizeMetadata()` at one or more **ID columns** and it returns one
 row per ID combination with: an `n_cells` count, the mean of every numeric
 column, and a compact breakdown of every categorical column - all the columns
-you didn't name are summarised automatically.
+you didn't name are summarized automatically.
 
 ```{r summarize}
 donor_summary <- SummarizeMetadata(bmcite, id_columns = "donor")
@@ -77,7 +77,7 @@ donor_summary[, 1:5]   # first few summary columns
 ```
 
 Numeric columns are aggregated with `numeric_func` (default `mean`; pass
-`median`, `max`, a custom function, ...). Use several ID columns to summarise at
+`median`, `max`, a custom function, ...). Use several ID columns to summarize at
 a finer grain:
 
 ```{r summarize-multi}
@@ -96,7 +96,7 @@ a multi-million-cell atlas you can collapse to one row per donor in seconds.
 
 The most common request - *how does cell-type composition differ between
 samples?* - is one call. `variables` is what you're counting, `fill_variable`
-colours the stack, and `count_unit = "cells"` counts cells (vs donors).
+colors the stack, and `count_unit = "cells"` counts cells (vs donors).
 
 ```{r meta-counts, fig.width=10, fig.height=4}
 PlotMetaSummary(bmcite,
@@ -105,7 +105,7 @@ PlotMetaSummary(bmcite,
   count_unit    = "cells")
 ```
 
-Add `percent = TRUE` for normalised composition - ideal when group sizes
+Add `percent = TRUE` for normalized composition - ideal when group sizes
 differ:
 
 ```{r meta-percent, fig.width=10, fig.height=4}
@@ -121,7 +121,7 @@ PlotMetaSummary(bmcite,
 For clinical datasets you usually want **per-donor** counts, not per-cell.
 Setting `id_column` collapses cells to donors first, then lays out the
 variables - and `row_variable` facets into rows. This is exactly how you'd
-summarise a large patient cohort (e.g. Braak / APOE / CERAD by sex):
+summarize a large patient cohort (e.g. Braak / APOE / CERAD by sex):
 
 ```{r meta-donor, eval=FALSE}
 # Illustrative - for a clinical atlas `md` with one row per cell:
@@ -178,7 +178,7 @@ PlotChord(md,
 ### `PlotAtlasWheel()` - whole-dataset overview
 
 For multi-study atlases, `PlotAtlasWheel()` draws a single "cover figure"
-summarising cells per group across studies and patients - counts in the
+summarizing cells per group across studies and patients - counts in the
 centre, a wheel of wedges around it. (Shown as a template; it needs
 study/patient columns that `bmcite` doesn't carry.)
 
@@ -195,11 +195,11 @@ PlotAtlasWheel(meta,
 
 ## See also
 
-- Vignette 01: `PrepObject()` - register the colours these charts reuse
+- Vignette 01: `PrepObject()` - register the colors these charts reuse
 - Vignette 03: `PlotComposition()` / `PlotTrendLabeled()` - composition trends
   on the UMAP
 - Vignette 14: large-data workflows (BPCells / sketch / pseudobulk) for
-  summarising massive objects
+  summarizing massive objects
 
 ---
 

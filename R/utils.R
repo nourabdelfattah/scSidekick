@@ -4,7 +4,7 @@
 # Includes the package-wide null-coalescing operator %||% used throughout.
 #
 # ExtractMethods - reads seurat_object@commands to auto-generate a methods paragraph
-#                  summarising preprocessing, integration, clustering, and
+#                  summarizing preprocessing, integration, clustering, and
 #                  dimensionality reduction steps.
 #
 # InspectPlot    - inspects a ggplot2 object and returns a plain-text
@@ -231,24 +231,45 @@
 ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
 
   cmds  <- names(seurat_object@commands)
+  # Seurat records commands with assay/reduction suffixes, e.g. "RunPCA.RNA",
+  # "RunUMAP.RNA.harmony". Try exact match first, then longest prefix match so
+  # "RunPCA" finds "RunPCA.RNA", "FindNeighbors" finds "FindNeighbors.RNA.harmony", etc.
   get_p <- function(cmd, param) {
-    if (cmd %in% cmds) seurat_object@commands[[cmd]]@params[[param]] else NULL
+    hit <- if (cmd %in% cmds) cmd else {
+      m <- grep(paste0("^", cmd, "(\\.|$)"), cmds, perl = TRUE, value = TRUE)
+      if (length(m)) m[1L] else NULL
+    }
+    if (!is.null(hit)) seurat_object@commands[[hit]]@params[[param]] else NULL
   }
 
-  # ---- Modality (sc vs sn) ----
-  # Priority: explicit argument > @misc$scSidekick_params$modality
-  #           > @misc$scSidekick_params$assay_type (set by log_analysis_params)
+  # ---- Modality (sc vs sn vs spatial) ----
+  # Priority: explicit argument > @misc$nk_settings$assay_type (set by PrepObject)
+  #           > @misc$scSidekick_params$modality / assay_type (set by log_analysis_params)
   #           > modality metadata column > default "scRNA-seq"
   modality <- modality %||%
-    seurat_object@misc$scSidekick_params$modality %||%
-    seurat_object@misc$scSidekick_params$assay_type %||%
+    tryCatch(seurat_object@misc$nk_settings$assay_type,    error = function(e) NULL) %||%
+    tryCatch(seurat_object@misc$scSidekick_params$modality, error = function(e) NULL) %||%
+    tryCatch(seurat_object@misc$scSidekick_params$assay_type, error = function(e) NULL) %||%
     if ("modality" %in% colnames(seurat_object@meta.data))
       unique(seurat_object@meta.data$modality)[1]
     else "scRNA-seq"
-  is_sn       <- grepl("sn", modality, ignore.case = TRUE)
-  unit_label  <- if (is_sn) "nuclei" else "cells"
-  method_term <- if (is_sn) "Single-nucleus RNA-seq (snRNA-seq)"
-                 else       "Single-cell RNA-seq (scRNA-seq)"
+
+  at_lc <- tolower(modality %||% "")
+  is_sn        <- grepl("^sn",      at_lc) && !grepl("spatial", at_lc)
+  is_visiumhd  <- grepl("visiumhd|visium.?hd", at_lc)
+  is_visium    <- grepl("^visium$|^spatial$",  at_lc)
+  is_xenium    <- grepl("xenium",  at_lc)
+
+  unit_label  <- if (is_sn)         "nuclei"
+                 else if (is_visiumhd) "bins"
+                 else if (is_visium)   "spots"
+                 else                  "cells"
+
+  method_term <- if (is_sn)            "Single-nucleus RNA-seq (snRNA-seq)"
+                 else if (is_visiumhd)  "Visium HD spatial transcriptomics"
+                 else if (is_visium)    "Visium spatial transcriptomics"
+                 else if (is_xenium)    "Xenium in situ transcriptomics"
+                 else                   "Single-cell RNA-seq (scRNA-seq)"
 
   # ---- Basic counts ----
   n_cells <- ncol(seurat_object)
@@ -271,19 +292,37 @@ ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
     if ("pca" %in% names(seurat_object@reductions)) ncol(seurat_object@reductions$pca) else NA
 
   # ---- Integration ----
+  # Harmony can be recorded as "RunHarmony", "RunHarmony.RNA", or
+  # "Seurat..ProjectDim.RNA.harmony" depending on Seurat/harmony version.
+  # Detect by (1) explicit RunHarmony command prefix, (2) any command containing
+  # "harmony", or (3) presence of a "harmony" reduction.
   integration_method <- NULL
   integration_params <- list()
-  if ("RunHarmony" %in% cmds) {
-    integration_method  <- "Harmony"
-    integration_params  <- list(
-      group_by = get_p("RunHarmony", "group.by.vars"),
-      theta    = get_p("RunHarmony", "theta")
+  harm_cmds <- grep("RunHarmony|harmony", cmds, ignore.case = TRUE, value = TRUE)
+  has_harmony <- length(harm_cmds) > 0 ||
+                 "harmony" %in% names(seurat_object@reductions)
+  if (has_harmony) {
+    integration_method <- "Harmony"
+    # Try each harmony-related command for the group variable
+    harm_grp <- NULL
+    for (hc in harm_cmds) {
+      harm_grp <- seurat_object@commands[[hc]]@params[["group.by.vars"]] %||%
+                  seurat_object@commands[[hc]]@params[["group.by"]]
+      if (!is.null(harm_grp)) break
+    }
+    # Number of harmony PCs used: prefer FindNeighbors dims, fall back to UMAP dims
+    fn_dims_h   <- get_p("FindNeighbors", "dims")
+    umap_dims_h <- get_p("RunUMAP", "dims")
+    harm_n_pcs  <- if (!is.null(fn_dims_h))   max(fn_dims_h) else
+                   if (!is.null(umap_dims_h)) max(umap_dims_h) else NULL
+    integration_params <- list(
+      group_by = harm_grp,
+      n_pcs    = harm_n_pcs,
+      theta    = if (length(harm_cmds)) seurat_object@commands[[harm_cmds[1]]]@params[["theta"]] else NULL
     )
   } else if ("IntegrateLayers" %in% cmds) {
     integration_method  <- "Seurat v5 IntegrateLayers"
-    integration_params  <- list(
-      method = get_p("IntegrateLayers", "method")
-    )
+    integration_params  <- list(method = get_p("IntegrateLayers", "method"))
   } else if ("RunFastMNN" %in% cmds) {
     integration_method  <- "FastMNN"
   }
@@ -305,7 +344,7 @@ ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
                        "4" = "Leiden",
                        "Louvain")
   n_clusters <- if ("seurat_clusters" %in% colnames(seurat_object@meta.data))
-    length(levels(seurat_object@meta.data$seurat_clusters)) else NA
+    length(unique(seurat_object@meta.data$seurat_clusters)) else NA
 
   # ---- Available reductions ----
   reductions <- names(seurat_object@reductions)
@@ -362,12 +401,17 @@ ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
 
   if (!is.null(integration_method)) {
     int_detail <- switch(integration_method,
-      "Harmony" = sprintf(
-        "Batch correction was performed using Harmony (group.by.vars = '%s'%s).",
-        paste(integration_params$group_by, collapse = ", "),
-        if (!is.null(integration_params$theta))
-          paste0(", theta = ", integration_params$theta) else ""
-      ),
+      "Harmony" = {
+        n_pcs_h <- integration_params$n_pcs
+        pc_str  <- if (!is.null(n_pcs_h)) sprintf(" on the first %d PC%s", n_pcs_h, if (n_pcs_h == 1) "" else "s") else ""
+        sprintf(
+          "Batch correction was performed using Harmony%s (group.by.vars = '%s'%s).",
+          pc_str,
+          paste(integration_params$group_by, collapse = ", "),
+          if (!is.null(integration_params$theta))
+            paste0(", theta = ", integration_params$theta) else ""
+        )
+      },
       sprintf("Data integration was performed using %s.", integration_method)
     )
     lines <- c(lines, int_detail)
@@ -379,12 +423,16 @@ ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
       n_dims, umap_red_used, umap_nn, umap_dist
     ))
 
-  if (!is.null(clust_res) && !is.na(n_clusters))
+  if (!is.null(clust_res) && !is.na(n_clusters)) {
+    obs_word <- if (is_sn)         "Nuclei"
+                else if (is_visiumhd) "Bins"
+                else if (is_visium)   "Spots"
+                else                  "Cells"
     lines <- c(lines, sprintf(
       "%s were clustered using the %s algorithm at resolution %.2f, yielding %d clusters.",
-      if (is_sn) "Nuclei" else "Cells",
-      clust_alg, clust_res, n_clusters
+      obs_word, clust_alg, clust_res, n_clusters
     ))
+  }
 
   if (cite_seurat)
     lines <- c(lines,
@@ -394,9 +442,6 @@ ExtractMethods <- function(seurat_object, cite_seurat = TRUE, modality = NULL) {
 
   list(summary = summary_list, methods_text = methods_text)
 }
-
-# Null-coalescing operator (like %||% in rlang, but without the dependency)
-`%||%` <- function(a, b) if (!is.null(a)) a else b
 
 
 # =============================================================================
@@ -840,12 +885,19 @@ InspectPlot <- function(p, title = NULL) {
   }
 
   # Merge: start from base, then let extra_params add or override.
-  # Keys that already exist in base_params are kept UNLESS extra_params
-  # explicitly provides a new value (e.g. a method-specific methods_text
-  # replaces the generic one from log_analysis_params).
+  # Exception: methods_text from the base (written by log_analysis_params) is
+  # never overwritten. If extra_params contains methods_text AND the base
+  # already has one, the incoming value is stored as sub_methods_text so both
+  # are preserved in the JSON and available to create_analysis_pptx().
   merged <- base_params
-  for (nm in names(extra_params))
-    merged[[nm]] <- extra_params[[nm]]
+  for (nm in names(extra_params)) {
+    if (nm == "methods_text" && !is.null(merged[["methods_text"]]) &&
+        nchar(merged[["methods_text"]] %||% "") > 0) {
+      merged[["sub_methods_text"]] <- extra_params[[nm]]
+    } else {
+      merged[[nm]] <- extra_params[[nm]]
+    }
+  }
 
   out_path <- file.path(output_dir, "analysis_params.json")
   jsonlite::write_json(merged, out_path, auto_unbox = TRUE, pretty = TRUE)
@@ -912,6 +964,67 @@ InspectPlot <- function(p, title = NULL) {
   }
 
   mat
+}
+
+
+# =============================================================================
+# .get_embedding()
+# Harmony/batch-correction-aware reduced-dimension extractor.
+#
+# Resolves which @reductions slot to pull from when the caller doesn't name
+# one explicitly: prefers an integration-corrected embedding (harmony, or any
+# other reduction whose name matches a known integration method) over a plain
+# "pca", so trajectory methods are batch-aware by default without the caller
+# having to remember to ask for it.
+#
+# Always returns a plain numeric matrix (cells x dims) via
+# SeuratObject::Embeddings(), which is dense regardless of assay backend (v5,
+# sketch, BPCells) - there is no version-specific extraction to handle here,
+# unlike .get_layer_data().
+#
+# Arguments:
+#   seurat_object  Seurat object
+#   reduction      Reduction name (case-insensitive), or NULL to auto-detect
+#   dims           Integer vector of dims to keep, or NULL = all available
+#
+# Returns a numeric matrix, cells x length(dims), with the resolved reduction
+# name stored in attr(, "reduction").
+# =============================================================================
+.get_embedding <- function(seurat_object, reduction = NULL, dims = NULL) {
+  avail <- SeuratObject::Reductions(seurat_object)
+  if (length(avail) == 0)
+    stop("No dimensional reductions found on this object. Run RunPCA() / ",
+         "RunUMAP() (and RunHarmony() first if integrating) before calling ",
+         "trajectory functions.")
+
+  if (is.null(reduction)) {
+    integrated_pattern <- "^harmony$|integrated|^scvi$|^mnn$|^scanorama$"
+    hit <- avail[grepl(integrated_pattern, avail, ignore.case = TRUE)]
+    reduction <- if (length(hit) > 0) hit[1] else {
+      pca_hit <- avail[tolower(avail) == "pca"]
+      if (length(pca_hit) > 0) pca_hit[1] else avail[1]
+    }
+    message("scSidekick: reduction not specified - using '", reduction,
+            "' (available: ", paste(avail, collapse = ", "), ").")
+  } else {
+    hit <- avail[tolower(avail) == tolower(reduction)]
+    if (length(hit) == 0)
+      stop("Reduction '", reduction, "' not found. Available: ",
+           paste(avail, collapse = ", "))
+    reduction <- hit[1]
+  }
+
+  emb <- SeuratObject::Embeddings(seurat_object, reduction)
+
+  if (!is.null(dims)) {
+    if (max(dims) > ncol(emb))
+      stop("Requested dims up to ", max(dims), " but reduction '", reduction,
+           "' only has ", ncol(emb), " components.")
+    emb <- emb[, dims, drop = FALSE]
+  }
+
+  attr(emb, "reduction") <- reduction
+  emb
 }
 
 

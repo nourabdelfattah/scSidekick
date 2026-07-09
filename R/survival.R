@@ -459,7 +459,7 @@ EnrichTCGAMeta <- function(tcga_data, project = NULL) {
 
 # ── SurvMetaSummary ───────────────────────────────────────────────────────────
 
-#' Summarise clinical metadata for survival analysis
+#' Summarize clinical metadata for survival analysis
 #'
 #' Prints a formatted overview of a clinical metadata data frame, identifying
 #' which columns are suitable for \code{facet_row} / \code{facet_col} in
@@ -1047,7 +1047,7 @@ SurvMetaSummary <- function(meta,
 #'     used in most published survival analyses.}
 #'   \item{\code{"quartile"}}{Divides samples into four equally-sized groups
 #'     (Q1 = lowest 25\%, Q4 = highest 25\%) using \code{quantile()}.  Produces
-#'     four KM curves per panel coloured by \code{quartile_palette}.  Useful
+#'     four KM curves per panel colored by \code{quartile_palette}.  Useful
 #'     for detecting non-linear dose–response relationships.}
 #'   \item{\code{"value"}}{Splits at a user-supplied fixed numeric threshold
 #'     (\code{split_value}).  Applies the same cutoff across all groups and
@@ -1155,7 +1155,7 @@ SurvMetaSummary <- function(meta,
 #'   scSidekick (\code{tools::R_user_dir("scSidekick", "cache")}).  Set a
 #'   shared network path to allow multiple users to reuse the same cache.
 #'   Delete the \code{.rds} file to force a fresh download.
-#' @param genes Character vector of gene symbols to analyse in single-gene
+#' @param genes Character vector of gene symbols to analyze in single-gene
 #'   mode.  Each gene produces one set of KM panels.  Genes absent from
 #'   \code{expr_mat} trigger a warning and are skipped.
 #' @param gene_lists Named list of character vectors for signature-score mode.
@@ -1176,7 +1176,7 @@ SurvMetaSummary <- function(meta,
 #'   full details of each option.
 #' @param split_value Numeric cutoff used when \code{split_method = "value"}.
 #'   Samples with expression / score \eqn{\geq} \code{split_value} are
-#'   labelled \strong{High}; all others are \strong{Low}.  Commonly set to
+#'   labeled \strong{High}; all others are \strong{Low}.  Commonly set to
 #'   \code{0} for gene-set enrichment scores.
 #' @param split_per_group Logical (default \code{TRUE}).  When \code{TRUE},
 #'   the threshold (median / quantiles) is computed independently within
@@ -1207,10 +1207,10 @@ SurvMetaSummary <- function(meta,
 #'   \code{NULL} (default) dimensions are auto-calculated from the number of
 #'   genes and facet levels: approximately 4.5 in per column and 4.5 in per
 #'   row.
-#' @param palette Character vector of length \eqn{\geq 2}.  Colours for the
+#' @param palette Character vector of length \eqn{\geq 2}.  Colors for the
 #'   \strong{High} and \strong{Low} groups respectively.  Default:
-#'   \code{c("Red", "Blue")}.  Any R colour name or hex code is accepted.
-#' @param quartile_palette Character vector of length \eqn{\geq 4}.  Colours
+#'   \code{c("Red", "Blue")}.  Any R color name or hex code is accepted.
+#' @param quartile_palette Character vector of length \eqn{\geq 4}.  Colors
 #'   for Q1 through Q4 when \code{split_method = "quartile"}.  Default is a
 #'   blue-to-red diverging scale:
 #'   \code{c("#2166AC", "#92C5DE", "#F4A582", "#D6604D")}.
@@ -1788,7 +1788,7 @@ SurvPlot <- function(
       grDevices::dev.off()
       message("[SurvPlot] PDF written to:\n  ", output_file)
 
-      # .legend sidecar (one for the whole PDF — summarises all features)
+      # .legend sidecar (one for the whole PDF — summarizes all features)
       all_valid <- sidecar_df[!is.na(sidecar_df$pval), ]
       pval_str  <- if (nrow(all_valid) > 0L)
         sprintf("log-rank p range %.3g – %.3g",

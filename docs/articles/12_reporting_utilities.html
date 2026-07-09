@@ -62,6 +62,7 @@
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -99,7 +100,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>scSidekick is built so that <strong>the write-up writes
-itself</strong>. As you analyse, the package captures the provenance
+itself</strong>. As you analyze, the package captures the provenance
 you’ll need months later at paper time:</p>
 <ul>
 <li>
@@ -134,7 +135,7 @@ reverse-engineering your own pipeline at submission time.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">methods_out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ExtractMethods.html">ExtractMethods</a></span><span class="op">(</span><span class="va">bmcite</span>, cite_seurat <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">methods_out</span><span class="op">$</span><span class="va">methods_text</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Single-cell RNA-seq (scRNA-seq) data (30,672 cells, 17,009 genes; assay: RNA) were analyzed using Seurat. Gene expression counts were normalized using LogNormalize (scale factor 10,000) and 2,000 highly variable genes were identified using the vst method. PCA was performed (50 PCs computed). Cells were clustered using the Louvain algorithm at resolution 0.50, yielding 15 clusters. (Cite: Hao et al., Cell 2021 / Hao et al., Nature Methods 2024 as appropriate.)</span></span></code></pre>
+<pre><code><span><span class="co">## Single-cell RNA-seq (scRNA-seq) data (30,672 cells, 17,009 genes; assay: RNA) were analyzed using Seurat. Gene expression counts were normalized using CLR (scale factor 10,000) and 2,000 highly variable genes were identified using the vst method. PCA was performed (50 PCs computed). UMAP was computed on the first 18 pca components (n.neighbors = 30, min.dist = 0.3). Cells were clustered using the Louvain algorithm at resolution 0.50, yielding 15 clusters. (Cite: Hao et al., Cell 2021 / Hao et al., Nature Methods 2024 as appropriate.)</span></span></code></pre>
 <p>The companion <code>$summary</code> is a structured list of the
 detected steps and their parameters, handy for a supplementary
 table.</p>

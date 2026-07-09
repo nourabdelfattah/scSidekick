@@ -46,12 +46,12 @@ devtools::install_github("nourabdelfattah/scSidekick")
 Every example below is reproducible from public data
 ([`data-raw/make_readme_figures.R`](data-raw/make_readme_figures.R)).
 
-### 1 · Shared, accurate colour scales across split feature panels
+### 1 · Shared, accurate color scales across split feature panels
 
 Splitting a feature plot by a condition is the single most common comparison in
 single-cell work — and by default a single legend is placed ambiguously across
 panels, and that shared scale can be lost when a custom palette is supplied.
-`PlotFeaturePlots()` locks **one shared, labelled colour scale** across every
+`PlotFeaturePlots()` locks **one shared, labeled color scale** across every
 panel so the comparison is honest. No per-call workarounds needed.
 
 **Panel A — split by a single variable:**
@@ -59,7 +59,7 @@ panel so the comparison is honest. No per-call workarounds needed.
 <table>
 <tr>
 <td width="50%" align="center"><b>Without shared scale — ambiguous comparison</b></td>
-<td width="50%" align="center"><b>PlotFeaturePlots — one shared, labelled scale</b></td>
+<td width="50%" align="center"><b>PlotFeaturePlots — one shared, labeled scale</b></td>
 </tr>
 <tr>
 <td><img src="man/figures/pain_feature_before.png" width="100%"></td>
@@ -68,7 +68,7 @@ panel so the comparison is honest. No per-call workarounds needed.
 </table>
 
 ```r
-# Panel A: split by donor — one shared colour bar
+# Panel A: split by donor — one shared color bar
 PlotFeaturePlots(bmcite, features = "LYZ", split.by = "donor")
 ```
 
@@ -98,8 +98,8 @@ PlotFeaturePlots(bmcite, features = "LYZ",
 
 Standard Seurat split dot plots color each dot by the split identity rather than
 by expression and interleave rows, making it hard to read expression magnitude.
-`SplitDotPlot()` keeps **colour = expression, size = % expressed**, organizes
-genes into labelled cell-type blocks, and facets cleanly by condition so every
+`SplitDotPlot()` keeps **color = expression, size = % expressed**, organizes
+genes into labeled cell-type blocks, and facets cleanly by condition so every
 cluster is comparable across conditions at a glance.
 
 <table>
@@ -122,7 +122,7 @@ SplitDotPlot(bmcite, markers_df = markers_df,
 
 `FastDotPlot()` adds two capabilities that matter when exploring large gene sets:
 a **regex pattern** selects all matching genes automatically (no manual list
-required), and `k_genes` slices the gene dendrogram into labelled programs so
+required), and `k_genes` slices the gene dendrogram into labeled programs so
 co-regulated blocks become visible immediately.
 
 ```r
@@ -150,7 +150,7 @@ FastDotPlot2(bmcite, pattern = "^CD[1-2]", group.by = "celltype.l1",
 ### 3 · Multi-cohort cell-cell communication — keep every cohort visible
 
 `CompareCellChat()` places every cohort on **one shared layout** with the same
-node colours and group order in every panel, so you compare presence *and*
+node colors and group order in every panel, so you compare presence *and*
 absence side by side. Cohorts where a pathway is absent get a blank panel
 rather than being silently dropped — absence is often the finding.
 
@@ -160,7 +160,7 @@ rather than being silently dropped — absence is often the finding.
 </p>
 
 <p align="center">
-  <b>CompareCellChat — every cohort shown; same colours, same order, absence visible</b><br>
+  <b>CompareCellChat — every cohort shown; same colors, same order, absence visible</b><br>
   <img src="man/figures/pain_cellchat_after.png" width="100%">
 </p>
 
@@ -196,7 +196,7 @@ lays out the clinical variables — no manual aggregation:
 <table>
 <tr>
 <td width="42%" align="center"><b>153 raw metadata columns — hard to interpret at scale</b></td>
-<td width="58%" align="center"><b>83 donors summarised in one line</b></td>
+<td width="58%" align="center"><b>83 donors summarized in one line</b></td>
 </tr>
 <tr>
 <td><img src="man/figures/pain_meta_before.png" width="100%"></td>
@@ -222,9 +222,9 @@ reconstruct months later.
 ```r
 # Auto-written next to every figure, e.g. "LYZ_donor featuremap bmcite.legend":
 #   UMAP feature plot showing expression of LYZ in bmcite, split by donor.
-#   Colour scale: low (dark blue) to high (dark red), capped at the per-gene
+#   Color scale: low (dark blue) to high (dark red), capped at the per-gene
 #   maximum (6.46). Each panel represents one donor level; legend shows the
-#   shared colour bar.
+#   shared color bar.
 
 ExtractMethods(obj)$methods_text
 #> Single-cell RNA-seq (scRNA-seq) data (30,672 cells, 17,009 genes; assay: RNA)
@@ -404,9 +404,9 @@ RunURA(obj,
 
 ## One faceting vocabulary, everywhere
 
-The same three arguments work across every function — plots *and* analyses:
+The same three arguments work across every function — plots *and* analyzes:
 
-- **`group.by`** — what defines a group (colour, x-axis, the comparison)
+- **`group.by`** — what defines a group (color, x-axis, the comparison)
 - **`split.by`** — make one panel / one independent run per level
 - **`row.by`** — arrange panels along a second dimension
 
@@ -428,7 +428,7 @@ CellChat. Learn the grammar once; it carries over to every step.
 
 - **Honest-by-default plots** — shared scales and kept legends by design, so
   comparisons are valid without per-call workarounds.
-- **Consistency for free** — register colours, factor levels, and defaults once
+- **Consistency for free** — register colors, factor levels, and defaults once
   with `PrepObject()`; every downstream function reads them, so an entire project
   shares one palette and layout.
 - **Reproducibility captured passively** — a legend sidecar for every figure, an
@@ -445,7 +445,7 @@ CellChat. Learn the grammar once; it carries over to every step.
 library(scSidekick)
 library(Seurat)
 
-# Register colours, levels, and defaults once:
+# Register colors, levels, and defaults once:
 obj <- PrepObject(obj,
   variables   = c("Sample", "Group", "seurat_clusters"),
   group.by    = "seurat_clusters",
@@ -485,6 +485,7 @@ create_analysis_pptx(output_dir = "./Figures", object_name = "MyProject")
 | **[Copy number variation](https://nourabdelfattah.github.io/scSidekick/articles/17_cnv.html)** | `RunInferCNV()`, `RunCopyKAT()` |
 | **[Gene programs (cNMF)](https://nourabdelfattah.github.io/scSidekick/articles/18_cnmf.html)** | `RunCNMF()`, `GetCNMFPrograms()`, `GetCNMFTopGenes()` |
 | **[Upstream regulators (URA)](https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html)** | `RunURA()` |
+| **[Pseudotime & trajectory](https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html)** | `RunSlingshot()`, `SlingshotLineages()`, `PlotTrajectory()`, `PlotPseudotime()`, `PlotFeatureTrend()`, `PlotFeatureDistribution()` |
 | **Cell-cell communication** | `RunCellChat()`, `CompareCellChat()`, `RankCellChatPathways()`, `RenameCellTypeInCC()` |
 | **Cell annotation** | `AssignCellTypes()`, `CellTypeAssignmentHelper()` |
 | **Feature annotation** | `AnnotateFeatures()`, `GetFeatures()`, `GetGeneOrder()` |
@@ -520,3 +521,4 @@ Full vignettes and function reference at
 | [17](https://nourabdelfattah.github.io/scSidekick/articles/17_cnv.html) | Copy number variation (inferCNV / CopyKAT) |
 | [18](https://nourabdelfattah.github.io/scSidekick/articles/18_cnmf.html) | Gene expression programs (cNMF) |
 | [19](https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html) | Upstream regulator analysis (URA) |
+| [20](https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html) | Pseudotime & trajectory analysis (Slingshot) |

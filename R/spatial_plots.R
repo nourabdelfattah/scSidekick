@@ -10,9 +10,14 @@
 # Visium V1 (VisiumV1) and Visium HD / Xenium V2 (FOV) architectures.
 # =============================================================================
 
-# Internal: compute auto point size from spot coordinates
-.auto_pt_size <- function(coords, scale_constant = 100, max_size = 5,
-                           min_size = 0.3) {
+# Internal: compute auto point size from spot coordinates.
+# spot_radius: the @radius value from the image's centroids slot (in full-res px).
+# Calibrated so that VisiumV2 (radius ~90px, scale_constant=100) is unchanged.
+# For VisiumHD (radius ~1.7px) the constant auto-scales to ~3500, matching
+# the empirically validated range for 8-micron bin data. VisiumV1 (no radius)
+# passes NULL and uses scale_constant as-is.
+.auto_pt_size <- function(coords, scale_constant = 100, max_size = 50,
+                           min_size = 0.3, spot_radius = NULL) {
   robust_w   <- max(coords[, 1]) - min(coords[, 1])
   robust_h   <- max(coords[, 2]) - min(coords[, 2])
   equiv_dim  <- sqrt(robust_w * robust_h)
@@ -27,19 +32,31 @@
     sqrt(min(d_sq))
   }, numeric(1))
 
-  spots_across <- equiv_dim / stats::median(min_dists)
-  max(min(scale_constant / spots_across, max_size), min_size)
+  median_nn    <- stats::median(min_dists)
+  spots_across <- equiv_dim / median_nn
+
+  eff_const <- if (!is.null(spot_radius) && spot_radius > 0 && spot_radius < 90)
+    scale_constant * (90 / spot_radius)^0.9
+  else
+    as.numeric(scale_constant)
+
+  raw_size <- eff_const / spots_across
+  max(min(raw_size, max_size), min_size)
 }
 
-# Internal: extract coords and cell names from a Seurat image slot
+# Internal: extract coords, cell names, and spot radius from a Seurat image slot.
+# VisiumV2 and FOV both store centroids in full-res pixel coordinates.
+# VisiumV1 stores spots in full-res coordinates but has no centroids slot
+# (radius returned as NULL so .auto_pt_size() uses scale_constant unchanged).
 .img_coords <- function(img_obj) {
-  if (inherits(img_obj, "FOV")) {
-    cen   <- img_obj@boundaries[["centroids"]]
-    list(coords = cen@coords, cells = cen@cells)
+  if (inherits(img_obj, c("FOV", "VisiumV2"))) {
+    cen <- img_obj@boundaries[["centroids"]]
+    list(coords = cen@coords, cells = cen@cells, radius = cen@radius)
   } else if (inherits(img_obj, "VisiumV1")) {
-    cd    <- img_obj@coordinates
+    cd <- img_obj@coordinates
     list(coords = as.matrix(cd[, c("imagerow", "imagecol")]),
-         cells  = rownames(cd))
+         cells  = rownames(cd),
+         radius = NULL)
   } else {
     stop("Unrecognized image class: ", class(img_obj))
   }
@@ -232,9 +249,9 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
       pt_size <- if (!is.null(size_override)) {
         if (length(size_override) == 1L && is.null(names(size_override))) as.numeric(size_override)
         else if (img %in% names(size_override)) size_override[[img]]
-        else .auto_pt_size(coords, scale_constant = calcptsizesc)
+        else .auto_pt_size(coords, scale_constant = calcptsizesc, spot_radius = ic$radius)
       } else {
-        .auto_pt_size(coords, scale_constant = calcptsizesc)
+        .auto_pt_size(coords, scale_constant = calcptsizesc, spot_radius = ic$radius)
       }
 
       p <- Seurat::SpatialFeaturePlot(
@@ -253,7 +270,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
     # Extract legend
     lgd_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
     legend_guide <- if (is_numeric_feat) {
-      ggplot2::guides(fill = ggplot2::guide_colourbar(
+      ggplot2::guides(fill = ggplot2::guide_colorbar(
         title          = feat, title.position = "top",
         title.theme    = ggplot2::element_text(size = 12, face = "bold"),
         direction      = legend.direction
@@ -477,6 +494,9 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 #' @param alpha Numeric. Spot transparency. Default \code{1}.
 #' @param uniform_size Logical. Use the median point size across all images.
 #'   Default \code{FALSE}.
+#' @param calcptsizesc Numeric. Scaling constant for automatic point-size
+#'   calculation; larger values yield larger spots. Radius-aware, so the same
+#'   value works across Visium and Visium HD. Default \code{100}.
 #' @param object_name Character. Label appended to PDF filenames. Default
 #'   \code{""}.
 #' @param group.by Character vector. Preferred alias for \code{group_by_vars}.
@@ -495,6 +515,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
                                     outlier_prob    = 0.01,
                                     size_override   = NULL,
                                     uniform_size    = FALSE,
+                                    calcptsizesc    = 100,
                                     colors          = NULL,
                                     number_labels   = FALSE,
                                     legendnrow      = 3,
@@ -643,10 +664,12 @@ GenerateSpatialDimMaps <- function(seurat_object,
         } else if (img %in% names(size_override)) {
           size_override[[img]]                         # named: per-image
         } else {
-          .auto_pt_size(.img_coords(seurat_object@images[[img]])$coords)
+          ic2 <- .img_coords(seurat_object@images[[img]])
+          .auto_pt_size(ic2$coords, scale_constant = calcptsizesc, spot_radius = ic2$radius)
         }
       } else {
-        .auto_pt_size(.img_coords(seurat_object@images[[img]])$coords)
+        ic2 <- .img_coords(seurat_object@images[[img]])
+        .auto_pt_size(ic2$coords, scale_constant = calcptsizesc, spot_radius = ic2$radius)
       }
     }, numeric(1))
     if (uniform_size) raw_sizes[] <- stats::median(raw_sizes)
@@ -855,6 +878,9 @@ GenerateSpatialDimMaps <- function(seurat_object,
 #' @param outlier_prob Numeric. Default \code{0.01}.
 #' @param size_override Scalar or named numeric list. A plain number applies
 #'   to all images; a named list applies per image.
+#' @param calcptsizesc Numeric. Scaling constant for automatic point-size
+#'   calculation; larger values yield larger spots. Radius-aware, so the same
+#'   value works across Visium and Visium HD. Default \code{100}.
 #' @param colors Named character vector. Colors for \code{group.by} levels.
 #'   \code{NULL} auto-resolves from PrepObject or \code{Nour_pal}.
 #' @param gene_colors Character vector. Gradient for gene expression.
@@ -881,6 +907,7 @@ GenerateMasterGeneMaps <- function(seurat_object,
                                     remove_outliers = FALSE,
                                     outlier_prob    = 0.01,
                                     size_override   = NULL,
+                                    calcptsizesc    = 100,
                                     colors          = NULL,
                                     gene_colors     = c("#053061", "#2166AC",
                                                         "#D1E5F0", "#FDDBC7",
@@ -974,9 +1001,9 @@ GenerateMasterGeneMaps <- function(seurat_object,
       pt_size <- if (!is.null(size_override)) {
         if (length(size_override) == 1L && is.null(names(size_override))) as.numeric(size_override)
         else if (img %in% names(size_override)) size_override[[img]]
-        else .auto_pt_size(coords)
+        else .auto_pt_size(coords, scale_constant = calcptsizesc, spot_radius = ic$radius)
       } else {
-        .auto_pt_size(coords)
+        .auto_pt_size(coords, scale_constant = calcptsizesc, spot_radius = ic$radius)
       }
 
       p1 <- Seurat::DimPlot(plot_obj, reduction = "umap",
@@ -1037,7 +1064,7 @@ GenerateMasterGeneMaps <- function(seurat_object,
         bar_w     <- if (bar_dir == "horizontal") ggplot2::unit(4, "in") else ggplot2::unit(0.5, "in")
         dummy_cont <- Seurat::FeaturePlot(plot_obj, features = gene) +
           umap_gene_scale +
-          ggplot2::guides(color = ggplot2::guide_colourbar(
+          ggplot2::guides(color = ggplot2::guide_colorbar(
             title          = gene,
             title.position = "top",
             title.theme    = ggplot2::element_text(size = 14, face = "bold"),

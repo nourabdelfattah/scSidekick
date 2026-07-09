@@ -1,0 +1,280 @@
+---
+title: "scSidekick - Pseudotime & Trajectory Analysis"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Pseudotime & Trajectory Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width  = 10,
+  fig.height = 6
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+Six functions cover the pseudotime workflow end-to-end, built directly on
+Seurat objects with no `SingleCellExperiment` conversion in sight:
+
+- **`RunSlingshot()`** - fits [Slingshot](https://bioconductor.org/packages/slingshot/)
+  directly on any Seurat reduction (PCA, Harmony, or another integrated
+  embedding) plus a cluster metadata column. Only the reduction matrix and a
+  metadata column are read, so it doesn't matter whether the object has
+  BPCells, sketch, or multiple v5 assays, and the expression matrix is never
+  touched or re-normalized. Results are written back onto the object so they
+  can be reused without recomputation.
+- **`SlingshotLineages()`** - a readable summary of what was found: one row
+  per lineage, with its cluster path and cell count.
+- **`PlotTrajectory()`** - overlays the trajectory on a DimPlot, either as
+  straight cluster-to-cluster segments (the clean, DDRTree-like look) or as
+  Slingshot's own smoothed principal curves.
+- **`PlotPseudotime()`** - density/ridge distribution of pseudotime across
+  clusters; works with any numeric pseudotime column, not just Slingshot's.
+- **`PlotFeatureTrend()`** - smoothed gene expression (or any numeric
+  feature) vs. pseudotime, one facet per feature.
+- **`PlotFeatureDistribution()`** - a more general density/ridge plot for any
+  single gene or metadata feature, with `group.by`/`split.by`/`facet.by` -
+  useful well beyond pseudotime (e.g. checking whether replicate samples
+  agree).
+
+We'll walk through all six on `panc8`, the classic multi-technology pancreas
+dataset, tracing the ductal-to-endocrine differentiation trajectory.
+
+```{r pkgs, eval=T, message=FALSE, warning=FALSE, include=T}
+library(scSidekick)
+library(Seurat)
+library(SeuratData)
+library(harmony)
+```
+
+## Preparing the data
+
+`panc8` combines pancreatic islet cells profiled across eight different
+technologies (`dataset`) - exactly the kind of batch structure Harmony
+integration is for, and a good stress test for whether a trajectory holds up
+across technologies rather than being an artifact of one.
+
+We restrict to the ductal and endocrine cell types (`ductal`, `alpha`,
+`beta`, `gamma`, `delta`, `epsilon`) so the trajectory reflects the known
+endocrine differentiation biology, rather than an uninterpretable path
+through unrelated immune/stromal/vascular populations that also happen to be
+in this dataset (`activated_stellate`, `endothelial`, `macrophage`, `mast`,
+`quiescent_stellate`, `schwann`).
+
+```{r data, eval=T, message=FALSE, warning=FALSE, include=T}
+#InstallData("panc8")
+data("panc8")
+panc8 <- UpdateSeuratObject(panc8)
+panc8$donor <- panc8$orig.ident
+
+endocrine_types <- c("ductal", "alpha", "beta", "gamma", "delta", "epsilon")
+panc8 <- subset(panc8, subset = celltype %in% endocrine_types)
+
+panc8 <- NormalizeData(panc8, verbose = FALSE)
+panc8 <- FindVariableFeatures(panc8, nfeatures = 2000, verbose = FALSE)
+panc8 <- ScaleData(panc8, verbose = FALSE)
+panc8 <- RunPCA(panc8, npcs = 30, verbose = FALSE)
+panc8 <- RunHarmony(panc8, group.by.vars = "dataset", verbose = FALSE)
+panc8 <- RunUMAP(panc8, reduction = "harmony", dims = 1:30, verbose = FALSE)
+
+panc8 <- PrepObject(panc8,
+  variables   = c("celltype", "dataset"),
+  group.by    = "celltype",
+  object_name = "panc8")
+```
+
+---
+
+## 1. `RunSlingshot()` - fit the trajectory
+
+We fit on the **Harmony** embedding (not PCA or UMAP) so the trajectory
+reflects batch-corrected biology rather than technology-driven structure, and
+root it at `"ductal"` - the progenitor-like population endocrine cells
+differentiate from.
+
+```{r run-slingshot, eval=T}
+panc8 <- RunSlingshot(panc8,
+  cluster.by = "celltype",
+  reduction  = "harmony",
+  start.clus = "ductal",
+  progress   = FALSE)
+```
+
+A few things worth noting from the message output:
+
+- Harmony here has 30 components; `RunSlingshot()` automatically capped
+  fitting to the first 20 (`max_dims`, default `20L`) because principal-curve
+  fitting cost scales with dimensionality far more than with cell count -
+  pass `dims = 1:30` to use them all, or tune `max_dims`.
+- `Slingshot_Pseudotime_1`, `Slingshot_Pseudotime_2`, ... are now columns in
+  `meta.data`; the fitted model, cluster MST, and lineage paths live in
+  `panc8@misc$slingshot` for the plotting functions below to reuse without
+  recomputation.
+- For a real (much larger) object, set `progress = TRUE` (the default) to get
+  live "still fitting" heartbeat messages from a background process instead
+  of a silent wait, and `caffeinate = TRUE` to keep the machine awake for a
+  long run.
+
+---
+
+## 2. `SlingshotLineages()` - which lineage is which
+
+```{r lineages, eval=T}
+SlingshotLineages(panc8)
+```
+
+Two lineages were found, both rooted at `ductal` and both routing through
+`alpha` and the very rare `epsilon` population (30 cells in the whole
+dataset) before diverging to `delta` -> `beta` or to `gamma`. Take the
+`epsilon` branch point as an MST artifact of how few cells that population
+has, not a strong biological claim - always sanity-check a lineage's path
+against what you know of the biology, not just the algorithm's output.
+
+---
+
+## 3. `PlotTrajectory()` - overlay the trajectory
+
+### Straight segments (default)
+
+The default `style = "straight"` draws the cluster-level minimum spanning
+tree as straight, arrowed segments between cluster centroids - legible even
+with many clusters, and reusable on *any* plot reduction since only the
+MST's cluster connectivity is reused (node positions come from whichever
+reduction you plot on).
+
+```{r traj-straight, eval=T, fig.width=8, fig.height=7}
+PlotTrajectory(panc8, reduction = "umap", style = "straight")
+```
+
+Line *type* (not color) distinguishes the two lineages, so it doesn't
+collide with the cluster color legend - see "Lineage" in the legend below
+the plot.
+
+### Smoothed curves
+
+`style = "curves"` draws Slingshot's own principal curves instead. These
+live in whichever reduction Slingshot was *fit* on (Harmony here), so
+`reduction` must match `panc8@misc$slingshot$reduction` - `PlotTrajectory()`
+stops with an actionable message rather than silently drawing a curve in the
+wrong coordinate space if it doesn't.
+
+```{r traj-curves, eval=T, fig.width=8, fig.height=7}
+PlotTrajectory(panc8, reduction = "harmony", style = "curves")
+```
+
+---
+
+## 4. `PlotPseudotime()` - distribution across cell types
+
+Density + rug plot of pseudotime per cell type (with peak labels), plus an
+optional ridge plot split by a second variable - here, `dataset`, to check
+whether the pseudotime ordering holds up across technologies.
+
+```{r plot-pseudotime, eval=T, fig.width=12, fig.height=5}
+PlotPseudotime(panc8,
+  pseudotime.by = "Slingshot_Pseudotime_1",
+  split.by      = "dataset")
+```
+
+---
+
+## 5. `PlotFeatureTrend()` - hormone genes across pseudotime
+
+Endocrine cell types are defined by the hormone they secrete: `GCG`
+(glucagon, alpha), `INS` (insulin, beta), `SST` (somatostatin, delta), and
+`PPY` (pancreatic polypeptide, gamma). Coloring by `dataset` shows whether
+each technology traces a similar expression trend along pseudotime.
+
+```{r feature-trend, eval=T, fig.width=10, fig.height=8}
+PlotFeatureTrend(panc8,
+  pseudotime.by = "Slingshot_Pseudotime_1",
+  features      = c("GCG", "INS", "SST", "PPY"),
+  color.by      = "dataset")
+```
+
+All four hormone genes rise together around the same point of pseudotime
+(where the endocrine populations sit) for most technologies - except
+`fluidigmc1`, which stays flat. That's a real, known property of this
+dataset: Fluidigm C1 capture has much lower sensitivity for these
+transcripts than the other platforms, not a biological difference. This is
+exactly the kind of batch artifact `color.by` is meant to surface before you
+draw a biological conclusion from a pseudotime trend.
+
+`features` accepts genes and numeric `meta.data` columns interchangeably
+(module scores, cNMF usages, QC metrics, ...), and extraction goes through
+the same assay/version-safe path (`.nk_feature_matrix()`/`.get_layer_data()`)
+as every other feature-plotting function in the package.
+
+---
+
+## 6. `PlotFeatureDistribution()` - ridge/density for any feature
+
+A more general version of Seurat's `RidgePlot()` - one ridge per
+`group.by` level, for any single gene or numeric feature - but with a
+`split.by` fill *within* each ridge and a `facet.by` panel split, which
+`RidgePlot()` doesn't support. Here: one ridge per cell type, one panel per
+technology, to see whether `INS` (insulin) distinguishes `beta` cells
+consistently across all eight technologies.
+
+```{r feature-dist, eval=T, fig.width=14, fig.height=5}
+PlotFeatureDistribution(panc8,
+  feature  = "INS",
+  group.by = "celltype",
+  facet.by = "dataset",
+  style    = "ridge")
+```
+
+`beta` separates cleanly from the other cell types in every technology,
+which is reassuring - the `INS` signal isn't a single-platform artifact. Use
+`style = "density"` for overlaid curves instead of ridges, or swap
+`facet.by` for `"donor"` to check individual-sample agreement rather than
+whole-technology agreement.
+
+---
+
+## Saving figures
+
+Every plotting function above follows the same save convention as the rest
+of the package: pass `output_dir` (or store one with `PrepObject()`) and a
+`.legend` sidecar is written automatically alongside the PDF, describing
+cell counts, the trajectory rooting, and what's plotted - so a figure never
+travels without its own methods description.
+
+```{r save-example, eval=FALSE}
+PlotTrajectory(panc8,
+  reduction  = "umap",
+  style      = "straight",
+  output_dir = "./Figures")
+```
+
+`RunSlingshot()` additionally writes `analysis_params.json` documenting the
+fit itself (reduction, dims used, root cluster, lineages found) whenever
+`output_dir` is available - merged into any existing json rather than
+overwriting it, so it sits alongside whatever earlier steps (QC,
+clustering, GSEA, ...) already logged there.
+
+---
+
+## See also
+
+- Vignette 02: `RunHarmony`-based integration workflow this trajectory builds on
+- Vignette 03: `PlotDimPlots()` - the UMAP grid `PlotTrajectory()` matches visual style with
+- Vignette 16: `CorrelateGene()` - co-expression analysis, a complementary way to explore gene relationships within a cell type
+
+---
+
+## Session info
+
+```{r session-info}
+sessionInfo()
+```

@@ -188,7 +188,15 @@
 #'       (immune gene sets; recommended for immune datasets)
 #'     \item `list(category = "C8")` - Cell-type signature gene sets
 #'   }
-#'   See `msigdbr::msigdbr_collections()` for the full catalogue.
+#'   See `msigdbr::msigdbr_collections()` for the full catalog.
+#' @param search_terms Optional keyword filter for gene-set names (case-
+#'   insensitive, regex), applied after fetching each database in `pathway_sets`
+#'   (or to the names of a custom `gene_sets` list). Two forms: a character
+#'   vector is an OR search where any set matching at least one term is kept
+#'   (e.g. `c("APOPTOSIS", "CELL_DEATH")`); a list of character vectors is a
+#'   union of AND-groups where all terms in an element must appear in the same
+#'   name (e.g. `list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")`). Ignored when
+#'   `deg_df` is supplied. `NULL` (default) tests all gene sets.
 #' @param species Character. Species passed to [msigdbr::msigdbr()]. Must
 #'   match the species names recognized by that function. Common values:
 #'   \itemize{
@@ -290,6 +298,7 @@ RunGSEA <- function(seurat_object,
                        Reactome  = list(category = "C2", subcategory = "CP:REACTOME"),
                        WP        = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")
                      ),
+                     search_terms   = NULL,
                      species        = "Homo sapiens",
                      assay          = "RNA",
                      min_cells      = 20L,
@@ -326,8 +335,13 @@ RunGSEA <- function(seurat_object,
   # Validate required packages (msigdbr only needed for MSigDB mode)
   use_custom <- !is.null(gene_sets) || !is.null(deg_df)
   for (pkg in c("presto", "fgsea", "ComplexHeatmap", "circlize")) {
-    if (!requireNamespace(pkg, quietly = TRUE))
-      stop("Package '", pkg, "' is required. Install it with install.packages('", pkg, "').")
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      install_cmd <- if (pkg == "fgsea")
+        "devtools::install_github(\"alserglab/fgsea\")"
+      else
+        paste0("install.packages('", pkg, "')")
+      stop("Package '", pkg, "' is required. Install it with ", install_cmd, ".")
+    }
   }
   if (!use_custom && !requireNamespace("msigdbr", quietly = TRUE))
     stop("Package 'msigdbr' is required for MSigDB gene sets. ",
@@ -346,15 +360,61 @@ RunGSEA <- function(seurat_object,
       deg_top_n        = deg_top_n
     )
     fgsea_dbs <- list(DEG = gs_res$gene_sets)
+    # Filter custom named gene_sets by search_terms (ignored for deg_df)
+    if (!is.null(search_terms) && !is.null(gene_sets)) {
+      keep <- .apply_search_terms(names(fgsea_dbs$DEG), search_terms)
+      fgsea_dbs$DEG <- fgsea_dbs$DEG[keep]
+      message("search_terms matched ", sum(keep), " of ", length(keep), " custom gene sets.")
+      if (sum(keep) == 0)
+        stop("No custom gene sets matched: ", .format_search_terms(search_terms))
+    } else if (!is.null(search_terms) && !is.null(deg_df)) {
+      message("Note: search_terms is ignored when deg_df is supplied.")
+    }
   } else {
     message("Loading pathway gene sets from MSigDB...")
     fgsea_dbs <- lapply(names(pathway_sets), function(db_name) {
       ps  <- pathway_sets[[db_name]]
       mdf <- .msigdbr_get(species = species, category = ps$category,
                           subcategory = ps$subcategory)
+      if (!is.null(search_terms)) {
+        keep <- .apply_search_terms(mdf$gs_name, search_terms)
+        mdf  <- mdf[keep, , drop = FALSE]
+        if (nrow(mdf) == 0) {
+          warning("No gene sets in '", db_name, "' matched: ",
+                  .format_search_terms(search_terms), " -- skipping.", call. = FALSE)
+          return(NULL)
+        }
+        message("  [", db_name, "] ", length(unique(mdf$gs_name)),
+                " gene sets matched: ", .format_search_terms(search_terms))
+      }
       split(mdf$gene_symbol, mdf$gs_name)
     })
     names(fgsea_dbs) <- names(pathway_sets)
+    fgsea_dbs <- Filter(Negate(is.null), fgsea_dbs)
+    if (length(fgsea_dbs) == 0)
+      stop("No gene sets matched the search_terms in any database. ",
+           "Check spelling or broaden the terms.")
+
+    # ── Pool matched pathways across databases when searching by keyword ──────
+    # With search_terms the intent is to look up a pathway by name regardless of
+    # which collection it lives in. Rather than scoring and plotting each
+    # database separately (one folder/heatmap each), merge every matched gene
+    # set into a single collection named after the search term, so all hits are
+    # ranked and shown together in one heatmap. Mirrors RunSCssGSEA. MSigDB
+    # gene-set names are globally unique (prefixed by collection, e.g.
+    # KEGG_/REACTOME_/WP_/HALLMARK_), so the source database stays visible in
+    # each pathway row name.
+    if (!is.null(search_terms)) {
+      pooled  <- do.call(c, unname(fgsea_dbs))
+      pooled  <- pooled[!duplicated(names(pooled))]
+      terms   <- unlist(search_terms, use.names = FALSE)
+      pool_nm <- toupper(gsub("[^A-Za-z0-9]+", "_", paste(terms, collapse = "_")))
+      pool_nm <- gsub("^_+|_+$", "", pool_nm)
+      if (!nzchar(pool_nm)) pool_nm <- "search"
+      fgsea_dbs <- stats::setNames(list(pooled), pool_nm)
+      message("Pooled ", length(pooled), " matched gene set(s) from ",
+              length(pathway_sets), " collection(s) into one: '", pool_nm, "'.")
+    }
   }
 
   # Determine outer loop levels
@@ -367,7 +427,18 @@ RunGSEA <- function(seurat_object,
   # ── Write method params to output_dir so create_analysis_pptx() finds them ─
   # Inherits shared fields (n_cells, resolution, dataset …) from the parent
   # analysis_params.json via .write_subdir_params(); adds GSEA-specific fields.
+  # Uses gsea_methods_text (not methods_text) so it does not overwrite the
+  # preprocessing methods paragraph written by log_analysis_params().
   if (!is.null(output_dir)) {
+    at_lc <- tolower(
+      tryCatch(seurat_object@misc$nk_settings$assay_type,     error = function(e) NULL) %||%
+      tryCatch(seurat_object@misc$scSidekick_params$assay_type, error = function(e) NULL) %||% ""
+    )
+    unit_label <- if (grepl("visiumhd|visium.?hd", at_lc)) "bins"
+                  else if (grepl("^visium$|^spatial$", at_lc)) "spots"
+                  else if (grepl("^sn", at_lc) && !grepl("spatial", at_lc)) "nuclei"
+                  else "cells"
+
     db_list_str <- paste(names(pathway_sets), collapse = ", ")
     .write_subdir_params(output_dir, list(
       date              = format(Sys.Date()),
@@ -383,27 +454,37 @@ RunGSEA <- function(seurat_object,
       gsea_logfc_thresh = logfc_thresh,
       gsea_top_n        = top_n,
       gsea_nes_cutoff   = nes.cutoff,
-      methods_text      = paste0(
+      gsea_search_terms = if (!is.null(search_terms)) .format_search_terms(search_terms) else NULL,
+      gsea_methods_text = paste0(
         "Gene set enrichment analysis (GSEA) was performed using fgsea ",
         "(Korotkevich et al., 2021) with Wilcoxon rank-sum AUC pre-ranking ",
         "via presto (assay: '", assay, "'). ",
         "Differential expression was computed comparing ", group.by, " groups",
         if (!is.null(split.by))
-          paste0(" within each ", split.by, " cell-type subset")
+          paste0(" within each ", split.by, " subset")
         else "",
         if (!is.null(label.by))
           paste0(", independently for each level of ", label.by)
         else "",
-        ". Subsets with fewer than ", min_cells, " cells were skipped. ",
+        ". Subsets with fewer than ", min_cells, " ", unit_label, " were skipped. ",
         if (use_custom && !is.null(gene_sets))
-          "Gene sets were supplied directly by the user (custom gene_sets list)."
+          paste0("Gene sets were supplied directly by the user (custom gene_sets list)",
+                 if (!is.null(search_terms))
+                   paste0("; filtered by keyword: ", .format_search_terms(search_terms))
+                 else "", ".")
         else if (use_custom && !is.null(deg_df))
           paste0("Gene sets were derived from a user-supplied DE table: top ",
                  deg_top_n, " up- and down-regulated genes per group ",
                  "(adjusted p < ", deg_padj_cutoff, ").")
         else
           paste0("The following MSigDB gene-set collections were tested: ",
-                 db_list_str, "."),
+                 db_list_str,
+                 if (!is.null(search_terms))
+                   paste0("; gene sets matching the keyword filter ",
+                          .format_search_terms(search_terms),
+                          " were pooled across all collections and analyzed ",
+                          "together as a single set")
+                 else "", "."),
         " Gene sets with fewer than 10 members were excluded. ",
         "Significance threshold: adjusted p < ", padj_thresh,
         "; minimum log-fold-change for DE pre-ranking: ", logfc_thresh, ". ",

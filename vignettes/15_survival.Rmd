@@ -265,7 +265,7 @@ SurvPlot(
 
 `split_per_group = TRUE` (default) computes the median independently within
 each facet cell - so a subgroup with uniformly low expression is still split
-50/50. This is the approach used in most published survival analyses. Set
+50/50. This is the approach used in most published survival analyzes. Set
 `split_per_group = FALSE` for a single global threshold.
 
 ### Quartile split

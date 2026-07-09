@@ -61,7 +61,7 @@
 #' @param feature_split Row-group labels.  Either a \strong{named} vector
 #'   (names = gene symbols, values = group labels), or an \strong{unnamed}
 #'   vector the same length as \code{features} (matched by position).  When
-#'   supplied, rows are split and labelled.  Ignored when \code{features} is a
+#'   supplied, rows are split and labeled.  Ignored when \code{features} is a
 #'   data.frame with \code{feature_group_column} set.
 #' @param feature_column Character or \code{NULL}.  When \code{features} is a
 #'   data.frame, the column holding gene names.  \code{NULL} auto-detects
@@ -187,7 +187,6 @@ GroupHeatmap <- function(
       row_names_gp        = grid::gpar(fontsize = 8),
       show_row_dend       = FALSE,
       column_names_side   = "top",
-      row_title           = NULL,
       column_title        = NULL
     ),
     auto_draw             = TRUE,
@@ -583,13 +582,28 @@ GroupHeatmap <- function(
     # (override with heatmap_params = list(show_column_names = TRUE)).
     show_column_names    = (length(group.by) == 1L),
     column_names_side    = "top",
-    row_title            = NULL,
+    # row_title is set conditionally just below (not here), so that in the
+    # no-bubble case it is left UNSET and ComplexHeatmap's own default draws the
+    # module names as slice titles - reliably across versions.
     column_title         = NULL,
     heatmap_legend_param = list(
       title     = paste0("Mean\n", scale_method),
       direction = "vertical"
     )
   )
+
+  # Row-slice titles vs. the left "bubble" annotation both label the feature
+  # groups (modules).
+  #   * Bubble shown (left_annot set): blank the slice titles with a single
+  #     space " " so the module name is not printed twice. An empty string ""
+  #     is treated by ComplexHeatmap as "no title given" and falls back to the
+  #     split level name, whereas a space is a genuine blank title.
+  #   * No bubble: leave row_title UNSET so the package default renders the
+  #     module names as slice titles. (An explicit NULL cannot be used: the
+  #     meaning of row_title = NULL flipped between ComplexHeatmap versions -
+  #     it hides titles on >= 2.18 but shows them on older releases.)
+  if (!is.null(left_annot) && !is.null(feature_split))
+    default_ht_args$row_title <- " "
 
   ht_args <- modifyList(default_ht_args, heatmap_params)
   ht      <- do.call(ComplexHeatmap::Heatmap, ht_args)

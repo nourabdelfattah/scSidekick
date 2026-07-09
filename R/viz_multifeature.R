@@ -192,7 +192,7 @@ PlotMultiFeature <- function(
                           ggplot2::aes(color = expr_val),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
-      ggplot2::scale_colour_gradient(low  = null_color,
+      ggplot2::scale_color_gradient(low  = null_color,
                                      high = high_col,
                                      name = gene) +
       ggplot2::labs(title    = title,
@@ -230,7 +230,7 @@ PlotMultiFeature <- function(
                           ggplot2::aes(color = Plot.Status),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
-      ggplot2::scale_colour_manual(values = int_colors) +
+      ggplot2::scale_color_manual(values = int_colors) +
       ggplot2::labs(title    = title,
                     subtitle = subtitle,
                     x        = dim_labs[1],
@@ -272,7 +272,7 @@ PlotMultiFeature <- function(
                           ggplot2::aes(color = Plot.Status),
                           size        = pt.size, shape = shape,
                           alpha       = alpha,   show.legend = show_legend) +
-      ggplot2::scale_colour_manual(values = gene_colors, drop = FALSE) +
+      ggplot2::scale_color_manual(values = gene_colors, drop = FALSE) +
       ggplot2::labs(title    = title,
                     subtitle = subtitle,
                     x        = dim_labs[1],

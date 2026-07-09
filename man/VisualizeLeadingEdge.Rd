@@ -118,7 +118,7 @@ per-cell heatmap with cells ordered by \code{group.by} (then
 with one column per \code{group.by} x \code{split.by} combination.}
 
 \item{heatmap_column_split}{Character or \code{NULL}. Metadata column used
-to split heatmap columns into labelled sections (e.g. a diagnosis or
+to split heatmap columns into labeled sections (e.g. a diagnosis or
 timepoint variable). Only applies when \code{heatmap_type = "cell"}.
 Default \code{NULL}.}
 

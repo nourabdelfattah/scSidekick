@@ -74,9 +74,10 @@ Default \code{3}.}
 there.}
 
 \item{file_name}{Character or \code{NULL}. Base name (no extension) for the
-saved PDF. \code{NULL} (default) auto-deduces a name that always includes
-\code{group.by} and adds the \code{pattern} when one is used, e.g.
-\code{object_name_group.by_pattern_<pattern>_FastDotPlot}.}
+saved PDF. \code{NULL} (default) auto-generates a name that includes the
+gene pattern (when used) followed by \code{group.by} and \code{split.by},
+e.g. \code{<pattern>_<group.by>_<split.by>_FastDotPlot}, so different
+groupings and splits never overwrite each other.}
 }
 \value{
 A named list:

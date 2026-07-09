@@ -315,11 +315,29 @@ PlotDimPlots <- function(seurat_object,
   }
 
   # ── Per-row column map ────────────────────────────────────────────────────
-  # Always show ALL split-by columns in every row so that e.g. a Sex × AD
-  # grid has both AD levels in both Sex rows even when one combination is
-  # absent from the data (renders as an empty panel with the column title).
+  # Choose the column layout per row based on how split.by relates to row.by:
+  #
+  #   Nested design  (e.g. Sample within Response): each split.by level occurs
+  #     in exactly one row.by level. Show only the columns that belong to each
+  #     row, packed left and padded at the end (like PlotSpatialDimPlots) so no
+  #     interior empty panels appear.
+  #
+  #   Crossed design (e.g. Sex × AD): a split.by level occurs in more than one
+  #     row. Show ALL split-by columns in every row so absent combinations
+  #     render as titled empty panels and columns stay aligned across rows.
+  #
+  # The design is detected automatically from the data.
   if (has_row) {
-    row_col_map <- stats::setNames(rep(list(col_lvls), length(row_lvls)), row_lvls)
+    present_by_row <- lapply(row_lvls, function(rl) {
+      sub <- dat[as.character(dat$RowSplit) == rl, , drop = FALSE]
+      intersect(col_lvls, unique(as.character(sub$ColSplit)))
+    })
+    names(present_by_row) <- row_lvls
+    # Count how many rows each split level appears in; nested => all counts 1.
+    col_row_counts <- table(unlist(present_by_row))
+    is_nested      <- length(col_row_counts) > 0 && all(col_row_counts <= 1L)
+    row_col_map <- if (is_nested) present_by_row
+                   else stats::setNames(rep(list(col_lvls), length(row_lvls)), row_lvls)
   } else {
     row_col_map <- list(All = col_lvls)
   }

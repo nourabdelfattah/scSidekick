@@ -42,6 +42,7 @@
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -618,6 +619,53 @@
         </dt>
         <dd>Top genes per cNMF program</dd>
       </dl></div><div class="section level2">
+      <h2 id="pseudotime-trajectory">Pseudotime &amp; Trajectory<a class="anchor" aria-label="anchor" href="#pseudotime-trajectory"></a></h2>
+
+      <div class="section-desc"><p>Slingshot pseudotime fit directly on any Seurat reduction (Harmony-aware), with matching trajectory/feature visualizations</p></div>
+
+
+    </div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="RunSlingshot.html">RunSlingshot()</a></code>
+
+        </dt>
+        <dd>Fit Slingshot pseudotime directly on a Seurat reduction</dd>
+      </dl><dl><dt>
+
+          <code><a href="SlingshotLineages.html">SlingshotLineages()</a></code>
+
+        </dt>
+        <dd>Summarize Slingshot lineages found by RunSlingshot()</dd>
+      </dl><dl><dt>
+
+          <code><a href="PlotTrajectory.html">PlotTrajectory()</a></code>
+
+        </dt>
+        <dd>Overlay a Slingshot trajectory on a DimPlot</dd>
+      </dl><dl><dt>
+
+          <code><a href="PlotPseudotime.html">PlotPseudotime()</a></code>
+
+        </dt>
+        <dd>Plot the distribution of pseudotime across clusters</dd>
+      </dl><dl><dt>
+
+          <code><a href="PlotFeatureTrend.html">PlotFeatureTrend()</a></code>
+
+        </dt>
+        <dd>Plot gene/feature expression trends across pseudotime</dd>
+      </dl><dl><dt>
+
+          <code><a href="PlotFeatureDistribution.html">PlotFeatureDistribution()</a></code>
+
+        </dt>
+        <dd>Density or ridge plot for any gene or numeric metadata feature</dd>
+      </dl></div><div class="section level2">
       <h2 id="cell-cell-communication">Cell-Cell Communication<a class="anchor" aria-label="anchor" href="#cell-cell-communication"></a></h2>
 
       <div class="section-desc"><p>CellChat pipeline wrappers</p></div>
@@ -680,7 +728,7 @@
           <code><a href="SurvMetaSummary.html">SurvMetaSummary()</a></code>
 
         </dt>
-        <dd>Summarise clinical metadata for survival analysis</dd>
+        <dd>Summarize clinical metadata for survival analysis</dd>
       </dl><dl><dt>
 
           <code><a href="SurvPlot.html">SurvPlot()</a></code>

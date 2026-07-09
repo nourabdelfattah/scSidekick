@@ -33,7 +33,7 @@ two complementary ways:
    are pulled off disk, so the same one-liners run on a 2-million-cell object
    without materialising it.
 2. **Aggregating to a tractable unit** - collapse millions of cells to
-   per-sample pseudobulk profiles, then analyse those with fast, robust,
+   per-sample pseudobulk profiles, then analyze those with fast, robust,
    sample-level statistics.
 
 ```{r pkgs}
@@ -113,7 +113,7 @@ PlotFeaturePlots(obj, features = "CD3E", split.by = "Sample")
 
 ## 3. Pseudobulk: collapse cells to samples
 
-Pseudobulk is the most robust way to analyse large multi-sample studies: sum
+Pseudobulk is the most robust way to analyze large multi-sample studies: sum
 (or average) each gene within each sample, then treat samples as replicates.
 `ComputePseudobulk()` streams the matrix once (BPCells-safe) and caches the
 result in the object; `PlotPseudoBulk()` draws per-gene, per-group profiles

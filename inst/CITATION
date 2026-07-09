@@ -1,10 +1,19 @@
+# Keep version (and year, if a Date field is present) in sync with DESCRIPTION.
+if (!exists("meta") || is.null(meta)) meta <- packageDescription("scSidekick")
+ver  <- meta$Version
+year <- if (!is.null(meta$Date)) sub("-.*", "", meta$Date) else "2026"
+
+citHeader("If you use scSidekick in your research, please cite it as below.")
+
 bibentry(
   bibtype  = "Manual",
   title    = "scSidekick: A Single-Cell and Spatial Transcriptomics Toolkit",
   author   = person("Nourhan", "Abdelfattah",
-                    email = "neabdelfattah@gmail.com",
-                    role  = c("aut", "cre")),
-  year     = "2026",
-  note     = "R package version 1.0.0",
+                    email   = "neabdelfattah@gmail.com",
+                    role    = c("aut", "cre"),
+                    comment = c(ORCID = "0000-0002-0556-0977")),
+  year     = year,
+  note     = paste("R package version", ver),
   url      = "https://nourabdelfattah.github.io/scSidekick/"
+  # After Zenodo mints a DOI, add:  doi = "10.5281/zenodo.XXXXXXX"
 )

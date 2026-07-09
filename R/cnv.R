@@ -194,9 +194,17 @@
       row_title_rot     = 0,
       column_names_rot  = 45
     )
-    grDevices::pdf(file.path(out_dir, "CNV_proportion_heatmap.pdf"), width = 12, height = 8)
+    fn_ht <- file.path(out_dir, "CNV_proportion_heatmap.pdf")
+    grDevices::pdf(fn_ht, width = 12, height = 8)
     ComplexHeatmap::draw(ht)
     grDevices::dev.off()
+    .write_legend_sidecar(fn_ht, paste0(
+      "Heatmap of inferred copy-number variation across the genome (columns, ordered ",
+      "by chromosomal position) for individual cells (rows), grouped by ", cell_type_col,
+      ". Color indicates the proportion of cells in each group with inferred copy-number ",
+      "gain or loss per genomic region (blue, loss; white, neutral; red, gain). ",
+      "Copy-number states were inferred with inferCNV. Row annotation shows cell-type identity."
+    ))
   }, error = function(e) warning("scSidekick: CNV heatmap failed: ", e$message))
 
   # 2. DimPlot — CNV prediction + cell type
@@ -211,9 +219,16 @@
          ggplot2::theme_classic(base_size = 11) &
          ggplot2::theme(legend.position = "bottom")
 
-    grDevices::pdf(file.path(out_dir, "CNV_dimplot.pdf"), width = 12, height = 5)
+    fn_dim <- file.path(out_dir, "CNV_dimplot.pdf")
+    grDevices::pdf(fn_dim, width = 12, height = 5)
     print(p)
     grDevices::dev.off()
+    .write_legend_sidecar(fn_dim, paste0(
+      "UMAP embedding of single cells colored by inferred copy-number status ",
+      "(left; malignant/aneuploid versus normal/diploid, as called by inferCNV) and by ",
+      cell_type_col, " identity (right). Cells with extensive inferred copy-number ",
+      "alterations are candidate malignant cells."
+    ))
   }
 
   # 3. FeaturePlot — CNV score
@@ -222,9 +237,16 @@
                                     order = TRUE) +
                ggplot2::scale_color_viridis_c(option = "plasma") +
                ggplot2::ggtitle("inferCNV score (log2 sum)")
-    grDevices::pdf(file.path(out_dir, "CNV_score_featureplot.pdf"), width = 6, height = 5)
+    fn_sc <- file.path(out_dir, "CNV_score_featureplot.pdf")
+    grDevices::pdf(fn_sc, width = 6, height = 5)
     print(p_score)
     grDevices::dev.off()
+    .write_legend_sidecar(fn_sc, paste0(
+      "UMAP embedding of single cells colored by inferCNV score, defined as the sum of ",
+      "squared log2 copy-number ratios across the genome (higher values, plasma color scale, ",
+      "indicate greater overall copy-number burden). Elevated scores mark candidate ",
+      "malignant cells."
+    ))
   }
 
   invisible(NULL)
@@ -537,9 +559,16 @@ RunCopyKAT <- function(seurat_object,
          ggplot2::theme_classic(base_size = 11) &
          ggplot2::theme(legend.position = "bottom")
 
-    grDevices::pdf(file.path(output_dir, "CopyKAT_dimplot.pdf"), width = 12, height = 5)
+    fn_ck <- file.path(output_dir, "CopyKAT_dimplot.pdf")
+    grDevices::pdf(fn_ck, width = 12, height = 5)
     print(p)
     grDevices::dev.off()
+    .write_legend_sidecar(fn_ck, paste0(
+      "UMAP embedding of single cells colored by CopyKAT copy-number prediction ",
+      "(left; aneuploid versus diploid) and by cell-type identity (right). CopyKAT ",
+      "infers genome-wide copy-number state from single-cell expression using a Bayesian ",
+      "segmentation model; aneuploid cells are candidate malignant cells."
+    ))
   }
 
   n_aneu <- if ("copykat_prediction" %in% colnames(seurat_object@meta.data))

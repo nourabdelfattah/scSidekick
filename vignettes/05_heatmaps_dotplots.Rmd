@@ -220,8 +220,8 @@ FastDotPlot(bmcite,
 
 A few handy patterns: `"^HLA-"` (MHC genes), `"^IFI|^ISG|^OAS"` (interferon
 response), `"^MT-"` (mitochondrial). `FastDotPlot2()` goes further - it
-clusters the matched genes into *k* labelled **"Pattern"** groups and can run
-enrichR on each, so a loose regex becomes an annotated, organised dot plot.
+clusters the matched genes into *k* labeled **"Pattern"** groups and can run
+enrichR on each, so a loose regex becomes an annotated, organized dot plot.
 
 ---
 

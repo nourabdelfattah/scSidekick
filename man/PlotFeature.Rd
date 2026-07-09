@@ -28,6 +28,7 @@ PlotFeature(
   layer = "data",
   output_dir = NULL,
   object_name = "",
+  file_name = NULL,
   pdf_width = NULL,
   pdf_height = NULL
 )
@@ -67,7 +68,13 @@ Default \code{FALSE}.}
 \code{0.7}.}
 
 \item{add_stats}{Logical.  Add Wilcoxon significance brackets via
-\pkg{ggsignif}.  Default \code{FALSE}.}
+\pkg{ggsignif}.  Default \code{FALSE}.  \strong{Caveat:} these tests are
+computed per cell, so with many cells per group they are pseudoreplicated
+and p-values are inflated (brackets often read \code{"***"} regardless of
+the true effect).  They are useful as a descriptive overlay only; for valid
+between-sample inference aggregate to samples with
+\code{\link{PlotPseudoBulk}}.  A warning is emitted when \code{add_stats =
+  TRUE}.}
 
 \item{comparisons}{List of length-2 character vectors specifying pairs to
 compare.  \code{NULL} (default) tests all pairwise combinations, or all
@@ -109,6 +116,11 @@ from \code{PrepObject} when a Seurat object is passed.}
 
 \item{object_name}{Character.  Filename prefix.  Walks up from
 \code{PrepObject} when a Seurat object is passed.}
+
+\item{file_name}{Character or \code{NULL}.  Base name (no extension) for the
+saved PDF.  When supplied it is used verbatim (the \code{object_name},
+feature, \code{group.by}/\code{split.by} and \code{plot_type} pieces are
+skipped).  \code{NULL} (default) auto-builds the name from those variables.}
 
 \item{pdf_width}{Numeric or \code{NULL}.  Override the auto-calculated PDF
 width in inches.  \code{NULL} (default) sizes automatically from the
