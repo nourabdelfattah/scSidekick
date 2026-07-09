@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use scSidekick in your research, please cite it as below."
+type: software
+title: "scSidekick: A Single-Cell and Spatial Transcriptomics Toolkit"
+abstract: >-
+  An R toolkit for single-cell RNA-seq, spatial transcriptomics (Visium and
+  Visium HD), and bulk expression analysis. Provides publication-ready
+  visualization (dot plots, UMAP grids, feature maps, spatial plots), pathway
+  analysis (GSEA, pseudobulk GSEA, ssGSEA, over-representation, leading-edge),
+  CellChat cell-cell communication wrappers, copy-number inference (inferCNV,
+  CopyKAT), consensus NMF, gene co-expression, and Kaplan-Meier survival
+  analysis for TCGA and bulk cohorts, together with automatic figure legends,
+  JSON parameter logs, and a PowerPoint report builder. Designed to work
+  seamlessly with Seurat.
+authors:
+  - family-names: Abdelfattah
+    given-names: Nourhan
+    email: neabdelfattah@gmail.com
+    orcid: "https://orcid.org/0000-0002-0556-0977"
+    # affiliation: "Your institution"                   # <- add your affiliation (uncomment)
+version: 1.0.0
+date-released: "2026-07-06"   # <- set to your actual release date
+license: MIT
+repository-code: "https://github.com/nourabdelfattah/scSidekick"
+url: "https://nourabdelfattah.github.io/scSidekick/"
+keywords:
+  - single-cell RNA-seq
+  - spatial transcriptomics
+  - Visium HD
+  - Seurat
+  - data visualization
+  - gene set enrichment analysis
+  - cell-cell communication
+  - copy number variation
+  - survival analysis
+  - bioinformatics
+  - R
+doi: "10.5281/zenodo.21285418"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21285418"
+    description: "Zenodo archive of scSidekick"

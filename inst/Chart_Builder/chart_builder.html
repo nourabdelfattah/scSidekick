@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- © 2024–2026 Nourhan Abdelfattah — scSidekick R package. Not licensed for standalone redistribution. -->
+<title>scSidekick · Chart Builder</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jstat@1.9.6/dist/jstat.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: #f0f2f5; color: #1e2a38;
+  height: 100vh; overflow: hidden;
+}
+
+/* ══════════════════════════════════════════
+   UPLOAD SCREEN
+══════════════════════════════════════════ */
+#uploadScreen {
+  height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #eef2f8 0%, #e2eaf5 100%);
+}
+.upload-card {
+  background: white; border-radius: 18px;
+  padding: 52px 48px; width: 500px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.10);
+  text-align: center;
+}
+.upload-logo { font-size: 36px; margin-bottom: 10px; }
+.upload-logo-img { width: 168px; height: auto; margin: 0 auto 14px; display: block; }
+.upload-card h1 { font-size: 24px; font-weight: 700; color: #1e2a38; margin-bottom: 6px; }
+.upload-card .sub { font-size: 14px; color: #7a8594; margin-bottom: 32px; line-height: 1.5; }
+.drop-zone {
+  border: 2px dashed #c5ccd6; border-radius: 14px;
+  padding: 40px 24px; cursor: pointer; transition: all .2s;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: #4a8fe8; background: #f0f6ff; }
+.drop-icon { font-size: 38px; margin-bottom: 12px; }
+.drop-zone h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.drop-zone p  { font-size: 13px; color: #7a8594; margin-bottom: 20px; }
+.browse-btn {
+  display: inline-block; padding: 10px 28px;
+  background: #4a8fe8; color: white;
+  border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.browse-btn:hover { background: #3478d5; }
+#fileInput { display: none; }
+.fmt-row { margin-top: 16px; display: flex; justify-content: center; gap: 6px; }
+.fmt-chip {
+  font-size: 11px; color: #7a8594;
+  background: #f0f2f5; border-radius: 5px;
+  padding: 3px 9px; font-weight: 500;
+}
+
+/* ══════════════════════════════════════════
+   SETUP SCREEN (wide format)
+══════════════════════════════════════════ */
+#setupScreen {
+  height: 100vh; display: none;
+  align-items: flex-start; justify-content: center;
+  background: linear-gradient(135deg, #eef2f8 0%, #e2eaf5 100%);
+  overflow-y: auto; padding: 40px 20px;
+}
+#setupScreen.visible { display: flex; }
+.setup-card {
+  background: white; border-radius: 18px;
+  padding: 36px 40px; width: 840px; max-width: 96vw;
+  box-shadow: 0 12px 48px rgba(0,0,0,.10);
+}
+.setup-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #1e2a38; }
+.setup-sub { font-size: 13px; color: #7a8594; margin-bottom: 28px; line-height: 1.5; }
+.setup-section { margin-bottom: 26px; }
+.setup-section h3 {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: #9aa5b4; margin-bottom: 8px;
+}
+.setup-hint { font-size: 12.5px; color: #4a5568; margin-bottom: 10px; line-height: 1.5; }
+.meta-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.meta-check {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 8px;
+  border: 1.5px solid #dde1e7; cursor: pointer;
+  font-size: 12.5px; background: white;
+  user-select: none; transition: all .15s;
+}
+.meta-check.on { border-color: #4a8fe8; background: #f0f6ff; color: #1e73d8; }
+.delim-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.delim-pill {
+  padding: 5px 16px; border-radius: 20px;
+  border: 1.5px solid #dde1e7; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; background: white; color: #4a5568;
+  transition: all .15s; user-select: none; font-family: monospace;
+}
+.delim-pill.on { background: #4a8fe8; border-color: #4a8fe8; color: white; }
+.preview-wrap {
+  max-height: 180px; overflow-y: auto;
+  border-radius: 8px; border: 1px solid #e3e6ea;
+}
+.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.preview-table th {
+  background: #f0f2f5; padding: 6px 12px; text-align: left;
+  font-weight: 600; color: #4a5568; position: sticky; top: 0;
+}
+.preview-table td { padding: 5px 12px; border-top: 1px solid #f5f7fa; }
+.preview-table tr:nth-child(even) td { background: #fafbfc; }
+.group-order-list { display: flex; flex-direction: column; gap: 4px; }
+.group-order-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 7px;
+  border: 1px solid #e3e6ea; background: #fafbfc;
+  font-size: 12.5px;
+}
+.group-color-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.group-item-name { flex: 1; font-weight: 500; }
+.move-btns { display: flex; gap: 2px; }
+.move-btn {
+  padding: 2px 7px; border: 1px solid #dde1e7; border-radius: 4px;
+  background: white; cursor: pointer; font-size: 11px; color: #7a8594;
+  transition: all .12s; line-height: 1.6;
+}
+.move-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+.move-btn:disabled { opacity: 0.28; cursor: default; pointer-events: none; }
+
+/* ══════════════════════════════════════════
+   SETUP PREVIEW TABLE  (.sp-*)
+══════════════════════════════════════════ */
+.sp-wrap { overflow: auto; border: 1px solid #e3e6ea; border-radius: 8px; max-height: 220px; }
+.sp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sp-th {
+  background: #f8f9fb; padding: 0;
+  border-right: 1px solid #e8ecf0; border-bottom: 2px solid #dde1e7;
+  position: sticky; top: 0; z-index: 1; white-space: nowrap;
+}
+.sp-col-head { display: flex; align-items: center; gap: 5px; padding: 6px 10px 5px; }
+.sp-col-name {
+  font-size: 12px; font-weight: 600; color: #1e2a38;
+  cursor: default; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+}
+.sp-col-name:hover { color: #4a8fe8; }
+.sp-rn {
+  background: #f0f2f5; color: #9aa5b4; font-size: 10.5px;
+  text-align: center; padding: 5px 6px; font-weight: 500;
+  border-right: 1px solid #e8ecf0;
+}
+thead .sp-rn { border-bottom: 2px solid #dde1e7; position: sticky; top: 0; z-index: 1; }
+.sp-table tbody td {
+  padding: 5px 10px; border-right: 1px solid #f0f2f5; border-top: 1px solid #f5f7fa;
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sp-table tbody tr:nth-child(even) td { background: #fafbfc; }
+.sp-table tbody tr:hover td { background: #f0f6ff; }
+.sp-null { color: #e74c3c !important; font-style: italic; }
+.sp-more { padding: 5px 10px; font-size: 11px; color: #9aa5b4; font-style: italic; text-align: center; }
+.sp-footer { margin-top: 6px; font-size: 11.5px; color: #7a8594; }
+
+/* ══════════════════════════════════════════
+   APP SCREEN
+══════════════════════════════════════════ */
+#appScreen { display: none; height: 100vh; flex-direction: column; }
+#appScreen.visible { display: flex; }
+.app-header {
+  background: white; border-bottom: 1px solid #e3e6ea;
+  padding: 10px 22px; display: flex; align-items: center;
+  gap: 12px; flex-shrink: 0;
+}
+.app-title { font-size: 15px; font-weight: 700; }
+/* Brand lockup: cropped icon mark + name/subtitle */
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+  /* Self-contained inline SVG mark (no external file — the R copy is flat) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Crect width='34' height='34' rx='8' fill='%23149086'/%3E%3Crect x='8' y='18' width='4' height='8' rx='1' fill='%23fff'/%3E%3Crect x='15' y='13' width='4' height='13' rx='1' fill='%23fff'/%3E%3Crect x='22' y='9' width='4' height='17' rx='1' fill='%23fff'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.05; }
+.brand-name { font-size: 16px; font-weight: 800; color: #1e2a38; letter-spacing: .2px; }
+.brand-sub  { font-size: 10.5px; font-weight: 600; color: #149086; letter-spacing: 1.2px; text-transform: uppercase; }
+.hdr-badge { font-size: 11.5px; padding: 3px 11px; border-radius: 20px; font-weight: 500; }
+.badge-file { background: #eef2f8; color: #4a8fe8; }
+.badge-rows { background: #f0f2f5; color: #7a8594; }
+.badge-wide { background: #fef3c7; color: #92400e; }
+.hdr-space  { flex: 1; }
+.new-btn {
+  padding: 6px 16px; border: 1px solid #dde1e7; border-radius: 7px;
+  font-size: 12.5px; font-weight: 500; background: white; color: #555;
+  cursor: pointer; transition: all .15s;
+}
+.new-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+
+/* Format toggle (Long / Wide) */
+.fmt-toggle-group { display: flex; gap: 0; border: 1.5px solid #dde1e7; border-radius: 8px; overflow: hidden; }
+.fmt-toggle-btn {
+  padding: 5px 14px; font-size: 12px; font-weight: 600;
+  background: white; color: #7a8594; cursor: pointer;
+  border: none; transition: all .15s; user-select: none;
+}
+.fmt-toggle-btn + .fmt-toggle-btn { border-left: 1.5px solid #dde1e7; }
+.fmt-toggle-btn.on { background: #4a8fe8; color: white; }
+.fmt-toggle-btn:hover:not(.on) { background: #f0f6ff; color: #4a8fe8; }
+
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* ══════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════ */
+.sidebar {
+  width: 252px; background: white; border-right: 1px solid #e3e6ea;
+  display: flex; flex-direction: column;
+  overflow-y: auto; flex-shrink: 0;
+  padding: 14px 14px 24px; gap: 14px;
+}
+.ctrl-section { display: flex; flex-direction: column; gap: 7px; }
+.ctrl-lbl {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.7px; color: #9aa5b4;
+}
+.divider { height: 1px; background: #f0f2f5; flex-shrink: 0; }
+.col-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.col-pill {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10.5px; padding: 3px 8px;
+  border-radius: 20px; border: 1px solid #e3e6ea; background: #fafbfc;
+}
+.col-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.chart-btn {
+  border: 1.5px solid #dde1e7; border-radius: 8px;
+  padding: 8px 4px; cursor: pointer; text-align: center;
+  background: white; transition: all .15s; user-select: none;
+  position: relative;
+}
+.chart-btn:hover:not(.unavailable) { border-color: #4a8fe8; }
+.chart-btn.on    { border-color: #4a8fe8; background: #f0f6ff; }
+.chart-btn.suggested::after {
+  content: "★"; position: absolute; top: 2px; right: 4px;
+  font-size: 8px; color: #f5a623;
+}
+.chart-btn.unavailable {
+  opacity: 0.38; cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.chart-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+.chart-name { font-size: 10px; color: #555; font-weight: 500; }
+select {
+  width: 100%; padding: 7px 26px 7px 9px;
+  border: 1px solid #dde1e7; border-radius: 7px;
+  font-size: 12.5px; color: #1e2a38; background: white;
+  cursor: pointer; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa5b4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+}
+select:focus { outline: none; border-color: #4a8fe8; box-shadow: 0 0 0 3px rgba(74,143,232,.10); }
+select:disabled { opacity: 0.38; cursor: not-allowed; }
+.ax-row { display: flex; flex-direction: column; gap: 3px; }
+.ax-title-row { display: flex; align-items: center; gap: 6px; }
+.type-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 6px;
+  border-radius: 3px; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.tb-num  { background: #dbeafe; color: #1e40af; }
+.tb-cat  { background: #dcfce7; color: #166534; }
+.tb-date { background: #fef3c7; color: #92400e; }
+.tb-any  { background: #f3e8ff; color: #7e22ce; }
+.tog-row { display: flex; align-items: center; justify-content: space-between; padding: 1px 0; }
+.tog-lbl { font-size: 12px; color: #4a5568; }
+.tog-sw  {
+  width: 34px; height: 18px; border-radius: 9px;
+  background: #dde1e7; position: relative;
+  cursor: pointer; transition: background .2s; flex-shrink: 0;
+}
+.tog-sw.on { background: #4a8fe8; }
+.tog-knob  {
+  position: absolute; width: 14px; height: 14px;
+  border-radius: 50%; background: white;
+  top: 2px; left: 2px; transition: left .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.tog-sw.on .tog-knob { left: 18px; }
+.pill-row { display: flex; gap: 5px; }
+.pill {
+  flex: 1; padding: 6px 4px;
+  border: 1.5px solid #dde1e7; border-radius: 7px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  text-align: center; background: white; color: #7a8594;
+  transition: all .15s; user-select: none;
+}
+.pill:hover { border-color: #4a8fe8; color: #4a8fe8; }
+.pill.on    { background: #4a8fe8; border-color: #4a8fe8; color: white; }
+.pal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.pal-card {
+  border: 2px solid #e3e6ea; border-radius: 7px;
+  padding: 5px 6px; cursor: pointer;
+  transition: border-color .15s; user-select: none;
+}
+.pal-card:hover { border-color: #9dc0f5; }
+.pal-card.on    { border-color: #4a8fe8; }
+.pal-strip { height: 12px; border-radius: 3px; margin-bottom: 3px; }
+.pal-name  { font-size: 10px; color: #4a5568; font-weight: 500; }
+.pal-cb    { font-size: 9px; color: #3aab76; font-weight: 700; margin-left: 3px; }
+.btn {
+  width: 100%; padding: 8px 12px; border: none; border-radius: 7px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.btn + .btn { margin-top: 5px; }
+.btn-blue { background: #4a8fe8; color: white; }
+.btn-blue:hover { background: #3478d5; }
+.btn-grey { background: #f0f2f5; color: #4a5568; }
+.btn-grey:hover { background: #e3e6ea; }
+.btn-red  { background: #e74c3c; color: white; }
+.btn-red:hover  { background: #c0392b; }
+.swap-btn {
+  padding: 5px; border: 1px solid #dde1e7; border-radius: 7px;
+  font-size: 12px; background: white; color: #555;
+  cursor: pointer; transition: all .15s; width: 100%; margin: 2px 0;
+}
+.swap-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+input[type="range"] { width: 100%; accent-color: #4a8fe8; height: 4px; cursor: pointer; }
+.spin-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(255,255,255,.78); z-index: 999;
+  align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+}
+.spin-overlay.show { display: flex; }
+.spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 3px solid #dde1e7; border-top-color: #4a8fe8;
+  animation: spin .7s linear infinite;
+}
+.spin-msg { font-size: 14px; color: #4a8fe8; font-weight: 600; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.range-row { display: flex; justify-content: space-between; align-items: center; }
+.range-lbl { font-size: 10px; color: #9aa5b4; }
+.section-head {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: #9aa5b4; padding: 2px 0;
+  border-bottom: 1px solid #f0f2f5; margin-bottom: 2px;
+}
+
+/* Colorbar position pills */
+.cb-pos-btn {
+  flex: 1; padding: 5px 4px;
+  border: 1.5px solid #dde1e7; border-radius: 7px;
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  text-align: center; background: white; color: #7a8594;
+  transition: all .15s; user-select: none;
+}
+.cb-pos-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+.cb-pos-btn.on { background: #4a8fe8; border-color: #4a8fe8; color: white; }
+
+/* Figure style collapsible section */
+.style-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: #9aa5b4; padding: 2px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+.style-section-head:hover { color: #4a8fe8; }
+#styleSectionBody { display: none; }
+.style-preset-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.style-preset-btn {
+  padding: 3px 8px; border: 1px solid #dde1e7; border-radius: 5px;
+  font-size: 10.5px; font-weight: 500; background: white; color: #4a5568;
+  cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.style-preset-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+.export-dim-row { display: flex; gap: 5px; align-items: center; }
+.export-dim-row input[type="number"] {
+  width: 60px; padding: 5px 7px;
+  border: 1px solid #dde1e7; border-radius: 6px;
+  font-size: 12px; color: #1e2a38; text-align: center;
+}
+.export-dim-sep { font-size: 11px; color: #9aa5b4; }
+
+/* Palette dropdown + preview strip */
+.pal-preview-strip {
+  height: 14px; border-radius: 5px; margin-top: 5px;
+  background: #e3e6ea; transition: background .2s;
+}
+/* Custom color picker */
+.custom-color-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.custom-color-grid input[type="color"] {
+  width: 26px; height: 24px; padding: 1px 2px;
+  border: 1.5px solid #dde1e7; border-radius: 5px;
+  cursor: pointer; background: none; flex-shrink: 0;
+}
+.custom-color-grid input[type="color"]:hover { border-color: #4a8fe8; }
+
+/* ══════════════════════════════════════════
+   MAIN AREA — tabs + panels
+══════════════════════════════════════════ */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 14px; gap: 8px; }
+
+/* Tab bar */
+.main-tab-bar {
+  display: flex; gap: 4px; flex-shrink: 0;
+  border-bottom: 1px solid #e3e6ea; padding-bottom: 0;
+}
+.main-tab-btn {
+  padding: 6px 18px; font-size: 13px; font-weight: 500;
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: #7a8594; cursor: pointer; margin-bottom: -1px;
+  transition: all .15s; user-select: none;
+}
+.main-tab-btn:hover { color: #4a8fe8; }
+.main-tab-btn.on { color: #4a8fe8; border-bottom-color: #4a8fe8; font-weight: 600; }
+
+/* Chart and data panels */
+#chartPanel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+#plot { flex: 1; min-height: 0; }
+#dataPanel { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; }
+
+/* ══════════════════════════════════════════
+   DATA EXPLORER TABLE
+══════════════════════════════════════════ */
+#dataTableWrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.dex-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding: 6px 0 8px;
+}
+.dex-search {
+  flex: 1; padding: 6px 12px; border: 1px solid #dde1e7; border-radius: 7px;
+  font-size: 12.5px; color: #1e2a38; background: white;
+  max-width: 260px;
+}
+.dex-search:focus { outline: none; border-color: #4a8fe8; box-shadow: 0 0 0 3px rgba(74,143,232,.10); }
+.dex-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dex-action-lbl { font-size: 11px; color: #9aa5b4; font-weight: 600; white-space: nowrap; }
+.dex-action-btn {
+  padding: 4px 10px; border: 1px solid #dde1e7; border-radius: 6px;
+  font-size: 11.5px; font-weight: 500; background: white; color: #4a5568;
+  cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.dex-action-btn:hover { border-color: #4a8fe8; color: #4a8fe8; }
+.dex-action-btn.dex-danger { color: #e74c3c; border-color: #fca5a5; }
+.dex-action-btn.dex-danger:hover { background: #fef2f2; border-color: #e74c3c; }
+
+.dex-table-wrap { flex: 1; overflow: auto; border: 1px solid #e3e6ea; border-radius: 8px; }
+.dex-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dex-table thead th {
+  background: #f8f9fb; padding: 0; position: sticky; top: 0; z-index: 1;
+  border-right: 1px solid #e8ecf0; border-bottom: 2px solid #dde1e7;
+  white-space: nowrap;
+}
+.dex-table th:first-child { width: 44px; }
+.dex-rownum {
+  background: #f0f2f5; color: #9aa5b4; font-size: 10.5px;
+  text-align: center; padding: 6px 4px; font-weight: 500;
+}
+.dex-col-header {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 10px 2px; white-space: nowrap;
+}
+.dex-col-name {
+  font-size: 12px; font-weight: 600; color: #1e2a38;
+  cursor: default; flex: 1; overflow: hidden; text-overflow: ellipsis;
+  max-width: 160px;
+}
+.dex-col-name:hover { color: #4a8fe8; }
+.dex-col-summary {
+  font-size: 10px; color: #9aa5b4; padding: 0 10px 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 200px;
+}
+.dex-table tbody td {
+  padding: 5px 10px; border-right: 1px solid #f0f2f5;
+  border-bottom: 1px solid #f5f7fa; color: #1e2a38;
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dex-table tbody tr:nth-child(even) td { background: #fafbfc; }
+.dex-table tbody tr:hover td { background: #f0f6ff; }
+.dex-null { color: #e74c3c !important; font-style: italic; background: #fff5f5 !important; }
+
+.dex-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0 0; flex-shrink: 0;
+}
+.dex-page-info { font-size: 11.5px; color: #7a8594; }
+.dex-pagination { display: flex; align-items: center; gap: 8px; }
+.dex-page-btn {
+  padding: 4px 12px; border: 1px solid #dde1e7; border-radius: 6px;
+  font-size: 12px; background: white; color: #4a5568; cursor: pointer;
+  transition: all .12s;
+}
+.dex-page-btn:hover:not(:disabled) { border-color: #4a8fe8; color: #4a8fe8; }
+.dex-page-btn:disabled { opacity: 0.32; cursor: not-allowed; }
+.dex-page-num { font-size: 12px; color: #7a8594; white-space: nowrap; }
+
+/* ══════════════════════════════════════════
+   STATS — floating button, rerun banner
+══════════════════════════════════════════ */
+#runStatsBtn {
+  position: absolute; top: 12px; right: 16px; z-index: 10;
+  background: #4a8fe8; color: white;
+  border: none; border-radius: 8px;
+  padding: 7px 16px; font-size: 13px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(74,143,232,.35);
+  transition: background .15s;
+}
+#runStatsBtn:hover { background: #3478d5; }
+#chartPanel { position: relative; }
+
+#statsRerunBanner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 8px 16px;
+  background: #fff8e1; border-bottom: 1px solid #ffe082;
+  font-size: 13px; color: #7a5900; flex-shrink: 0;
+}
+.rerun-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid #e0c060;
+  background: white; color: #7a5900; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background .12s;
+}
+.rerun-btn:hover { background: #fff3cd; }
+.rerun-btn.rerun-primary { background: #4a8fe8; color: white; border-color: #3478d5; }
+.rerun-btn.rerun-primary:hover { background: #3478d5; }
+
+/* ══════════════════════════════════════════
+   STATS — figure legend panel
+══════════════════════════════════════════ */
+#legendPanel {
+  flex-shrink: 0;
+  border-top: 1px solid #e3e6ea;
+  padding: 10px 16px 12px;
+  background: #fafbfc;
+}
+.legend-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.legend-title { font-size: 12px; font-weight: 700; color: #4a5568; }
+.legend-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #9aa5b4; margin-bottom: 4px;
+}
+.legend-copy-btn {
+  padding: 4px 12px; border-radius: 6px;
+  border: 1px solid #c5ccd6; background: white;
+  font-size: 12px; font-weight: 600; cursor: pointer; color: #1e2a38;
+}
+.legend-copy-btn:hover { background: #f0f6ff; border-color: #4a8fe8; color: #4a8fe8; }
+.legend-textarea {
+  width: 100%; font-size: 12.5px; line-height: 1.6;
+  border: 1px solid #dde1e7; border-radius: 8px;
+  padding: 8px 10px; color: #1e2a38; background: white;
+  resize: vertical; font-family: inherit;
+}
+.legend-textarea:focus { outline: none; border-color: #4a8fe8; }
+
+/* ══════════════════════════════════════════
+   STATS — stats results tab panel
+══════════════════════════════════════════ */
+#statsPanel { flex: 1; display: none; flex-direction: column; overflow: hidden; min-height: 0; background: white; }
+.stats-empty { padding: 40px; text-align: center; color: #9aa5b4; font-size: 14px; }
+.stats-section-head {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.7px; color: #9aa5b4; margin-bottom: 6px; margin-top: 4px;
+}
+.stats-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stats-tbl td, .stats-tbl th {
+  padding: 5px 10px; border-bottom: 1px solid #f0f2f5; text-align: left;
+}
+.stats-tbl th { font-weight: 600; color: #4a5568; background: #f7f8fa; font-size: 12px; }
+.stats-tbl td:first-child { color: #7a8594; width: 40%; }
+.stats-pairs-tbl td:first-child { width: auto; color: #1e2a38; }
+.sig-stars { font-weight: 700; color: #e15759; font-size: 14px; }
+.stats-desc-tbl { min-width: 600px; font-size: 12px; }
+.stats-desc-tbl td, .stats-desc-tbl th { padding: 4px 8px; }
+
+/* ══════════════════════════════════════════
+   STATS — wizard modal
+══════════════════════════════════════════ */
+#statsWizardOverlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+}
+.wiz-modal {
+  background: white; border-radius: 16px;
+  width: 520px; max-width: 94vw; max-height: 90vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  overflow: hidden;
+}
+.wiz-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 14px; border-bottom: 1px solid #f0f2f5;
+}
+.wiz-title { font-size: 16px; font-weight: 700; color: #1e2a38; }
+.wiz-close {
+  background: none; border: none; font-size: 18px; color: #9aa5b4;
+  cursor: pointer; padding: 2px 6px; border-radius: 6px;
+}
+.wiz-close:hover { background: #f0f2f5; color: #1e2a38; }
+.wiz-body { padding: 18px 22px; overflow-y: auto; flex: 1; }
+.wiz-footer {
+  display: flex; align-items: center; padding: 14px 22px;
+  border-top: 1px solid #f0f2f5; gap: 8px;
+}
+.wiz-card {
+  background: #f7f8fa; border-radius: 12px;
+  padding: 16px 18px; margin-bottom: 10px;
+}
+.wiz-card-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: #9aa5b4; margin-bottom: 10px;
+}
+.wiz-desc { font-size: 14px; color: #1e2a38; line-height: 1.5; }
+.wiz-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.wiz-group-chip {
+  background: white; border: 1px solid #dde1e7;
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 12px; color: #4a5568;
+}
+.wiz-group-chip em { color: #9aa5b4; font-style: normal; margin-left: 3px; }
+.wiz-note { font-size: 12.5px; color: #4a5568; margin-top: 10px; line-height: 1.5; }
+/* Normality rows */
+.norm-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid #eef0f3; flex-wrap: wrap;
+}
+.norm-row:last-child { border-bottom: none; }
+.norm-lbl { font-size: 13px; font-weight: 600; color: #1e2a38; flex: 1; min-width: 80px; }
+.norm-lbl em { font-style: normal; font-weight: 400; color: #9aa5b4; margin-left: 4px; }
+.norm-detail { font-size: 12px; color: #7a8594; }
+.norm-badge {
+  padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
+}
+.norm-badge.green { background: #d1fae5; color: #065f46; }
+.norm-badge.red   { background: #fee2e2; color: #991b1b; }
+.norm-badge.grey  { background: #f0f2f5; color: #9aa5b4; }
+/* Test options */
+.wiz-test-opts { display: flex; flex-direction: column; gap: 8px; }
+.wiz-test-opt {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: white; border: 1.5px solid #dde1e7; border-radius: 10px;
+  padding: 10px 12px; cursor: pointer; transition: border-color .15s;
+}
+.wiz-test-opt:hover { border-color: #4a8fe8; }
+.wiz-test-opt input[type=radio] { margin-top: 3px; flex-shrink: 0; }
+.wiz-test-opt.wiz-recommended { border-color: #4a8fe8; background: #f0f6ff; }
+.wiz-test-name { font-size: 13px; font-weight: 600; color: #1e2a38; margin-bottom: 2px; }
+.wiz-test-desc { font-size: 12px; color: #7a8594; }
+.rec-badge {
+  display: inline-block; margin-left: 6px;
+  background: #4a8fe8; color: white;
+  font-size: 10px; padding: 1px 7px; border-radius: 10px; font-weight: 700;
+  vertical-align: middle;
+}
+/* Options step */
+.wiz-opt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.wiz-opt-lbl { font-size: 13px; color: #4a5568; font-weight: 500; width: 120px; flex-shrink: 0; }
+/* Confirm summary */
+.wiz-summary-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wiz-summary-tbl tr { border-bottom: 1px solid #eef0f3; }
+.wiz-sum-k { padding: 7px 0; color: #7a8594; width: 40%; }
+.wiz-sum-v { padding: 7px 0; font-weight: 600; color: #1e2a38; }
+
+/* Filter panel items */
+.filter-item {
+  display: flex; align-items: center; gap: 6px; padding: 3px 6px;
+  border-radius: 5px; cursor: pointer; font-size: 12px; color: #1e2a38;
+  transition: background .1s;
+}
+.filter-item:hover { background: #f0f6ff; }
+.filter-item input[type=checkbox] { cursor: pointer; accent-color: #4a8fe8; flex-shrink:0; }
+.filter-col-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 0; cursor: pointer; font-size: 12px; font-weight: 600; color: #3d4f62;
+  border-bottom: 1px solid #edf0f4;
+}
+.filter-col-head:hover { color: #4a8fe8; }
+.filter-col-vals { padding: 4px 0; display: flex; flex-direction: column; gap: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     UPLOAD SCREEN (stub — hidden in scSidekick bundle; data comes via NOURKIT_PAYLOAD)
+══════════════════════════════════════════ -->
+<div id="uploadScreen" style="display:none">
+  <div class="drop-zone" id="dropZone" style="display:none"></div>
+  <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none">
+</div>
+
+<!-- ══════════════════════════════════════════
+     LOCK SCREEN — shown when no NOURKIT_PAYLOAD is present
+══════════════════════════════════════════ -->
+<div id="lockScreen" style="display:none;height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef2f8 0%,#e2eaf5 100%)">
+  <div style="background:white;border-radius:18px;padding:52px 48px;width:480px;box-shadow:0 12px 48px rgba(0,0,0,.10);text-align:center">
+    <div style="font-size:38px;margin-bottom:16px">🔒</div>
+    <h1 style="font-size:22px;font-weight:700;color:#1e2a38;margin-bottom:10px">scSidekick Chart Builder</h1>
+    <p style="font-size:14px;color:#7a8594;line-height:1.6;margin-bottom:24px">
+      This app must be launched from R via<br>
+      <code style="background:#f0f2f5;padding:2px 8px;border-radius:5px;font-size:13px">scSidekick::ChartBuilder(your_data)</code>
+    </p>
+    <p style="font-size:12px;color:#b0b8c4">Part of the <strong>scSidekick</strong> R package &nbsp;·&nbsp; © 2024–2026 Nourhan Abdelfattah</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SETUP SCREEN  (universal — shown for every file load)
+══════════════════════════════════════════ -->
+<div id="setupScreen">
+  <div class="setup-card">
+
+    <!-- ── Header: title + Long/Wide toggle ── -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:30px">📐</span>
+        <div>
+          <h2 style="margin-bottom:5px">Configure your data</h2>
+          <p id="setupFormatHint" class="setup-hint" style="margin:0">Detecting format…</p>
+        </div>
+      </div>
+      <div class="fmt-toggle-group" style="flex-shrink:0;margin-top:6px">
+        <button class="setup-fmt-btn fmt-toggle-btn on" data-fmt="long" onclick="switchSetupFormat('long')">Long / Tidy</button>
+        <button class="setup-fmt-btn fmt-toggle-btn"    data-fmt="wide" onclick="switchSetupFormat('wide')">Wide / Matrix</button>
+      </div>
+    </div>
+
+    <!-- ── Data preview (always shown) ── -->
+    <div class="setup-section">
+      <h3>Data preview</h3>
+      <div id="setupPreviewTable"></div>
+    </div>
+
+    <!-- ── Long format info box (visible when Long is selected) ── -->
+    <div id="setupLongSection">
+      <div style="background:#f0f9f4;border-radius:8px;padding:12px 14px;border-left:3px solid #2a9d8f;font-size:13px;color:#1e5545;line-height:1.5;margin-top:4px">
+        ✅ Your data looks like <b>long / tidy format</b> — each row is one observation.
+        Click <b>Visualize</b> to proceed, or switch to <b>Wide / Matrix</b> if each row represents
+        a feature and the columns are samples.
+      </div>
+    </div>
+
+    <!-- ── Wide format steps (visible when Wide is selected) ── -->
+    <div id="setupWideSection" style="display:none">
+
+      <!-- Step 1 -->
+      <div class="setup-section" style="margin-top:20px">
+        <h3>Step 1 — Row annotation columns</h3>
+        <p class="setup-hint">Select the columns that <b>describe the rows</b> (names, categories, etc.). Leave sample/measurement columns unchecked.</p>
+        <div class="meta-checks" id="metaCheckboxes"></div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="setup-section">
+        <h3>Step 2 — Sample group delimiter</h3>
+        <p class="setup-hint">How is the group name encoded in column headers? (e.g. "WT1.3" → group "WT1" using ".")</p>
+        <div class="delim-pills">
+          <div class="delim-pill" data-delim="."  onclick="setDelim('.')">. &nbsp;dot</div>
+          <div class="delim-pill" data-delim="_"  onclick="setDelim('_')">_ &nbsp;underscore</div>
+          <div class="delim-pill" data-delim="-"  onclick="setDelim('-')">- &nbsp;hyphen</div>
+          <div class="delim-pill" data-delim=" "  onclick="setDelim(' ')">space</div>
+          <div class="delim-pill" data-delim=""   onclick="setDelim('')">No grouping</div>
+        </div>
+        <div id="delimPreview"></div>
+      </div>
+
+      <!-- Step 2b — Optional metadata CSV -->
+      <div class="setup-section" id="metaUploadSection">
+        <h3>Step 2b — Sample metadata <span style="font-weight:400;color:#9aa5b4;font-size:12px">(optional)</span></h3>
+        <p class="setup-hint">Upload a CSV where the <b>first column</b> contains sample names matching your column headers. Additional columns become group/color-by variables and <b>override</b> the delimiter grouping above.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="file" id="metaFileInput" accept=".csv,.tsv,.txt" style="display:none" onchange="loadSampleMetadata(event)">
+          <button class="btn btn-grey" style="width:auto;padding:6px 14px" onclick="document.getElementById('metaFileInput').click()">⬆ Upload metadata CSV</button>
+          <div id="metaUploadStatus" style="display:none;align-items:center;gap:8px">
+            <span id="metaUploadInfo" style="font-size:12px;color:#2a9d8f;font-weight:600"></span>
+            <button class="btn btn-grey" style="width:auto;padding:3px 10px;font-size:11px" onclick="clearSampleMetadata()">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="setup-section" id="groupOrderSection">
+        <h3>Step 3 — Column group order</h3>
+        <p class="setup-hint">Default order is the order groups first appear in the file. Use arrows to reorder.</p>
+        <div class="group-order-list" id="setupGroupOrder"></div>
+      </div>
+
+    </div><!-- /setupWideSection -->
+
+    <!-- ── Action buttons ── -->
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button id="setupConfirmBtn" class="btn btn-blue" style="flex:1" onclick="confirmSetup()">Visualize →</button>
+      <button class="btn btn-grey" style="width:110px" onclick="resetApp()">↩ Cancel</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP SCREEN
+══════════════════════════════════════════ -->
+<div id="appScreen">
+  <div class="app-header">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-text">
+        <span class="brand-name">scSidekick</span>
+        <span class="brand-sub">Chart Builder</span>
+      </span>
+    </div>
+    <span class="hdr-badge badge-file" id="fileBadge">—</span>
+    <span class="hdr-badge badge-rows" id="rowBadge">—</span>
+    <span class="hdr-badge badge-wide" id="wideBadge" style="display:none">Wide format</span>
+    <!-- Format switcher -->
+    <div class="fmt-toggle-group">
+      <button class="fmt-toggle-btn on" data-fmt="long"  onclick="switchFormat('long')">Long</button>
+      <button class="fmt-toggle-btn"    data-fmt="wide"  onclick="switchFormat('wide')">Wide</button>
+    </div>
+    <button class="new-btn" onclick="goBackToSetup()" title="Return to setup screen">⚙ Setup</button>
+    <div class="hdr-space"></div>
+    <span style="font-size:11px;color:#b0b8c4;padding-right:10px">via scSidekick::ChartBuilder()</span>
+  </div>
+
+  <div class="app-body">
+    <div class="sidebar">
+
+      <!-- Columns -->
+      <div class="ctrl-section">
+        <div class="ctrl-lbl">Detected columns</div>
+        <div class="col-pills" id="colPills"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Chart type -->
+      <div class="ctrl-section">
+        <div class="ctrl-lbl">Chart type &nbsp;<span style="color:#f5a623;font-size:9px">★ recommended</span></div>
+        <div class="chart-grid" id="chartGrid"></div>
+      </div>
+
+      <!-- ── Long-format column mapping ── -->
+      <div class="divider" id="colMappingDivider"></div>
+      <div class="ctrl-section" id="colMappingSection">
+        <div class="ctrl-lbl">Column mapping</div>
+
+        <div class="ax-row">
+          <div class="ax-title-row">
+            <span class="ctrl-lbl" style="margin-bottom:0">X Axis</span>
+            <span class="type-badge tb-any" id="xBadge">Any</span>
+          </div>
+          <select id="selX" onchange="onXYChange()"></select>
+        </div>
+
+        <button class="swap-btn" id="swapBtn" onclick="swapAxes()">⇅ Swap X / Y axes</button>
+
+        <div class="ax-row" id="yRow">
+          <div class="ax-title-row">
+            <span class="ctrl-lbl" style="margin-bottom:0">Y Axis</span>
+            <span class="type-badge tb-num" id="yBadge">Number</span>
+          </div>
+          <select id="selY" onchange="onXYChange()"></select>
+        </div>
+
+        <div class="ax-row" id="colorRow">
+          <div class="ctrl-lbl" id="colorLbl">Color / Group by</div>
+          <select id="selColor" onchange="onColorChange()">
+            <option value="">— None —</option>
+          </select>
+        </div>
+
+        <div class="ax-row" id="facetRow">
+          <div class="ctrl-lbl">Facet / Split panels by</div>
+          <select id="selFacet" onchange="onFacetChange()">
+            <option value="">— None —</option>
+          </select>
+        </div>
+
+        <!-- Panels per row — shown only when a facet is selected -->
+        <div class="ax-row" id="facetNColsRow" style="display:none">
+          <div class="range-row">
+            <div class="ctrl-lbl">Panels per row</div>
+            <span class="range-lbl" id="facetNColsVal">3</span>
+          </div>
+          <input type="range" id="facetNCols" min="1" max="6" value="3"
+                 oninput="document.getElementById('facetNColsVal').textContent=this.value; render()">
+        </div>
+
+        <!-- Free Y scale — shown only when a facet is selected -->
+        <div class="tog-row" id="freeYRow" style="display:none">
+          <span class="tog-lbl">Free Y scale per panel</span>
+          <div class="tog-sw" id="togFreeY" onclick="toggleSw(this,'freeY')"><div class="tog-knob"></div></div>
+        </div>
+
+        <div class="ax-row" id="sizeRow" style="display:none">
+          <div class="ctrl-lbl" id="sizeLbl">Bubble size</div>
+          <select id="selSize" onchange="render()">
+            <option value="">— None —</option>
+          </select>
+        </div>
+
+        <div class="ax-row" id="aggRow">
+          <div class="ctrl-lbl">Aggregate Y by</div>
+          <select id="selAgg" onchange="render()">
+            <option value="none">No aggregation</option>
+            <option value="sum" selected>Sum</option>
+            <option value="mean">Mean</option>
+            <option value="count">Count rows</option>
+            <option value="max">Max</option>
+            <option value="min">Min</option>
+          </select>
+        </div>
+
+        <div class="ax-row" id="barModeRow" style="display:none">
+          <div class="ctrl-lbl">Bar style</div>
+          <div class="pill-row">
+            <div class="pill on" id="grpPill" onclick="setBarMode('group',this)">Grouped</div>
+            <div class="pill"    id="stkPill" onclick="setBarMode('stack',this)">Stacked</div>
+          </div>
+        </div>
+
+        <div class="ax-row" id="binsRow" style="display:none">
+          <div class="range-row">
+            <div class="ctrl-lbl">Histogram bins</div>
+            <span class="range-lbl" id="binVal">20</span>
+          </div>
+          <input type="range" id="binSlider" min="5" max="100" value="20"
+                 oninput="document.getElementById('binVal').textContent=this.value;render()">
+        </div>
+
+        <div class="ax-row" id="showPointsRow" style="display:none">
+          <div class="ctrl-lbl">Data points</div>
+          <div class="pill-row">
+            <div class="pill on" data-pts="none"     onclick="setShowPoints('none')">Off</div>
+            <div class="pill"    data-pts="outliers" onclick="setShowPoints('outliers')">Outliers</div>
+            <div class="pill"    data-pts="all"      onclick="setShowPoints('all')">All</div>
+          </div>
+        </div>
+
+        <div class="ax-row" id="errorBarRow" style="display:none">
+          <div class="ctrl-lbl">Error bars</div>
+          <div class="pill-row">
+            <div class="pill"    data-eb="none" onclick="setErrorBars('none')">None</div>
+            <div class="pill on" data-eb="sem"  onclick="setErrorBars('sem')">SEM</div>
+            <div class="pill"    data-eb="sd"   onclick="setErrorBars('sd')">SD</div>
+          </div>
+        </div>
+
+        <div class="ax-row" id="blackPointsRow" style="display:none">
+          <div class="ctrl-lbl">Point color</div>
+          <div class="pill-row">
+            <div class="pill on" data-bp="black"  onclick="setBlackPoints(true)">Black</div>
+            <div class="pill"    data-bp="group"  onclick="setBlackPoints(false)">Group color</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Wide heatmap controls ── -->
+      <div class="divider" id="wideHeatDivider" style="display:none"></div>
+      <div class="ctrl-section" id="wideHeatSection" style="display:none">
+
+        <div class="section-head">Row options</div>
+
+        <div class="ax-row">
+          <div class="ctrl-lbl">Label rows by</div>
+          <select id="selRowLabel" onchange="render()"></select>
+        </div>
+
+        <div class="ax-row">
+          <div class="ctrl-lbl">Split &amp; annotate rows by</div>
+          <select id="selRowSplit" onchange="render()">
+            <option value="">— None —</option>
+          </select>
+        </div>
+
+        <div class="section-head" style="margin-top:4px">Column options</div>
+
+        <div class="tog-row">
+          <span class="tog-lbl">Split columns by group</span>
+          <div class="tog-sw on" id="togColSplit" onclick="toggleColSplit()"><div class="tog-knob"></div></div>
+        </div>
+
+        <div class="ax-row" id="colGroupOrderRow">
+          <div class="ctrl-lbl">Column group order</div>
+          <div class="group-order-list" id="sidebarGroupOrder"></div>
+        </div>
+
+        <div class="section-head" style="margin-top:4px">Data transforms</div>
+
+        <div class="tog-row">
+          <span class="tog-lbl">Log&#8322;(x + 1)</span>
+          <div class="tog-sw" id="togLog2" onclick="toggleSw(this,'log2')"><div class="tog-knob"></div></div>
+        </div>
+        <div class="tog-row">
+          <span class="tog-lbl">Center rows (subtract row mean)</span>
+          <div class="tog-sw" id="togCenter" onclick="toggleSw(this,'center')"><div class="tog-knob"></div></div>
+        </div>
+
+        <div class="ax-row" style="margin-top:2px">
+          <div class="ctrl-lbl">Color scale label</div>
+          <input type="text" id="valLabel" placeholder="auto" oninput="render()"
+                 style="width:100%;padding:7px 9px;border:1px solid #dde1e7;border-radius:7px;font-size:12.5px;color:#1e2a38;background:white;">
+        </div>
+
+        <!-- Colorbar position (Problem 6) -->
+        <div class="section-head" style="margin-top:4px">Legend position</div>
+        <div class="pill-row">
+          <button class="cb-pos-btn on" data-pos="right"  onclick="setCbPosition('right')">Right</button>
+          <button class="cb-pos-btn"    data-pos="bottom" onclick="setCbPosition('bottom')">Bottom</button>
+        </div>
+
+      </div>
+
+      <!-- ── Wide format filter panel ── -->
+      <div class="divider" id="wideFilterDivider" style="display:none"></div>
+      <div class="ctrl-section" id="wideFilterSection" style="display:none">
+        <div class="section-head" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Filter data</span>
+          <span id="filterActiveTag" style="display:none;font-size:10px;background:#e8f5e9;color:#2a7d4f;padding:2px 7px;border-radius:10px;font-weight:600">ACTIVE</span>
+        </div>
+
+        <!-- Gene / row filter -->
+        <div style="font-size:11px;font-weight:600;color:#7a8594;margin-top:4px">FEATURES / GENES</div>
+        <input type="text" class="ax-input" id="geneSearchInput" placeholder="Search genes…"
+               style="width:100%;padding:6px 9px;border:1px solid #dde1e7;border-radius:7px;font-size:12px;color:#1e2a38;background:white;"
+               oninput="updateGeneFilterList(this.value)">
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="pill on" onclick="selectAllGenes()" style="flex:none;padding:4px 10px;font-size:10px">All</button>
+          <button class="pill"    onclick="clearAllGenes()"  style="flex:none;padding:4px 10px;font-size:10px">None</button>
+          <button class="pill"    onclick="togglePasteGeneArea()" style="flex:none;padding:4px 10px;font-size:10px">Paste list</button>
+        </div>
+        <div id="pasteGeneArea" style="display:none">
+          <textarea id="geneListPaste" rows="4" style="width:100%;padding:6px 9px;border:1px solid #dde1e7;border-radius:7px;font-size:12px;resize:vertical"
+                    placeholder="Paste one gene name per line…"></textarea>
+          <button class="btn btn-blue" style="margin-top:4px" onclick="applyPastedGeneList()">Apply gene list</button>
+        </div>
+        <div id="geneFilterStatus" style="font-size:11px;color:#9aa5b4">All genes selected</div>
+        <div id="geneFilterList" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+
+        <!-- Sample filter -->
+        <div style="font-size:11px;font-weight:600;color:#7a8594;margin-top:8px">SAMPLES / GROUPS</div>
+        <div style="display:flex;gap:5px;margin-bottom:4px">
+          <button class="pill on" id="sampleFilterModeGroup"  onclick="setSampleFilterMode('group')"  style="flex:none;padding:4px 10px;font-size:10px">By group</button>
+          <button class="pill"    id="sampleFilterModeSample" onclick="setSampleFilterMode('sample')" style="flex:none;padding:4px 10px;font-size:10px">By sample</button>
+        </div>
+        <div id="sampleFilterList" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+        <div style="display:flex;gap:5px;margin-top:4px">
+          <button class="pill on" onclick="selectAllSamples()" style="flex:none;padding:4px 10px;font-size:10px">All</button>
+          <button class="pill"    onclick="clearAllSamples()"  style="flex:none;padding:4px 10px;font-size:10px">None</button>
+        </div>
+      </div>
+
+      <!-- ── Long-format filter panel ── -->
+      <div class="divider" id="longFilterDivider" style="display:none"></div>
+      <div class="ctrl-section" id="longFilterSection" style="display:none">
+        <div class="section-head" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Filter data</span>
+          <span id="longFilterActiveTag" style="display:none;font-size:10px;background:#e8f5e9;color:#2a7d4f;padding:2px 7px;border-radius:10px;font-weight:600">ACTIVE</span>
+        </div>
+        <div id="longFilterContent"></div>
+        <button class="pill" style="margin-top:4px;flex:none;padding:4px 10px;font-size:10px" onclick="clearAllColFilters()">Clear all filters</button>
+      </div>
+
+      <!-- ── Axis options (long format) ── -->
+      <div class="divider" id="axisOptDivider"></div>
+      <div class="ctrl-section" id="axisOptSection">
+        <div class="ctrl-lbl">Axis options</div>
+
+        <div class="ax-row" id="sortRow">
+          <div class="ctrl-lbl">Sort X by</div>
+          <select id="selSort" onchange="render()">
+            <option value="original">Original order</option>
+            <option value="alpha">Alphabetical</option>
+            <option value="asc">Value ↑</option>
+            <option value="desc">Value ↓</option>
+          </select>
+        </div>
+
+        <div class="tog-row">
+          <span class="tog-lbl">Reverse X axis</span>
+          <div class="tog-sw" id="togRevX" onclick="toggleSw(this,'revX')"><div class="tog-knob"></div></div>
+        </div>
+        <div class="tog-row">
+          <span class="tog-lbl">Reverse Y axis</span>
+          <div class="tog-sw" id="togRevY" onclick="toggleSw(this,'revY')"><div class="tog-knob"></div></div>
+        </div>
+        <div class="tog-row">
+          <span class="tog-lbl">Show gridlines</span>
+          <div class="tog-sw" id="togGrid" onclick="toggleSw(this,'grid')"><div class="tog-knob"></div></div>
+        </div>
+        <div class="tog-row">
+          <span class="tog-lbl">Y axis from zero</span>
+          <div class="tog-sw" id="togYFromZero" onclick="setYFromZero(this)"><div class="tog-knob"></div></div>
+        </div>
+        <div class="tog-row">
+          <span class="tog-lbl">Show value labels</span>
+          <div class="tog-sw" id="togLabels" onclick="toggleSw(this,'labels')"><div class="tog-knob"></div></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Palette -->
+      <div class="ctrl-section">
+        <div class="ctrl-lbl">Color palette</div>
+        <select id="palSelect" onchange="onPalChange()"></select>
+        <div id="palPreviewStrip" class="pal-preview-strip"></div>
+        <!-- Custom color picker — shown only when Custom is selected -->
+        <div id="customPalPicker" style="display:none">
+          <div class="ctrl-lbl" style="margin-top:8px">Pick your 8 colors</div>
+          <div id="customColorGrid" class="custom-color-grid"></div>
+        </div>
+
+        <!-- Per-group color overrides — shown when a color column is active -->
+        <div id="groupColorsSection" style="display:none;margin-top:8px">
+          <div class="ctrl-lbl">Group colors <span style="font-size:10px;color:#9aa5b4;font-weight:400">(click swatch)</span></div>
+          <div id="groupColorsList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Figure style -->
+      <div class="ctrl-section">
+        <div class="style-section-head" onclick="toggleStyleSection()">
+          <span>Figure style</span>
+          <span id="styleToggleIco">▸</span>
+        </div>
+        <div id="styleSectionBody">
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:7px;">
+
+            <div class="ax-row">
+              <div class="range-row">
+                <div class="ctrl-lbl">Font size</div>
+                <span class="range-lbl" id="fontSizeVal">12px</span>
+              </div>
+              <input type="range" min="8" max="22" value="12"
+                     oninput="setFontSize(this.value)">
+            </div>
+
+            <div class="ax-row">
+              <div class="range-row">
+                <div class="ctrl-lbl">Line / marker thickness</div>
+                <span class="range-lbl" id="lineThickVal">3px</span>
+              </div>
+              <input type="range" min="1" max="8" value="3" step="0.5"
+                     oninput="setLineThick(this.value)">
+            </div>
+
+            <div class="ax-row" id="axisLineRow">
+              <div class="ctrl-lbl">Axis line</div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <input type="color" id="axisColorPicker" value="#000000" title="Axis line color"
+                       style="width:26px;height:24px;padding:1px 2px;border:1.5px solid #dde1e7;border-radius:5px;cursor:pointer;background:none;"
+                       oninput="setAxisColor(this.value)">
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                  <div class="range-row">
+                    <span class="range-lbl">Thickness</span>
+                    <span class="range-lbl" id="axisThickVal">1.5px</span>
+                  </div>
+                  <input type="range" id="axisThickSlider" min="0" max="4" value="1.5" step="0.5"
+                         oninput="setAxisThick(this.value)">
+                </div>
+              </div>
+            </div>
+
+            <div class="ax-row">
+              <div class="ctrl-lbl">Export size presets</div>
+              <div class="style-preset-row">
+                <button class="style-preset-btn" onclick="setExportPreset(1200,900)">4:3</button>
+                <button class="style-preset-btn" onclick="setExportPreset(1600,900)">16:9</button>
+                <button class="style-preset-btn" onclick="setExportPreset(1200,1200)">1:1</button>
+                <button class="style-preset-btn" onclick="setExportPreset(900,1200)">3:4</button>
+                <button class="style-preset-btn" onclick="setExportPreset(2100,1400)">Hi-res</button>
+              </div>
+            </div>
+
+            <div class="ax-row">
+              <div class="ctrl-lbl">Export dimensions (px)</div>
+              <div class="export-dim-row">
+                <input type="number" id="exportW" value="1200" min="400" max="8000" step="100"
+                       onchange="onExportDimChange()">
+                <span class="export-dim-sep">×</span>
+                <input type="number" id="exportH" value="800" min="400" max="8000" step="100"
+                       onchange="onExportDimChange()">
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Export -->
+      <div class="ctrl-section">
+        <div class="ctrl-lbl">Export</div>
+        <button class="btn btn-blue" onclick="exportFig('png')">⬇ PNG (300 dpi)</button>
+        <button class="btn btn-grey" onclick="exportFig('svg')">⬇ SVG (vector)</button>
+        <button class="btn btn-red"  onclick="exportFig('pdf')">⬇ PDF (vector)</button>
+      </div>
+
+    </div><!-- /sidebar -->
+
+    <div class="main">
+      <!-- Tab bar -->
+      <div class="main-tab-bar">
+        <button class="main-tab-btn on" data-tab="chart" onclick="switchTab('chart')">📊 Chart</button>
+        <button class="main-tab-btn"    data-tab="data"  onclick="switchTab('data')">📋 Data</button>
+        <button class="main-tab-btn"    data-tab="stats" onclick="switchTab('stats')" id="statsTabBtn">📈 Stats</button>
+      </div>
+
+      <!-- Rerun warning banner (shown when columns change after stats applied) -->
+      <div id="statsRerunBanner" style="display:none">
+        <span>⚠ Column mapping changed — statistics may be stale.</span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="rerun-btn rerun-primary" onclick="dismissRerunBanner('rerun')">Re-run Stats</button>
+          <button class="rerun-btn" onclick="dismissRerunBanner('clear')">Clear</button>
+          <button class="rerun-btn" onclick="dismissRerunBanner('keep')">Keep</button>
+        </div>
+      </div>
+
+      <!-- Chart panel -->
+      <div id="chartPanel">
+        <!-- Floating stats button -->
+        <button id="runStatsBtn" onclick="openStatsWizard()" title="Run statistical analysis">▶ Run Stats</button>
+        <div id="plot"></div>
+        <!-- Figure legend — always visible once data loaded -->
+        <div id="legendPanel" style="display:none">
+          <div class="legend-header">
+            <span class="legend-title">📝 Figure Legend</span>
+            <button id="copyLegendBtn" class="legend-copy-btn" onclick="copyLegend()">Copy All</button>
+          </div>
+
+          <div class="legend-section-label">Figure description</div>
+          <textarea id="legendFigureTextarea" class="legend-textarea" rows="3"
+                    placeholder="Select X and Y columns to generate…"></textarea>
+
+          <div class="legend-section-label" style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <span>Statistical analysis</span>
+            <div id="pDisplayToggle" class="pill-row" style="gap:4px">
+              <div class="pill on" data-pd="exact" onclick="togglePDisplay('exact')">Exact p</div>
+              <div class="pill"    data-pd="stars" onclick="togglePDisplay('stars')">★ Stars</div>
+            </div>
+          </div>
+          <textarea id="legendStatsTextarea" class="legend-textarea" rows="3"
+                    placeholder="Run statistics to generate…" readonly></textarea>
+        </div>
+      </div>
+
+      <!-- Data explorer panel (hidden by default) -->
+      <div id="dataPanel">
+        <div id="dataTableWrap"></div>
+      </div>
+
+      <!-- Stats results panel (hidden by default) -->
+      <div id="statsPanel" style="overflow-y:auto;padding:20px">
+        <div id="statsTabContent" class="stats-empty">Run statistics to see results here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Stats wizard modal ─────────────────────────────────────────── -->
+<div id="statsWizardOverlay" style="display:none">
+  <div class="wiz-modal">
+    <div class="wiz-header">
+      <span class="wiz-title">📊 Statistical Analysis</span>
+      <button class="wiz-close" onclick="closeStatsWizard()">✕</button>
+    </div>
+    <div id="wizardBody" class="wiz-body"></div>
+    <div class="wiz-footer">
+      <button id="wizardPrevBtn" class="btn btn-grey" onclick="wizardPrev()" style="display:none">← Back</button>
+      <button class="btn btn-grey" onclick="closeStatsWizard()" style="margin-left:auto;margin-right:8px">Cancel</button>
+      <button id="wizardNextBtn" class="btn btn-blue" onclick="wizardNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div class="spin-overlay" id="spinner">
+  <div class="spinner"></div>
+  <div class="spin-msg" id="spinMsg">Processing…</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODULES  — load order: config → statistics → ui_controls
+                → chart_builder → data_loader → data_explorer
+═══════════════════════════════════════════════════════════════════ -->
+<script src="config.js"></script>
+<script src="statistics.js"></script>
+<script src="ui_controls.js"></script>
+<script src="chart_builder.js"></script>
+<script src="data_loader.js"></script>
+<script src="data_explorer.js"></script>
+<script src="stats_wizard.js"></script>
+
+</body>
+</html>

@@ -62,6 +62,7 @@
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -110,7 +111,7 @@ you ask for are pulled off disk, so the same one-liners run on a
 2-million-cell object without materialising it.</li>
 <li>
 <strong>Aggregating to a tractable unit</strong> - collapse millions
-of cells to per-sample pseudobulk profiles, then analyse those with
+of cells to per-sample pseudobulk profiles, then analyze those with
 fast, robust, sample-level statistics.</li>
 </ol>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -176,7 +177,7 @@ assay - sketch for fast iteration, full for the final figure.</p>
 <div class="section level2">
 <h2 id="pseudobulk-collapse-cells-to-samples">3. Pseudobulk: collapse cells to samples<a class="anchor" aria-label="anchor" href="#pseudobulk-collapse-cells-to-samples"></a>
 </h2>
-<p>Pseudobulk is the most robust way to analyse large multi-sample
+<p>Pseudobulk is the most robust way to analyze large multi-sample
 studies: sum (or average) each gene within each sample, then treat
 samples as replicates. <code><a href="../reference/ComputePseudobulk.html">ComputePseudobulk()</a></code> streams the
 matrix once (BPCells-safe) and caches the result in the object;

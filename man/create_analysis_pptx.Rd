@@ -84,7 +84,7 @@ Invisibly returns the path to the saved \code{.pptx} file.
 }
 \description{
 Collects all PDFs in \code{output_dir}, converts them to images with
-\code{\link[magick:editing]{magick::image_read_pdf()}}, groups them into labelled sections based on
+\code{\link[magick:editing]{magick::image_read_pdf()}}, groups them into labeled sections based on
 filename patterns, and assembles a polished \code{.pptx} via the
 \link[officer:officer]{officer} package.
 }

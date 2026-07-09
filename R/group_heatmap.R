@@ -61,7 +61,7 @@
 #' @param feature_split Row-group labels.  Either a \strong{named} vector
 #'   (names = gene symbols, values = group labels), or an \strong{unnamed}
 #'   vector the same length as \code{features} (matched by position).  When
-#'   supplied, rows are split and labelled.  Ignored when \code{features} is a
+#'   supplied, rows are split and labeled.  Ignored when \code{features} is a
 #'   data.frame with \code{feature_group_column} set.
 #' @param feature_column Character or \code{NULL}.  When \code{features} is a
 #'   data.frame, the column holding gene names.  \code{NULL} auto-detects
@@ -117,7 +117,9 @@
 #'   \code{ComplexHeatmap::Heatmap()}.
 #' @param auto_draw Logical.  Render automatically after building. Default
 #'   \code{TRUE}.
-#' @param legend_side Where to place the legend.  Default \code{"right"}.
+#' @param legend_side Where to place the legends.  Default \code{"right"}.
+#'   Moves both the heatmap color legend and the annotation legends (row-split
+#'   modules, top annotations) to the same side.
 #' @param width Heatmap body width, as a \code{grid::unit} \emph{or} a bare
 #'   numeric (interpreted as inches).  When left at the default and
 #'   \code{auto_size = TRUE}, the body width is derived from the number of
@@ -143,6 +145,9 @@
 #'   saved PDF. \code{NULL} (default) auto-deduces the name from
 #'   \code{object_name}, \code{subset_name}, the \code{features} variable name,
 #'   and the \code{group.by} / \code{column_split_by} variables.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
 #' @return Invisibly, a named list:
 #' \describe{
@@ -187,7 +192,6 @@ GroupHeatmap <- function(
       row_names_gp        = grid::gpar(fontsize = 8),
       show_row_dend       = FALSE,
       column_names_side   = "top",
-      row_title           = NULL,
       column_title        = NULL
     ),
     auto_draw             = TRUE,
@@ -200,7 +204,8 @@ GroupHeatmap <- function(
     output_dir            = NULL,
     object_name           = "",
     subset_name           = "",
-    file_name             = NULL
+    file_name             = NULL,
+    timestamp             = FALSE
 ) {
 
   # Record whether the caller explicitly set body dimensions (before defaults
@@ -558,6 +563,16 @@ GroupHeatmap <- function(
   body_w <- grid::unit(body_w_in, "in")
   body_h <- grid::unit(body_h_in, "in")
 
+  # Reserve enough horizontal room for the longest row name so ComplexHeatmap
+  # never clips it or lets it run into the legend (its built-in default cap is
+  # small). Data-driven from the longest label at the 8pt default row font,
+  # capped at 30 cm so a single runaway name cannot blow up the device. Users
+  # can still override via heatmap_params = list(row_names_max_width = ...).
+  rn_max_chars <- if (nrow(expr_mat)) max(nchar(rownames(expr_mat)), na.rm = TRUE) else 0L
+  if (!is.finite(rn_max_chars)) rn_max_chars <- 0L
+  rn_max_width <- grid::unit(
+    min(30, max(4, rn_max_chars * 0.6 * 8 / 72 * 2.54 + 0.4)), "cm")
+
   default_ht_args <- list(
     matrix               = as.matrix(expr_mat),
     name                 = scale_method,
@@ -576,6 +591,7 @@ GroupHeatmap <- function(
     show_row_names       = TRUE,
     row_names_side       = "right",
     row_names_gp         = grid::gpar(fontsize = 8),
+    row_names_max_width  = rn_max_width,
     show_row_dend        = FALSE,
     # With >1 group.by, the per-column combination is already shown by the
     # colored top-annotation bars; drawing the stacked text labels too just
@@ -583,13 +599,28 @@ GroupHeatmap <- function(
     # (override with heatmap_params = list(show_column_names = TRUE)).
     show_column_names    = (length(group.by) == 1L),
     column_names_side    = "top",
-    row_title            = NULL,
+    # row_title is set conditionally just below (not here), so that in the
+    # no-bubble case it is left UNSET and ComplexHeatmap's own default draws the
+    # module names as slice titles - reliably across versions.
     column_title         = NULL,
     heatmap_legend_param = list(
       title     = paste0("Mean\n", scale_method),
       direction = "vertical"
     )
   )
+
+  # Row-slice titles vs. the left "bubble" annotation both label the feature
+  # groups (modules).
+  #   * Bubble shown (left_annot set): blank the slice titles with a single
+  #     space " " so the module name is not printed twice. An empty string ""
+  #     is treated by ComplexHeatmap as "no title given" and falls back to the
+  #     split level name, whereas a space is a genuine blank title.
+  #   * No bubble: leave row_title UNSET so the package default renders the
+  #     module names as slice titles. (An explicit NULL cannot be used: the
+  #     meaning of row_title = NULL flipped between ComplexHeatmap versions -
+  #     it hides titles on >= 2.18 but shows them on older releases.)
+  if (!is.null(left_annot) && !is.null(feature_split))
+    default_ht_args$row_title <- " "
 
   ht_args <- modifyList(default_ht_args, heatmap_params)
   ht      <- do.call(ComplexHeatmap::Heatmap, ht_args)
@@ -598,9 +629,13 @@ GroupHeatmap <- function(
   lgd_list <- Filter(Negate(is.null), list(dot_lgd))
 
   .do_draw <- function() {
+    # legend_side moves BOTH the heatmap color legend and the annotation
+    # legends (row-split modules, top annotations) to the same side; otherwise
+    # ComplexHeatmap leaves the annotation legends on the default right.
     ComplexHeatmap::draw(ht,
-                         heatmap_legend_side = legend_side,
-                         heatmap_legend_list = lgd_list)
+                         heatmap_legend_side    = legend_side,
+                         annotation_legend_side = legend_side,
+                         heatmap_legend_list    = lgd_list)
   }
 
   if (!is.null(output_dir)) {
@@ -622,6 +657,9 @@ GroupHeatmap <- function(
       base <- paste(parts, collapse = "_")
     }
     fname    <- gsub("[^A-Za-z0-9._-]", "_", base)
+    # Optional timestamp so repeated runs don't silently overwrite the PDF.
+    if (isTRUE(timestamp))
+      fname <- paste0(fname, "_", format(Sys.time(), "%Y%m%d-%H%M%S"))
     pdf_path <- file.path(output_dir, paste0(fname, ".pdf"))
 
     # ── PDF size: body + longest row/column names + legend + annotations ──────
@@ -663,6 +701,7 @@ GroupHeatmap <- function(
       column_names_side = cn_side,
       column_names_rot = cn_rot,
       legend_in        = 2.5,
+      legend_side      = legend_side,
       extra_right_in   = if (!is.null(dot_lgd)) 1.5 else 0,
       extra_left_in    = textbox_left_in,
       n_top_anno       = n_anno_bars,

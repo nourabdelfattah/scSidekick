@@ -30,8 +30,8 @@ GroupHeatmap(
   cluster_row_slices = FALSE,
   cluster_columns = FALSE,
   heatmap_params = list(show_row_names = TRUE, row_names_side = "right", row_names_gp =
-    grid::gpar(fontsize = 8), show_row_dend = FALSE, column_names_side = "top", row_title
-    = NULL, column_title = NULL),
+    grid::gpar(fontsize = 8), show_row_dend = FALSE, column_names_side = "top",
+    column_title = NULL),
   auto_draw = TRUE,
   legend_side = "right",
   width = grid::unit(5, "in"),
@@ -60,7 +60,7 @@ combinations become the heatmap columns (e.g.
 \item{feature_split}{Row-group labels.  Either a \strong{named} vector
 (names = gene symbols, values = group labels), or an \strong{unnamed}
 vector the same length as \code{features} (matched by position).  When
-supplied, rows are split and labelled.  Ignored when \code{features} is a
+supplied, rows are split and labeled.  Ignored when \code{features} is a
 data.frame with \code{feature_group_column} set.}
 
 \item{feature_column}{Character or \code{NULL}.  When \code{features} is a

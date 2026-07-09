@@ -593,7 +593,7 @@ PlotCorrelation <- function(cor_result,
         "; blue = negatively correlated. ",
         "Each panel shows the top ", n_pos,
         " positive and top ", n_neg, " negative genes by |r|. ",
-        "Labelled = top ", label_n, " significant genes per direction. ",
+        "Labeled = top ", label_n, " significant genes per direction. ",
         "Dashed lines: r = 0 and padj = ", padj_cutoff, "."
       ))
     }

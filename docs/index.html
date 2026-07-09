@@ -67,6 +67,7 @@
     <li><a class="dropdown-item" href="articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -87,6 +88,7 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><p><img src="reference/figures/logo.png" align="right" height="140" alt="scSidekick logo"></p>
+<p><a href="https://doi.org/10.5281/zenodo.21285418" class="external-link"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.21285418.svg" alt="DOI"></a> <a href="https://opensource.org/licenses/MIT" class="external-link"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a></p>
 <p><strong>scSidekick</strong> is a single-cell RNA-seq and spatial transcriptomics toolkit built on top of <a href="https://satijalab.org/seurat/" class="external-link">Seurat</a>. It extends the ecosystem in four specific directions that existing companion packages don’t fully cover: honest-by-default comparison plots with shared scales, one consistent faceting grammar spanning both visualization <em>and</em> downstream analysis, project-wide color and layout consistency registered once on the object, and the same calls scaling without modification from a pilot study to a multi-million-cell atlas via <a href="https://bnprks.github.io/BPCells/" class="external-link">BPCells</a> streaming.</p>
 <p>It is fully interoperable with scCustomize, SCpubr, and dittoSeq; the functions here are not alternatives to those packages but additions targeted at gaps they leave.</p>
 <pre><code>~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,7 +98,7 @@
 (_-&lt; / _| \__ \ | | / _` | / -_) | ' &lt;  | | / _| | / /
 /__/ \__| |___/ |_| \__,_| \___| |_|\_\ |_| \__| |_\_\
 
-     Your New Best Friend in Visualization
+     Your New Best Friend in Analysis and Visualization
 
  ✨  It's a good day to make pretty figures!  ✨
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,9 +117,9 @@
 </h2>
 <p>Every example below is reproducible from public data (<a href="data-raw/make_readme_figures.R"><code>data-raw/make_readme_figures.R</code></a>).</p>
 <div class="section level3">
-<h3 id="id_1--shared-accurate-colour-scales-across-split-feature-panels">1 · Shared, accurate colour scales across split feature panels<a class="anchor" aria-label="anchor" href="#id_1--shared-accurate-colour-scales-across-split-feature-panels"></a>
+<h3 id="id_1--shared-accurate-color-scales-across-split-feature-panels">1 · Shared, accurate color scales across split feature panels<a class="anchor" aria-label="anchor" href="#id_1--shared-accurate-color-scales-across-split-feature-panels"></a>
 </h3>
-<p>Splitting a feature plot by a condition is the single most common comparison in single-cell work — and by default a single legend is placed ambiguously across panels, and that shared scale can be lost when a custom palette is supplied. <code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> locks <strong>one shared, labelled colour scale</strong> across every panel so the comparison is honest. No per-call workarounds needed.</p>
+<p>Splitting a feature plot by a condition is the single most common comparison in single-cell work — and by default a single legend is placed ambiguously across panels, and that shared scale can be lost when a custom palette is supplied. <code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> locks <strong>one shared, labeled color scale</strong> across every panel so the comparison is honest. No per-call workarounds needed.</p>
 <p><strong>Panel A — split by a single variable:</strong></p>
 <table class="table">
 <tr>
@@ -125,7 +127,7 @@
 <b>Without shared scale — ambiguous comparison</b>
 </td>
 <td width="50%" align="center">
-<b>PlotFeaturePlots — one shared, labelled scale</b>
+<b>PlotFeaturePlots — one shared, labeled scale</b>
 </td>
 </tr>
 <tr>
@@ -138,7 +140,7 @@
 </tr>
 </table>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Panel A: split by donor — one shared colour bar</span></span>
+<code class="sourceCode R"><span><span class="co"># Panel A: split by donor — one shared color bar</span></span>
 <span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>, split.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Panel B — split by lane, arranged in rows by donor (metadata layout):</strong></p>
 <p>When samples cross two variables (e.g., lane × donor), <code>row.by</code> adds a second faceting dimension and <code>layout_method = "metadata"</code> aligns panels by their actual metadata coordinates rather than wrapping them in arbitrary order — so the grid itself tells the story.</p>
@@ -158,7 +160,7 @@
 <h4 id="splitdotplot--expression-first-organized-by-gene-group">
 <code>SplitDotPlot()</code> — expression first, organized by gene group<a class="anchor" aria-label="anchor" href="#splitdotplot--expression-first-organized-by-gene-group"></a>
 </h4>
-<p>Standard Seurat split dot plots color each dot by the split identity rather than by expression and interleave rows, making it hard to read expression magnitude. <code><a href="reference/SplitDotPlot.html">SplitDotPlot()</a></code> keeps <strong>colour = expression, size = % expressed</strong>, organizes genes into labelled cell-type blocks, and facets cleanly by condition so every cluster is comparable across conditions at a glance.</p>
+<p>Standard Seurat split dot plots color each dot by the split identity rather than by expression and interleave rows, making it hard to read expression magnitude. <code><a href="reference/SplitDotPlot.html">SplitDotPlot()</a></code> keeps <strong>color = expression, size = % expressed</strong>, organizes genes into labeled cell-type blocks, and facets cleanly by condition so every cluster is comparable across conditions at a glance.</p>
 <table class="table">
 <tr>
 <td width="50%" align="center">
@@ -185,7 +187,7 @@
 <h4 id="fastdotplot--find-gene-programs-without-knowing-gene-names">
 <code>FastDotPlot()</code> — find gene programs without knowing gene names<a class="anchor" aria-label="anchor" href="#fastdotplot--find-gene-programs-without-knowing-gene-names"></a>
 </h4>
-<p><code><a href="reference/FastDotPlot.html">FastDotPlot()</a></code> adds two capabilities that matter when exploring large gene sets: a <strong>regex pattern</strong> selects all matching genes automatically (no manual list required), and <code>k_genes</code> slices the gene dendrogram into labelled programs so co-regulated blocks become visible immediately.</p>
+<p><code><a href="reference/FastDotPlot.html">FastDotPlot()</a></code> adds two capabilities that matter when exploring large gene sets: a <strong>regex pattern</strong> selects all matching genes automatically (no manual list required), and <code>k_genes</code> slices the gene dendrogram into labeled programs so co-regulated blocks become visible immediately.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># All CD1x/CD2x genes, automatically split into 3 co-expression patterns</span></span>
 <span><span class="fu"><a href="reference/FastDotPlot.html">FastDotPlot</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
@@ -204,11 +206,11 @@
 <div class="section level3">
 <h3 id="id_3--multi-cohort-cell-cell-communication--keep-every-cohort-visible">3 · Multi-cohort cell-cell communication — keep every cohort visible<a class="anchor" aria-label="anchor" href="#id_3--multi-cohort-cell-cell-communication--keep-every-cohort-visible"></a>
 </h3>
-<p><code><a href="reference/CompareCellChat.html">CompareCellChat()</a></code> places every cohort on <strong>one shared layout</strong> with the same node colours and group order in every panel, so you compare presence <em>and</em> absence side by side. Cohorts where a pathway is absent get a blank panel rather than being silently dropped — absence is often the finding.</p>
+<p><code><a href="reference/CompareCellChat.html">CompareCellChat()</a></code> places every cohort on <strong>one shared layout</strong> with the same node colors and group order in every panel, so you compare presence <em>and</em> absence side by side. Cohorts where a pathway is absent get a blank panel rather than being silently dropped — absence is often the finding.</p>
 <p align="center">
 <b>Standard comparison — cohorts lacking a pathway are silently omitted</b><br><img src="reference/figures/pain_cellchat_before.png" width="100%"></p>
 <p align="center">
-<b>CompareCellChat — every cohort shown; same colours, same order, absence visible</b><br><img src="reference/figures/pain_cellchat_after.png" width="100%"></p>
+<b>CompareCellChat — every cohort shown; same colors, same order, absence visible</b><br><img src="reference/figures/pain_cellchat_after.png" width="100%"></p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/CompareCellChat.html">CompareCellChat</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>SGm <span class="op">=</span> <span class="st">"SGmCellChat.rds"</span>,  SGf <span class="op">=</span> <span class="st">"SGfCellChat.rds"</span>,</span>
@@ -234,7 +236,7 @@
 <b>153 raw metadata columns — hard to interpret at scale</b>
 </td>
 <td width="58%" align="center">
-<b>83 donors summarised in one line</b>
+<b>83 donors summarized in one line</b>
 </td>
 </tr>
 <tr>
@@ -259,9 +261,9 @@
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Auto-written next to every figure, e.g. "LYZ_donor featuremap bmcite.legend":</span></span>
 <span><span class="co">#   UMAP feature plot showing expression of LYZ in bmcite, split by donor.</span></span>
-<span><span class="co">#   Colour scale: low (dark blue) to high (dark red), capped at the per-gene</span></span>
+<span><span class="co">#   Color scale: low (dark blue) to high (dark red), capped at the per-gene</span></span>
 <span><span class="co">#   maximum (6.46). Each panel represents one donor level; legend shows the</span></span>
-<span><span class="co">#   shared colour bar.</span></span>
+<span><span class="co">#   shared color bar.</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/ExtractMethods.html">ExtractMethods</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span><span class="op">$</span><span class="va">methods_text</span></span>
 <span><span class="co">#&gt; Single-cell RNA-seq (scRNA-seq) data (30,672 cells, 17,009 genes; assay: RNA)</span></span>
@@ -386,10 +388,10 @@
 <div class="section level2">
 <h2 id="one-faceting-vocabulary-everywhere">One faceting vocabulary, everywhere<a class="anchor" aria-label="anchor" href="#one-faceting-vocabulary-everywhere"></a>
 </h2>
-<p>The same three arguments work across every function — plots <em>and</em> analyses:</p>
+<p>The same three arguments work across every function — plots <em>and</em> analyzes:</p>
 <ul>
 <li>
-<strong><code>group.by</code></strong> — what defines a group (colour, x-axis, the comparison)</li>
+<strong><code>group.by</code></strong> — what defines a group (color, x-axis, the comparison)</li>
 <li>
 <strong><code>split.by</code></strong> — make one panel / one independent run per level</li>
 <li>
@@ -412,7 +414,7 @@
 <li>
 <strong>Honest-by-default plots</strong> — shared scales and kept legends by design, so comparisons are valid without per-call workarounds.</li>
 <li>
-<strong>Consistency for free</strong> — register colours, factor levels, and defaults once with <code><a href="reference/PrepObject.html">PrepObject()</a></code>; every downstream function reads them, so an entire project shares one palette and layout.</li>
+<strong>Consistency for free</strong> — register colors, factor levels, and defaults once with <code><a href="reference/PrepObject.html">PrepObject()</a></code>; every downstream function reads them, so an entire project shares one palette and layout.</li>
 <li>
 <strong>Reproducibility captured passively</strong> — a legend sidecar for every figure, an auto-drafted methods paragraph, a one-call PPTX builder, and a session logger that turns a working session into a clean script.</li>
 <li>
@@ -427,7 +429,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nourabdelfattah.github.io/scSidekick/">scSidekick</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Register colours, levels, and defaults once:</span></span>
+<span><span class="co"># Register colors, levels, and defaults once:</span></span>
 <span><span class="va">obj</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/PrepObject.html">PrepObject</a></span><span class="op">(</span><span class="va">obj</span>,</span>
 <span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Sample"</span>, <span class="st">"Group"</span>, <span class="st">"seurat_clusters"</span><span class="op">)</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
@@ -547,6 +549,12 @@
 <tr>
 <td><strong><a href="https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html">Upstream regulators (URA)</a></strong></td>
 <td><code><a href="reference/RunURA.html">RunURA()</a></code></td>
+</tr>
+<tr>
+<td><strong><a href="https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html">Pseudotime &amp; trajectory</a></strong></td>
+<td>
+<code><a href="reference/RunSlingshot.html">RunSlingshot()</a></code>, <code><a href="reference/SlingshotLineages.html">SlingshotLineages()</a></code>, <code><a href="reference/PlotTrajectory.html">PlotTrajectory()</a></code>, <code><a href="reference/PlotPseudotime.html">PlotPseudotime()</a></code>, <code><a href="reference/PlotFeatureTrend.html">PlotFeatureTrend()</a></code>, <code><a href="reference/PlotFeatureDistribution.html">PlotFeatureDistribution()</a></code>
+</td>
 </tr>
 <tr>
 <td><strong>Cell-cell communication</strong></td>
@@ -677,6 +685,10 @@
 <tr>
 <td><a href="https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html">19</a></td>
 <td>Upstream regulator analysis (URA)</td>
+</tr>
+<tr>
+<td><a href="https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html">20</a></td>
+<td>Pseudotime &amp; trajectory analysis (Slingshot)</td>
 </tr>
 </tbody>
 </table>

@@ -146,7 +146,7 @@ borders.  Default \code{"#1e4e5f"}.}
 A \code{ggplot2} or \code{patchwork} object (invisibly).
 }
 \description{
-Creates a circular "atlas wheel" that summarises a large multi-cohort
+Creates a circular "atlas wheel" that summarizes a large multi-cohort
 dataset.  Each wedge represents one level of \code{group.by}
 (e.g. cancer type, tissue, condition) and is annotated with the names of
 contributing studies.  Summary statistics (total cells, donors, groups,

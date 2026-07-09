@@ -80,7 +80,7 @@ scSidekick (\code{tools::R_user_dir("scSidekick", "cache")}).  Set a
 shared network path to allow multiple users to reuse the same cache.
 Delete the \code{.rds} file to force a fresh download.}
 
-\item{genes}{Character vector of gene symbols to analyse in single-gene
+\item{genes}{Character vector of gene symbols to analyze in single-gene
 mode.  Each gene produces one set of KM panels.  Genes absent from
 \code{expr_mat} trigger a warning and are skipped.}
 
@@ -106,7 +106,7 @@ full details of each option.}
 
 \item{split_value}{Numeric cutoff used when \code{split_method = "value"}.
 Samples with expression / score \eqn{\geq} \code{split_value} are
-labelled \strong{High}; all others are \strong{Low}.  Commonly set to
+labeled \strong{High}; all others are \strong{Low}.  Commonly set to
 \code{0} for gene-set enrichment scores.}
 
 \item{split_per_group}{Logical (default \code{TRUE}).  When \code{TRUE},
@@ -143,11 +143,11 @@ invisibly for further manipulation.}
 genes and facet levels: approximately 4.5 in per column and 4.5 in per
 row.}
 
-\item{palette}{Character vector of length \eqn{\geq 2}.  Colours for the
+\item{palette}{Character vector of length \eqn{\geq 2}.  Colors for the
 \strong{High} and \strong{Low} groups respectively.  Default:
-\code{c("Red", "Blue")}.  Any R colour name or hex code is accepted.}
+\code{c("Red", "Blue")}.  Any R color name or hex code is accepted.}
 
-\item{quartile_palette}{Character vector of length \eqn{\geq 4}.  Colours
+\item{quartile_palette}{Character vector of length \eqn{\geq 4}.  Colors
 for Q1 through Q4 when \code{split_method = "quartile"}.  Default is a
 blue-to-red diverging scale:
 \code{c("#2166AC", "#92C5DE", "#F4A582", "#D6604D")}.}
@@ -352,7 +352,7 @@ uniformly low expression is still split 50/50 — matching the approach
 used in most published survival analyses.}
 \item{\code{"quartile"}}{Divides samples into four equally-sized groups
 (Q1 = lowest 25\\%, Q4 = highest 25\\%) using \code{quantile()}.  Produces
-four KM curves per panel coloured by \code{quartile_palette}.  Useful
+four KM curves per panel colored by \code{quartile_palette}.  Useful
 for detecting non-linear dose–response relationships.}
 \item{\code{"value"}}{Splits at a user-supplied fixed numeric threshold
 (\code{split_value}).  Applies the same cutoff across all groups and

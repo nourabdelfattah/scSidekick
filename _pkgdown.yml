@@ -68,6 +68,8 @@ navbar:
         href: articles/18_cnmf.html
       - text: 19 - Upstream Regulator Analysis
         href: articles/19_ura.html
+      - text: 20 - Pseudotime & Trajectory Analysis
+        href: articles/20_pseudotime.html
       - text: ─────────────────
       - text: Reporting
       - text: 12 - Reporting & Utilities
@@ -195,6 +197,15 @@ reference:
   - RunCNMF
   - GetCNMFPrograms
   - GetCNMFTopGenes
+- title: Pseudotime & Trajectory
+  desc: Slingshot pseudotime fit directly on any Seurat reduction (Harmony-aware), with matching trajectory/feature visualizations
+  contents:
+  - RunSlingshot
+  - SlingshotLineages
+  - PlotTrajectory
+  - PlotPseudotime
+  - PlotFeatureTrend
+  - PlotFeatureDistribution
 - title: Cell-Cell Communication
   desc: CellChat pipeline wrappers
   contents:
@@ -263,6 +274,7 @@ articles:
   - 17_cnv
   - 18_cnmf
   - 19_ura
+  - 20_pseudotime
 - title: Reporting
   navbar: Reporting
   contents: 12_reporting_utilities

@@ -70,6 +70,7 @@ variable (analogous to ComplexHeatmap's multi-bar top annotation)
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -134,8 +135,8 @@ variable (analogous to ComplexHeatmap's multi-bar top annotation)</p></li>
 <span>  cluster_row_slices <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cluster_columns <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  heatmap_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>show_row_names <span class="op">=</span> <span class="cn">TRUE</span>, row_names_side <span class="op">=</span> <span class="st">"right"</span>, row_names_gp <span class="op">=</span></span>
-<span>    <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/gpar.html" class="external-link">gpar</a></span><span class="op">(</span>fontsize <span class="op">=</span> <span class="fl">8</span><span class="op">)</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>, column_names_side <span class="op">=</span> <span class="st">"top"</span>, row_title</span>
-<span>    <span class="op">=</span> <span class="cn">NULL</span>, column_title <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>,</span>
+<span>    <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/gpar.html" class="external-link">gpar</a></span><span class="op">(</span>fontsize <span class="op">=</span> <span class="fl">8</span><span class="op">)</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>, column_names_side <span class="op">=</span> <span class="st">"top"</span>,</span>
+<span>    column_title <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>,</span>
 <span>  auto_draw <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  legend_side <span class="op">=</span> <span class="st">"right"</span>,</span>
 <span>  width <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"in"</span><span class="op">)</span>,</span>
@@ -175,7 +176,7 @@ combinations become the heatmap columns (e.g.
 <dd><p>Row-group labels.  Either a <strong>named</strong> vector
 (names = gene symbols, values = group labels), or an <strong>unnamed</strong>
 vector the same length as <code>features</code> (matched by position).  When
-supplied, rows are split and labelled.  Ignored when <code>features</code> is a
+supplied, rows are split and labeled.  Ignored when <code>features</code> is a
 data.frame with <code>feature_group_column</code> set.</p></dd>
 
 

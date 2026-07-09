@@ -184,7 +184,13 @@
 #' @param alpha Numeric.  Fill transparency for violins / bars.  Default
 #'   \code{0.7}.
 #' @param add_stats Logical.  Add Wilcoxon significance brackets via
-#'   \pkg{ggsignif}.  Default \code{FALSE}.
+#'   \pkg{ggsignif}.  Default \code{FALSE}.  \strong{Caveat:} these tests are
+#'   computed per cell, so with many cells per group they are pseudoreplicated
+#'   and p-values are inflated (brackets often read \code{"***"} regardless of
+#'   the true effect).  They are useful as a descriptive overlay only; for valid
+#'   between-sample inference aggregate to samples with
+#'   \code{\link{PlotPseudoBulk}}.  A warning is emitted when \code{add_stats =
+#'   TRUE}.
 #' @param comparisons List of length-2 character vectors specifying pairs to
 #'   compare.  \code{NULL} (default) tests all pairwise combinations, or all
 #'   vs \code{ref_group} when that is set.
@@ -219,6 +225,10 @@
 #'   from \code{PrepObject} when a Seurat object is passed.
 #' @param object_name Character.  Filename prefix.  Walks up from
 #'   \code{PrepObject} when a Seurat object is passed.
+#' @param file_name Character or \code{NULL}.  Base name (no extension) for the
+#'   saved PDF.  When supplied it is used verbatim (the \code{object_name},
+#'   feature, \code{group.by}/\code{split.by} and \code{plot_type} pieces are
+#'   skipped).  \code{NULL} (default) auto-builds the name from those variables.
 #' @param pdf_width Numeric or \code{NULL}.  Override the auto-calculated PDF
 #'   width in inches.  \code{NULL} (default) sizes automatically from the
 #'   number of groups, splits, and features.
@@ -274,6 +284,7 @@ PlotFeature <- function(data,
                          layer        = "data",
                          output_dir   = NULL,
                          object_name  = "",
+                         file_name    = NULL,
                          pdf_width    = NULL,
                          pdf_height   = NULL) {
 
@@ -281,6 +292,18 @@ PlotFeature <- function(data,
   if (length(plot_type) > 1L) plot_type <- plot_type[1L]
   plot_type    <- match.arg(plot_type, c("violin", "box", "both", "bar"))
   label_format <- match.arg(label_format)
+
+  # Statistics here are computed per CELL. With many cells per group the tests
+  # are pseudoreplicated (cells from one sample are not independent replicates),
+  # so p-values are inflated and the brackets typically read "***" regardless of
+  # the true effect. Warn once so the brackets are not mistaken for valid
+  # between-sample inference; for that, aggregate to samples with
+  # PlotPseudoBulk().
+  if (isTRUE(add_stats))
+    warning("PlotFeature: significance brackets use per-cell tests, which are ",
+            "pseudoreplicated - with many cells per group p-values are inflated ",
+            "(often always '***') and are not valid sample-level inference. ",
+            "For between-sample statistics use PlotPseudoBulk().", call. = FALSE)
 
   # ── Walk-up PrepObject defaults ───────────────────────────────────────────
   if (inherits(data, "Seurat")) {
@@ -536,17 +559,23 @@ PlotFeature <- function(data,
         paste0("no_", paste(exclude[[col]], collapse = "_"))))
     else NULL
 
-    parts <- c(
-      if (nchar(object_name) > 0) object_name,
-      paste(valid_features, collapse = "_"),
-      group.by,
-      split.by,
-      row.by,
-      excl_tags,
-      plot_type,
-      "PlotFeature"
-    )
-    fname <- gsub("[^A-Za-z0-9._-]", "_", paste(parts, collapse = "_"))
+    # An explicit file_name is used verbatim (no object_name/feature/group
+    # prefixes); otherwise the name is auto-built from the plot's variables.
+    base <- if (!is.null(file_name) && nzchar(file_name)) {
+      file_name
+    } else {
+      paste(c(
+        if (nchar(object_name) > 0) object_name,
+        paste(valid_features, collapse = "_"),
+        group.by,
+        split.by,
+        row.by,
+        excl_tags,
+        plot_type,
+        "PlotFeature"
+      ), collapse = "_")
+    }
+    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
 
     grDevices::pdf(fpath, width = pdf_w, height = pdf_h)

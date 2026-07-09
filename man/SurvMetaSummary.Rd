@@ -2,7 +2,7 @@
 % Please edit documentation in R/survival.R
 \name{SurvMetaSummary}
 \alias{SurvMetaSummary}
-\title{Summarise clinical metadata for survival analysis}
+\title{Summarize clinical metadata for survival analysis}
 \usage{
 SurvMetaSummary(meta, max_levels = 10L, na_threshold = 0.5, show_all = FALSE)
 }

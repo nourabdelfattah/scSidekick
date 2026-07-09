@@ -46,6 +46,7 @@ visualization that avoids pseudo-replication."><meta property="og:image" content
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -86,6 +87,7 @@ visualization that avoids pseudo-replication.</p>
 <span>  min_cells <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  show_n <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  add_stats <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  test <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wilcox.test"</span>, <span class="st">"t.test"</span><span class="op">)</span>,</span>
 <span>  comparisons <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ref_group <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  hide_ns <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -115,7 +117,11 @@ visualization that avoids pseudo-replication.</p>
 
 
 <dt id="arg-features">features<a class="anchor" aria-label="anchor" href="#arg-features"></a></dt>
-<dd><p>Character vector.  Gene names to plot.</p></dd>
+<dd><p>Character vector.  Gene names and/or numeric <code>meta.data</code>
+columns (e.g. a module score, QC metric, or pseudotime).  Numeric metadata
+columns are aggregated to donor level (per-group mean) exactly like gene
+expression, so they get the same boxplots and statistics - unlike
+<code><a href="PlotMetaSummary.html">PlotMetaSummary</a></code>, which shows numeric metadata without stats.</p></dd>
 
 
 <dt id="arg-group-by">group.by<a class="anchor" aria-label="anchor" href="#arg-group-by"></a></dt>
@@ -156,8 +162,17 @@ Shown as <code>n=X</code> below the x-axis ticks.  Default <code>TRUE</code>.</p
 
 
 <dt id="arg-add-stats">add_stats<a class="anchor" aria-label="anchor" href="#arg-add-stats"></a></dt>
-<dd><p>Logical.  Add Wilcoxon significance brackets via
-<span class="pkg">ggsignif</span>.  Default <code>FALSE</code>.</p></dd>
+<dd><p>Logical.  Add significance brackets via <span class="pkg">ggsignif</span>.
+Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-test">test<a class="anchor" aria-label="anchor" href="#arg-test"></a></dt>
+<dd><p>Character.  Test used for the brackets: <code>"wilcox.test"</code>
+(default) or <code>"t.test"</code>.  Note that at small donor counts the
+rank-based Wilcoxon test is discrete and cannot reach <code>p &lt; 0.05</code>
+(e.g. 3 vs 3 has a minimum two-sided p of ~0.1, so brackets are always
+<code>ns</code>); <code>"t.test"</code> is usually the better choice for donor-level
+pseudobulk with few, roughly continuous replicates.</p></dd>
 
 
 <dt id="arg-comparisons">comparisons<a class="anchor" aria-label="anchor" href="#arg-comparisons"></a></dt>

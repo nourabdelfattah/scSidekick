@@ -235,7 +235,7 @@ RunCellChat <- function(seurat_object       = NULL,
     cellchat_thresh_p   = thresh.p,
     cellchat_min_cells  = min.cells,
     cellchat_db         = paste0("CellChatDB.", species),
-    methods_text        = paste0(
+    cellchat_methods_text = paste0(
       "Cell-cell communication was inferred using CellChat (Jin et al., ",
       "Nature Communications, 2021) applied to ", species, " ",
       at_long, " data",

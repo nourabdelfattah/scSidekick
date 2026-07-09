@@ -43,7 +43,7 @@
 #'   Inhibitory_Neurons = c("C06","C08"),
 #'   Astrocytes         = "C05"
 #' )
-#' # Unassigned clusters labelled "Tumor"
+#' # Unassigned clusters labeled "Tumor"
 #' SeuratObj <- AssignCellTypes(SeuratObj, Assign,
 #'                              cluster_col = "Cluster",
 #'                              new_col     = "GlobalAssignment",

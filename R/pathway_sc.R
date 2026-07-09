@@ -1463,7 +1463,7 @@ RunSCssGSEA <- function(
           sc_ssgsea_subset_cells  = isTRUE(subset_cells),
           sc_ssgsea_subset_by     = if (isTRUE(subset_cells)) subset_by else NA,
           sc_ssgsea_subset_values = if (isTRUE(subset_cells)) subset_values else NA,
-          methods_text          = methods_text
+          ssgsea_methods_text   = methods_text
         )
       ),
       error = function(e)

@@ -62,6 +62,7 @@
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -137,7 +138,7 @@ metadata<a class="anchor" aria-label="anchor" href="#summarizemetadata---one-tid
 columns</strong> and it returns one row per ID combination with: an
 <code>n_cells</code> count, the mean of every numeric column, and a
 compact breakdown of every categorical column - all the columns you
-didn’t name are summarised automatically.</p>
+didn’t name are summarized automatically.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">donor_summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SummarizeMetadata.html">SummarizeMetadata</a></span><span class="op">(</span><span class="va">bmcite</span>, id_columns <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span>
 <span><span class="va">donor_summary</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>   <span class="co"># first few summary columns</span></span></code></pre></div>
@@ -148,7 +149,7 @@ didn’t name are summarised automatically.</p>
 <span><span class="co">## <span style="color: #BCBCBC;">2</span> batch2   <span style="text-decoration: underline;">16</span>204      <span style="text-decoration: underline;">3</span>116.         912.      <span style="text-decoration: underline;">4</span>617.</span></span></code></pre>
 <p>Numeric columns are aggregated with <code>numeric_func</code>
 (default <code>mean</code>; pass <code>median</code>, <code>max</code>,
-a custom function, …). Use several ID columns to summarise at a finer
+a custom function, …). Use several ID columns to summarize at a finer
 grain:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SummarizeMetadata.html">SummarizeMetadata</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
@@ -174,7 +175,7 @@ donor in seconds.</p>
 </h2>
 <p>The most common request - <em>how does cell-type composition differ
 between samples?</em> - is one call. <code>variables</code> is what
-you’re counting, <code>fill_variable</code> colours the stack, and
+you’re counting, <code>fill_variable</code> colors the stack, and
 <code>count_unit = "cells"</code> counts cells (vs donors).</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
@@ -182,7 +183,7 @@ you’re counting, <code>fill_variable</code> colours the stack, and
 <span>  fill_variable <span class="op">=</span> <span class="st">"donor"</span>,</span>
 <span>  count_unit    <span class="op">=</span> <span class="st">"cells"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="13_metadata_composition_files/figure-html/meta-counts-1.png" width="960"></p>
-<p>Add <code>percent = TRUE</code> for normalised composition - ideal
+<p>Add <code>percent = TRUE</code> for normalized composition - ideal
 when group sizes differ:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
@@ -198,7 +199,7 @@ when group sizes differ:</p>
 counts, not per-cell. Setting <code>id_column</code> collapses cells to
 donors first, then lays out the variables - and
 <code>row_variable</code> facets into rows. This is exactly how you’d
-summarise a large patient cohort (e.g. Braak / APOE / CERAD by sex):</p>
+summarize a large patient cohort (e.g. Braak / APOE / CERAD by sex):</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Illustrative - for a clinical atlas `md` with one row per cell:</span></span>
 <span><span class="fu"><a href="../reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">md</span>,</span>
@@ -259,7 +260,7 @@ hood.</p>
 <code>PlotAtlasWheel()</code> - whole-dataset overview<a class="anchor" aria-label="anchor" href="#plotatlaswheel---whole-dataset-overview"></a>
 </h3>
 <p>For multi-study atlases, <code><a href="../reference/PlotAtlasWheel.html">PlotAtlasWheel()</a></code> draws a single
-“cover figure” summarising cells per group across studies and patients -
+“cover figure” summarizing cells per group across studies and patients -
 counts in the centre, a wheel of wedges around it. (Shown as a template;
 it needs study/patient columns that <code>bmcite</code> doesn’t
 carry.)</p>
@@ -277,12 +278,12 @@ carry.)</p>
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
-<li>Vignette 01: <code><a href="../reference/PrepObject.html">PrepObject()</a></code> - register the colours these
+<li>Vignette 01: <code><a href="../reference/PrepObject.html">PrepObject()</a></code> - register the colors these
 charts reuse</li>
 <li>Vignette 03: <code><a href="../reference/PlotComposition.html">PlotComposition()</a></code> /
 <code><a href="../reference/PlotTrendLabeled.html">PlotTrendLabeled()</a></code> - composition trends on the UMAP</li>
 <li>Vignette 14: large-data workflows (BPCells / sketch / pseudobulk)
-for summarising massive objects</li>
+for summarizing massive objects</li>
 </ul>
 <hr>
 </div>

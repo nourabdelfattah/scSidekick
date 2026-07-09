@@ -81,10 +81,10 @@ PlotFeaturePlots(bmcite,
 produces a gene × donor grid.
 
 > **Pain point fixed.** Seurat's `FeaturePlot(..., split.by =)` renders the
-> panels with **no colour legend at all** - you can't tell what the colours
+> panels with **no color legend at all** - you can't tell what the colors
 > mean, and the common `& RestoreLegend()` workaround attaches a guide that
 > doesn't match the data. `PlotFeaturePlots()` keeps **one shared, accurate
-> colour scale** across every panel, so expression is directly comparable
+> color scale** across every panel, so expression is directly comparable
 > across conditions.
 
 ```{r split-by-donor, eval=FALSE}

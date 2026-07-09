@@ -20,6 +20,7 @@ RunGSEA(
   pathway_sets = list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
     subcategory = "CP:KEGG"), Reactome = list(category = "C2", subcategory =
     "CP:REACTOME"), WP = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")),
+  search_terms = NULL,
   species = "Homo sapiens",
   assay = "RNA",
   min_cells = 20L,
@@ -107,7 +108,16 @@ Component
 (immune gene sets; recommended for immune datasets)
 \item \code{list(category = "C8")} - Cell-type signature gene sets
 }
-See \code{msigdbr::msigdbr_collections()} for the full catalogue.}
+See \code{msigdbr::msigdbr_collections()} for the full catalog.}
+
+\item{search_terms}{Optional keyword filter for gene-set names (case-
+insensitive, regex), applied after fetching each database in \code{pathway_sets}
+(or to the names of a custom \code{gene_sets} list). Two forms: a character
+vector is an OR search where any set matching at least one term is kept
+(e.g. \code{c("APOPTOSIS", "CELL_DEATH")}); a list of character vectors is a
+union of AND-groups where all terms in an element must appear in the same
+name (e.g. \code{list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")}). Ignored when
+\code{deg_df} is supplied. \code{NULL} (default) tests all gene sets.}
 
 \item{species}{Character. Species passed to \code{\link[msigdbr:msigdbr]{msigdbr::msigdbr()}}. Must
 match the species names recognized by that function. Common values:

@@ -435,7 +435,7 @@ RunCNMF <- function(seurat_object,
     cnmf_n_workers      = n_workers,
     cnmf_batch_correct  = if (is.null(batch.by)) "none"
                           else paste(batch.by, collapse = ", "),
-    methods_text        = paste0(
+    cnmf_methods_text   = paste0(
       "Gene expression programs were identified by consensus non-negative ",
       "matrix factorization (cNMF; Kotliar et al., 2019). Raw counts were ",
       "factorized over K = ", min(k_range), "-", max(k_range), " with ", n_iter,
@@ -636,7 +636,7 @@ GetCNMFPrograms <- function(seurat_object,
     cnmf_n_programs      = ncol(full),
     cnmf_density_thresh  = density_threshold,
     cnmf_reduction       = reduction_name,
-    methods_text         = full_methods
+    cnmf_methods_text    = full_methods
   )))
 
   message("scSidekick: Extracted ", ncol(full), " cNMF programs -> reduction '",

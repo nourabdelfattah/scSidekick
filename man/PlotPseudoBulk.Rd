@@ -15,6 +15,7 @@ PlotPseudoBulk(
   min_cells = 0L,
   show_n = TRUE,
   add_stats = FALSE,
+  test = c("wilcox.test", "t.test"),
   comparisons = NULL,
   ref_group = NULL,
   hide_ns = FALSE,
@@ -37,7 +38,11 @@ PlotPseudoBulk(
 \arguments{
 \item{seurat_object}{A Seurat object.}
 
-\item{features}{Character vector.  Gene names to plot.}
+\item{features}{Character vector.  Gene names and/or numeric \code{meta.data}
+columns (e.g. a module score, QC metric, or pseudotime).  Numeric metadata
+columns are aggregated to donor level (per-group mean) exactly like gene
+expression, so they get the same boxplots and statistics - unlike
+\code{\link{PlotMetaSummary}}, which shows numeric metadata without stats.}
 
 \item{group.by}{Character.  Categorical metadata column shown on the x-axis
 (e.g. \code{"Cognitive.Status"} or \code{"Condition"}).}
@@ -62,8 +67,15 @@ combinations) with fewer than this many cells.  Default \code{0L}.}
 donors (or pseudobulk samples) in that group after all filtering.
 Shown as \code{n=X} below the x-axis ticks.  Default \code{TRUE}.}
 
-\item{add_stats}{Logical.  Add Wilcoxon significance brackets via
-\pkg{ggsignif}.  Default \code{FALSE}.}
+\item{add_stats}{Logical.  Add significance brackets via \pkg{ggsignif}.
+Default \code{FALSE}.}
+
+\item{test}{Character.  Test used for the brackets: \code{"wilcox.test"}
+(default) or \code{"t.test"}.  Note that at small donor counts the
+rank-based Wilcoxon test is discrete and cannot reach \code{p < 0.05}
+(e.g. 3 vs 3 has a minimum two-sided p of ~0.1, so brackets are always
+\code{ns}); \code{"t.test"} is usually the better choice for donor-level
+pseudobulk with few, roughly continuous replicates.}
 
 \item{comparisons}{List of length-2 character vectors specifying pairs.
 \code{NULL} (default) tests all pairs, or all vs \code{ref_group}.}

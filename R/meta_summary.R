@@ -58,7 +58,7 @@
   tryCatch({
     if (n_groups == 2L) {
       g <- split(vals, groups)
-      if (use_np) stats::wilcox.test(g[[1L]], g[[2L]])$p.value
+      if (use_np) stats::wilcox.test(g[[1L]], g[[2L]], exact = FALSE)$p.value
       else        stats::t.test(g[[1L]], g[[2L]])$p.value
     } else {
       df_tmp <- data.frame(v = vals, g = groups)
@@ -80,6 +80,191 @@
     else
       if (n_groups == 2L) "p (t-test)" else "p (ANOVA)"
   }
+}
+
+# =============================================================================
+# .build_meta_table1()
+# Assemble a stratified "Table 1": every variable (categorical + numeric) in a
+# single flextable, grouped by `fill_var`, optionally split into side-by-side
+# blocks by `strata_var`, each block carrying its own p-value and group N.
+# Categorical cells show `cat_display` (n / % column-wise); numeric rows show
+# `numeric_stat` (mean +/- sd or median [IQR]) at whatever level `dd` is (the
+# caller passes a donor-level frame when id_column is set). Returns a flextable
+# or NULL when there is nothing to show.
+# =============================================================================
+.build_meta_table1 <- function(dd, all_vars, num_vars, fill_var, strata_var,
+                               method, cat_display, numeric_stat, run_stats) {
+  if (is.null(fill_var) || length(all_vars) == 0L) return(NULL)
+  is_num <- function(v) v %in% num_vars
+
+  fill_lvls <- if (is.factor(dd[[fill_var]])) levels(dd[[fill_var]])
+               else sort(unique(as.character(dd[[fill_var]])))
+  fill_lvls <- intersect(fill_lvls, unique(as.character(dd[[fill_var]][!is.na(dd[[fill_var]])])))
+  if (length(fill_lvls) == 0L) return(NULL)
+
+  strata <- if (is.null(strata_var)) list(All = dd) else {
+    sl <- if (is.factor(dd[[strata_var]])) levels(dd[[strata_var]])
+          else sort(unique(as.character(dd[[strata_var]])))
+    sl <- intersect(sl, unique(as.character(dd[[strata_var]][!is.na(dd[[strata_var]])])))
+    stats::setNames(lapply(sl, function(s)
+      dd[!is.na(dd[[strata_var]]) & as.character(dd[[strata_var]]) == s, , drop = FALSE]), sl)
+  }
+
+  # skeleton rows (Variable, Value) in display order
+  skel <- do.call(rbind, lapply(all_vars, function(v) {
+    if (is_num(v)) data.frame(Variable = v, Value = "", stringsAsFactors = FALSE)
+    else {
+      lv <- if (is.factor(dd[[v]])) levels(dd[[v]])
+            else sort(unique(as.character(dd[[v]][!is.na(dd[[v]])])))
+      lv <- intersect(lv, unique(as.character(dd[[v]][!is.na(dd[[v]])])))
+      data.frame(Variable = v, Value = lv, stringsAsFactors = FALSE)
+    }
+  }))
+
+  fmt_cell <- function(n, N) {
+    if (is.na(N) || N == 0L) return("0")
+    pct <- round(100 * n / N)
+    switch(cat_display,
+      n_pct    = sprintf("%d (%d%%)", n, pct),
+      pct_n    = sprintf("%d%% (%d)", pct, n),
+      fraction = sprintf("%d/%d", n, N),
+      n        = sprintf("%d", n))
+  }
+  fmt_num <- function(x) {
+    x <- x[!is.na(x)]
+    if (!length(x)) return("")
+    if (numeric_stat == "median_iqr") {
+      q <- stats::quantile(x, c(0.25, 0.5, 0.75))
+      sprintf("%.2f [%.2f, %.2f]", q[2L], q[1L], q[3L])
+    } else sprintf("%.2f ± %.2f", mean(x), stats::sd(x))
+  }
+
+  all_cat <- !any(vapply(all_vars, is_num, logical(1)))
+  all_num <-  all(vapply(all_vars, is_num, logical(1)))
+  p_lab   <- if (!run_stats) NULL
+             else if (all_cat) .pval_col_label(method, length(fill_lvls), "cat")
+             else if (all_num) .pval_col_label(method, length(fill_lvls), "num")
+             else "p-value"
+
+  df     <- skel
+  blocks <- list()
+  for (s in names(strata)) {
+    sub <- strata[[s]]
+    Ns  <- vapply(fill_lvls, function(f)
+      sum(!is.na(sub[[fill_var]]) & as.character(sub[[fill_var]]) == f), integer(1))
+    fcols <- character(0); flabels <- character(0)
+    for (fi in seq_along(fill_lvls)) {
+      f  <- fill_lvls[fi]
+      sf <- sub[!is.na(sub[[fill_var]]) & as.character(sub[[fill_var]]) == f, , drop = FALSE]
+      col <- vapply(seq_len(nrow(skel)), function(i) {
+        v <- skel$Variable[i]; L <- skel$Value[i]
+        if (is_num(v)) fmt_num(sf[[v]])
+        else fmt_cell(sum(!is.na(sf[[v]]) & as.character(sf[[v]]) == L), sum(!is.na(sf[[v]])))
+      }, character(1))
+      cn <- paste(s, f, sep = "___")
+      df[[cn]] <- col
+      fcols   <- c(fcols, cn)
+      flabels <- c(flabels, paste0(f, "\n(n=", Ns[fi], ")"))
+    }
+    pcn <- NULL
+    if (run_stats) {
+      pcol <- rep("", nrow(skel))
+      for (v in all_vars) {
+        idx <- which(skel$Variable == v)[1L]
+        p <- if (is_num(v)) .num_pval(sub[[v]], sub[[fill_var]], method)
+             else .cat_pval(table(as.character(sub[[v]]), as.character(sub[[fill_var]])), method)
+        ps <- .fmt_pval(p)
+        pcol[idx] <- if (is.na(ps)) "" else ps
+      }
+      pcn <- paste(s, "p", sep = "___")
+      df[[pcn]] <- pcol
+    }
+    blocks[[s]] <- list(fcols = fcols, flabels = flabels, pcol = pcn,
+                        span = length(fcols) + as.integer(run_stats))
+  }
+
+  ft <- flextable::flextable(as.data.frame(df, check.names = FALSE))
+  lab_map <- list()
+  for (s in names(blocks)) {
+    b <- blocks[[s]]
+    for (i in seq_along(b$fcols)) lab_map[[ b$fcols[i] ]] <- b$flabels[i]
+    if (!is.null(b$pcol)) lab_map[[ b$pcol ]] <- p_lab
+  }
+  if (length(lab_map)) ft <- do.call(flextable::set_header_labels, c(list(ft), lab_map))
+
+  if (!is.null(strata_var)) {
+    top_vals   <- c("", "", names(blocks))
+    top_widths <- c(1L, 1L, vapply(names(blocks), function(s) blocks[[s]]$span, integer(1)))
+    ft <- flextable::add_header_row(ft, values = top_vals, colwidths = top_widths, top = TRUE)
+    ft <- flextable::align(ft, i = 1, part = "header", align = "center")
+  }
+
+  ft <- flextable::merge_v(ft, j = "Variable")
+  var_ends <- cumsum(rle(as.character(df$Variable))$lengths)
+  var_ends <- var_ends[-length(var_ends)]
+  if (length(var_ends)) ft <- flextable::hline(ft, i = var_ends)
+
+  if (run_stats) {
+    for (s in names(blocks)) {
+      pcn <- blocks[[s]]$pcol
+      if (is.null(pcn)) next
+      pv  <- suppressWarnings(as.numeric(gsub("< ", "", df[[pcn]])))
+      sig <- which(!is.na(pv) & pv < 0.05)
+      if (length(sig)) ft <- flextable::bold(ft, i = sig, j = pcn)
+    }
+  }
+  ft <- flextable::valign(ft, j = "Variable", valign = "top", part = "body")
+  flextable::autofit(flextable::theme_vanilla(ft))
+}
+
+# =============================================================================
+# .meta_emit_tables()
+# Orchestrates the flextable outputs for PlotMetaSummary: builds the unified
+# Table 1, optionally the separate categorical / numeric tables, and autosaves
+# each to .docx when output_dir is set. Returns the $flextable list.
+# =============================================================================
+.meta_emit_tables <- function(dd, all_vars, num_vars, fill_var, strata_var,
+                              method, cat_display, numeric_stat, separate_tables,
+                              output_dir, object_name, file_name) {
+  run_stats <- method != "none" && !is.null(fill_var)
+  cat_vars  <- setdiff(all_vars, num_vars)
+
+  out <- list(summary_table = .build_meta_table1(
+    dd, all_vars, num_vars, fill_var, strata_var, method, cat_display,
+    numeric_stat, run_stats))
+
+  if (isTRUE(separate_tables)) {
+    if (length(cat_vars) > 0L)
+      out$crosstab <- .build_meta_table1(dd, cat_vars, character(0), fill_var,
+        strata_var, method, cat_display, numeric_stat, run_stats)
+    if (length(num_vars) > 0L)
+      out$numeric_table <- .build_meta_table1(dd, num_vars, num_vars, fill_var,
+        strata_var, method, cat_display, numeric_stat, run_stats)
+  }
+
+  if (!is.null(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+    # Build a descriptive, unique name that mirrors the companion plot's
+    # (variables_fill_strata), so the table and its plot sit side by side and
+    # different variable/grouping combinations never overwrite each other.
+    base <- if (!is.null(file_name) && nzchar(file_name)) file_name else
+      paste(c(if (nchar(object_name) > 0) object_name,
+              paste(all_vars, collapse = "_"),
+              fill_var, strata_var, "MetaSummary"),
+            collapse = "_")
+    base <- gsub("[^A-Za-z0-9._-]", "_", base)
+    for (nm in names(out)) {
+      if (is.null(out[[nm]])) next
+      suffix <- if (nm == "summary_table") "" else paste0("_", nm)
+      fp <- file.path(output_dir, paste0(base, suffix, ".docx"))
+      ok <- tryCatch({ flextable::save_as_docx(out[[nm]], path = fp); TRUE },
+                     error = function(e) {
+                       warning("Could not save ", nm, " to .docx: ",
+                               conditionMessage(e)); FALSE })
+      if (ok) message("scSidekick: Saved table to ", fp)
+    }
+  }
+  out
 }
 
 
@@ -469,12 +654,17 @@ PlotMetaSummary <- function(data,
                              file_name          = NULL,
                              return_data        = FALSE,
                              return_flextable   = FALSE,
+                             numeric_stat       = c("mean_sd", "median_iqr"),
+                             cat_display        = c("n_pct", "pct_n", "fraction", "n"),
+                             separate_tables    = FALSE,
                              stats.method       = c("nonparametric", "parametric", "auto", "none"),
                              pdf.width          = NULL,
                              pdf.height         = NULL) {
 
   count_unit   <- match.arg(count_unit)
   stats.method <- match.arg(stats.method)
+  numeric_stat <- match.arg(numeric_stat)
+  cat_display  <- match.arg(cat_display)
 
   # ── 0. Walk up PrepObject defaults (Seurat only) ──────────────────────────
   if (inherits(data, "Seurat")) {
@@ -496,43 +686,65 @@ PlotMetaSummary <- function(data,
          paste(missing_col, collapse = ", "))
 
   # ── 2b. Split numeric vs categorical variables ───────────────────────────
+  all_variables <- variables   # original order (mixed) - used for the table
   numeric_vars <- variables[vapply(variables,
     function(v) v %in% colnames(meta) && is.numeric(meta[[v]]), logical(1))]
   cat_vars <- setdiff(variables, numeric_vars)
 
+  # Numeric variables are summarized IN the table (mean +/- sd or median [IQR]).
+  # A companion PLOT routes to a donor-level function (PlotPseudoBulk) when an
+  # id_column defines donors, or a cell-level one (PlotFeature) when it does not,
+  # so the language and statistics match the requested unit.
   numeric_plot <- NULL
-  if (length(numeric_vars) > 0L) {
-    feat_group <- fill_variable %||% id_column
-    if (is.null(feat_group))
-      stop("Cannot redirect numeric variables to PlotFeature(): ",
-           "supply fill_variable or id_column so PlotFeature knows how to group.")
-    message("scSidekick: ", paste(numeric_vars, collapse = ", "),
-            " is numeric - passing to PlotFeature(group_by = \"",
-            feat_group, "\") automatically.")
+  if (length(numeric_vars) > 0L && !is.null(fill_variable)) {
     numeric_plot <- tryCatch(
-      PlotFeature(
-        data        = data,
-        features    = numeric_vars,
-        group.by    = feat_group,
-        split.by    = row_variable,
-        colors      = colors,
-        output_dir  = output_dir,
-        object_name = object_name
-      ),
+      if (!is.null(id_column)) {
+        message("scSidekick: ", paste(numeric_vars, collapse = ", "),
+                " numeric - donor-level summary; companion plot via PlotPseudoBulk().")
+        # add_stats = FALSE: the p-values belong in the Table 1 (donor-level,
+        # correct test); the companion plot is illustrative only, so no brackets.
+        PlotPseudoBulk(seurat_object = data, features = numeric_vars,
+                       group.by = fill_variable, donor.by = id_column,
+                       split.by = row_variable, colors = colors, add_stats = FALSE,
+                       output_dir = output_dir, object_name = object_name)
+      } else {
+        message("scSidekick: ", paste(numeric_vars, collapse = ", "),
+                " numeric, no id_column - cell-level plot via PlotFeature().")
+        # add_stats = FALSE: cell-level tests are pseudoreplicated; keep the plot
+        # illustrative and leave inference to the (donor-level) table.
+        PlotFeature(data = data, features = numeric_vars, group.by = fill_variable,
+                    split.by = row_variable, colors = colors, add_stats = FALSE,
+                    output_dir = output_dir, object_name = object_name)
+      },
       error = function(e) {
-        warning("PlotFeature() failed for numeric variables: ",
-                conditionMessage(e))
-        NULL
-      }
-    )
+        warning("Numeric companion plot failed: ", conditionMessage(e)); NULL })
   }
 
-  # If ALL variables were numeric, return early
+  # ── All-numeric: no categorical bars. Build the summary table and return. ──
   if (length(cat_vars) == 0L) {
-    if (!is.null(numeric_plot)) return(numeric_plot)
-    stop("All variables are numeric. Use PlotFeature() directly.")
+    result <- list(categorical_plot = NULL, numeric_plot = numeric_plot)
+    if (return_flextable && requireNamespace("flextable", quietly = TRUE) &&
+        !is.null(fill_variable)) {
+      dd <- meta
+      if (!is.null(exclude))
+        for (col in names(exclude))
+          if (col %in% colnames(dd))
+            dd <- dd[!as.character(dd[[col]]) %in% as.character(exclude[[col]]),
+                     , drop = FALSE]
+      need <- intersect(c(id_column, all_variables, fill_variable, row_variable),
+                        colnames(dd))
+      dd   <- dd[, need, drop = FALSE]
+      if (!is.null(id_column)) dd <- dplyr::distinct(dd)
+      result$flextable <- .meta_emit_tables(dd, all_variables, numeric_vars,
+        fill_variable, row_variable, stats.method, cat_display, numeric_stat,
+        separate_tables, output_dir, object_name, file_name)
+    }
+    if (return_data) result$data <- meta
+    if (!return_flextable && !return_data) return(numeric_plot)
+    return(result)
   }
-  variables <- cat_vars   # proceed with categorical variables only
+
+  variables <- cat_vars   # categorical bar-chart path uses only these
 
   # ── 3. Apply exclusions ───────────────────────────────────────────────────
   if (!is.null(exclude)) {
@@ -905,153 +1117,19 @@ PlotMetaSummary <- function(data,
     if (!requireNamespace("flextable", quietly = TRUE)) {
       warning("Package 'flextable' is not installed - skipping flextable output. ",
               "Install with: install.packages(\"flextable\")")
+    } else if (is.null(fill_variable)) {
+      warning("scSidekick: the flextable summary needs a fill_variable to ",
+              "group by - skipping table output.")
     } else {
-      # Donor-level wide table - only sensible when meta_dedup is small
-      # (i.e. deduplicated to donors). With count_unit = "cells" meta_dedup
-      # can be millions of rows; skip and warn rather than hang.
-      if (nrow(meta_dedup) > 5000L) {
-        warning("scSidekick: 'donor_table' flextable skipped - ",
-                format(nrow(meta_dedup), big.mark = ","),
-                " rows is too large. Set count_unit = \"donors\" and supply ",
-                "id_column to get a meaningful per-donor table.")
-        donor_ft <- NULL
-      } else {
-        donor_ft <- flextable::flextable(as.data.frame(meta_dedup)) |>
-          flextable::autofit() |>
-          flextable::theme_vanilla()
-      }
-
-      run_stats   <- stats.method != "none" && !is.null(fill_variable)
-      n_grp_fill  <- if (!is.null(fill_variable))
-        length(unique(as.character(meta_dedup[[fill_variable]]))) else 0L
-
-      # ── Categorical cross-tab (n per level per fill group) ──────────────────
-      crosstab_ft <- NULL
-      if (!is.null(fill_variable) && length(variables) > 0L) {
-        cat_pvals <- if (run_stats)
-          stats::setNames(vapply(variables, function(var) {
-            tab <- table(meta_dedup[[var]], meta_dedup[[fill_variable]])
-            .cat_pval(tab, stats.method)
-          }, numeric(1L)), variables)
-        else NULL
-
-        ct_list <- lapply(variables, function(var) {
-          tab <- meta_dedup |>
-            dplyr::count(.data[[var]], .data[[fill_variable]]) |>
-            tidyr::pivot_wider(
-              names_from  = dplyr::all_of(fill_variable),
-              values_from = n,
-              values_fill = 0L
-            )
-          colnames(tab)[1] <- "Value"
-          tab$Variable     <- var
-          tab <- tab[, c("Variable", "Value",
-                         setdiff(colnames(tab), c("Variable", "Value")))]
-          if (run_stats) {
-            p_str <- .fmt_pval(cat_pvals[[var]])
-            tab$p.value <- c(p_str, rep(NA_character_, nrow(tab) - 1L))
-          }
-          tab
-        })
-
-        ct_combined <- do.call(rbind, ct_list)
-        sep_rows    <- cumsum(vapply(ct_list, nrow, integer(1)))
-        sep_rows    <- sep_rows[-length(sep_rows)]
-
-        merge_cols  <- if (run_stats) c("Variable", "p.value") else "Variable"
-        cat_lbl     <- if (run_stats)
-          .pval_col_label(stats.method, n_grp_fill, "cat") else NULL
-
-        crosstab_ft <- flextable::flextable(as.data.frame(ct_combined)) |>
-          flextable::merge_v(j = merge_cols) |>
-          flextable::autofit() |>
-          flextable::theme_vanilla()
-        if (!is.null(cat_lbl))
-          crosstab_ft <- flextable::set_header_labels(
-            crosstab_ft, p.value = cat_lbl)
-        if (length(sep_rows) > 0L)
-          crosstab_ft <- flextable::hline(crosstab_ft, i = sep_rows)
-        if (run_stats) {
-          sig_rows <- which(!is.na(ct_combined$p.value) &
-                            suppressWarnings(as.numeric(
-                              gsub("< ", "", ct_combined$p.value))) < 0.05)
-          if (length(sig_rows) > 0L)
-            crosstab_ft <- flextable::bold(crosstab_ft, i = sig_rows,
-                                           j = "p.value")
-        }
-      }
-
-      # ── Numeric summary table (mean +- SD per fill group) ───────────────────
-      numeric_ft <- NULL
-      if (length(numeric_vars) > 0L) {
-        num_meta <- if (!is.null(id_column))
-          dplyr::distinct(meta[, intersect(
-            c(id_column, numeric_vars, fill_variable), colnames(meta)),
-            drop = FALSE])
-        else
-          meta[, intersect(c(numeric_vars, fill_variable), colnames(meta)),
-               drop = FALSE]
-
-        group_cols_num <- if (!is.null(fill_variable)) fill_variable else character(0L)
-
-        num_rows <- lapply(numeric_vars, function(var) {
-          if (!var %in% colnames(num_meta)) return(NULL)
-          if (length(group_cols_num) > 0L) {
-            row <- num_meta |>
-              dplyr::group_by(dplyr::across(dplyr::all_of(group_cols_num))) |>
-              dplyr::summarize(
-                stat = {
-                  v <- .data[[var]]
-                  sprintf("%.2f ± %.2f",
-                          mean(v, na.rm = TRUE), sd(v, na.rm = TRUE))
-                },
-                .groups = "drop"
-              ) |>
-              tidyr::pivot_wider(names_from  = dplyr::all_of(fill_variable),
-                                 values_from = stat)
-          } else {
-            v   <- num_meta[[var]]
-            row <- data.frame(stat = sprintf("%.2f ± %.2f",
-                                             mean(v, na.rm = TRUE),
-                                             sd(v, na.rm = TRUE)))
-          }
-          row <- dplyr::mutate(row, Variable = var, .before = 1)
-          if (run_stats) {
-            p_raw <- .num_pval(num_meta[[var]],
-                               num_meta[[fill_variable]], stats.method)
-            row$p.value <- .fmt_pval(p_raw)
-          }
-          row
-        })
-        num_rows <- Filter(Negate(is.null), num_rows)
-
-        if (length(num_rows) > 0L) {
-          num_combined <- do.call(rbind, num_rows)
-          num_lbl      <- if (run_stats)
-            .pval_col_label(stats.method, n_grp_fill, "num") else NULL
-
-          numeric_ft <- flextable::flextable(as.data.frame(num_combined)) |>
-            flextable::autofit() |>
-            flextable::theme_vanilla()
-          if (!is.null(num_lbl))
-            numeric_ft <- flextable::set_header_labels(
-              numeric_ft, p.value = num_lbl)
-          if (run_stats) {
-            sig_rows <- which(!is.na(num_combined$p.value) &
-                              suppressWarnings(as.numeric(
-                                gsub("< ", "", num_combined$p.value))) < 0.05)
-            if (length(sig_rows) > 0L)
-              numeric_ft <- flextable::bold(numeric_ft, i = sig_rows,
-                                            j = "p.value")
-          }
-        }
-      }
-
-      result$flextable <- list(
-        donor_table   = donor_ft,
-        crosstab      = crosstab_ft,
-        numeric_table = numeric_ft
-      )
+      # Donor-level frame (dedup on id_column) so the Table 1 is per donor, then
+      # emit the unified table (+ optional separate tables) and autosave to .docx.
+      need <- intersect(c(id_column, all_variables, fill_variable, row_variable),
+                        colnames(meta))
+      dd   <- meta[, need, drop = FALSE]
+      if (!is.null(id_column)) dd <- dplyr::distinct(dd)
+      result$flextable <- .meta_emit_tables(dd, all_variables, numeric_vars,
+        fill_variable, row_variable, stats.method, cat_display, numeric_stat,
+        separate_tables, output_dir, object_name, file_name)
     }
   }
 

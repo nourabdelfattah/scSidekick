@@ -52,6 +52,7 @@ of cells in every group.
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -191,9 +192,11 @@ there.</p></dd>
 
 <dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
 <dd><p>Character or <code>NULL</code>. Base name (no extension) for the
-saved PDF. <code>NULL</code> (default) auto-deduces the name from the
-<code>markers_df</code> variable name, falling back to
-<code>object_name_group.by_SplitDotPlot</code>.</p></dd>
+saved PDF. <code>NULL</code> (default) auto-generates a name that includes the
+<code>markers_df</code> variable name (when detectable) followed by
+<code>group.by</code> and <code>split.by</code>, e.g.
+<code>&lt;markers&gt;_&lt;group.by&gt;_&lt;split.by&gt;_SplitDotPlot</code>, so different
+groupings and splits never overwrite each other.</p></dd>
 
 </dl></div>
     <div class="section level2">

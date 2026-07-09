@@ -159,7 +159,7 @@
 #' Produces a publication-ready volcano plot from a DEG data frame (presto,
 #' \code{FindMarkers}, or any table with logFC and adjusted p-value columns).
 #' Automatically detects column names for common output formats.  Points are
-#' colored by direction × significance; top genes per direction are labelled
+#' colored by direction × significance; top genes per direction are labeled
 #' with \code{ggrepel}.
 #'
 #' @param deg_df Data frame with differential expression results. Compatible
@@ -1015,11 +1015,27 @@ PlotEnrichment <- function(
                   collapse = "_")
     n_grp <- if (!is.null(group_column) && group_column %in% colnames(df))
       length(unique(df[[group_column]])) else 1
-    pdf(file.path(output_dir, paste0(pfx, " enrichment ", plot_type, ".pdf")),
+    fn_enr <- file.path(output_dir, paste0(pfx, " enrichment ", plot_type, ".pdf"))
+    pdf(fn_enr,
         width  = 7,
         height = max(4, min(top_n, nrow(df)) * 0.28 + 2) * n_grp)
     print(out_plot)
     grDevices::dev.off()
+    x_desc <- switch(x_by,
+                     gene_ratio  = "gene ratio (overlap size / query size)",
+                     gene_count  = "number of overlapping genes",
+                     `-log10padj` = "-log10 adjusted p-value")
+    .write_legend_sidecar(fn_enr, paste0(
+      switch(plot_type, dot = "Dot plot", bar = "Bar plot", lollipop = "Lollipop plot"),
+      " of the top ", min(top_n, nrow(df)),
+      " enriched terms from over-representation analysis (ORA). ",
+      "Terms are ranked by significance; the x-axis shows ", x_desc,
+      if (plot_type == "dot") paste0(", point color encodes the ", color_by,
+                                     " and point size the number of overlapping genes")
+      else "",
+      ". Adjusted p-values are Benjamini-Hochberg corrected",
+      if (n_grp > 1) ", with one panel per group" else "", "."
+    ))
   }
 
   print(out_plot)
@@ -1210,6 +1226,35 @@ RunEnrichment <- function(
         subset_name       = ""
       )
     }
+  }
+
+  # Record methods for create_analysis_pptx() (does not overwrite the base
+  # preprocessing methods_text; rendered under its own labeled section).
+  if (!is.null(output_dir)) {
+    dir_desc <- switch(direction,
+                       up   = "up-regulated",
+                       down = "down-regulated",
+                       both = "differentially expressed")
+    .write_subdir_params(output_dir, list(
+      date                   = format(Sys.Date()),
+      enrichment_method      = "over-representation analysis (enrichR)",
+      enrichment_databases   = databases,
+      enrichment_direction   = direction,
+      enrichment_fc_cutoff   = if (!is.null(deg_df)) fc_cutoff else NA,
+      enrichment_padj_cutoff = if (!is.null(deg_df)) padj_cutoff else NA,
+      enrichment_methods_text = paste0(
+        "Over-representation analysis (ORA) was performed with enrichR ",
+        "(Kuleshov et al., 2016) against the following gene-set libraries: ",
+        paste(databases, collapse = ", "), ". ",
+        if (!is.null(deg_df))
+          paste0("Query genes were the ", dir_desc, " differentially expressed genes ",
+                 "(|log-fold-change| > ", fc_cutoff, ", adjusted p < ", padj_cutoff, ")",
+                 if (!is.null(group_column)) " for each group" else "", ". ")
+        else "Query genes were supplied directly as a gene list. ",
+        "Terms with adjusted p < ", padj_cutoff_plot,
+        " (Benjamini-Hochberg) were considered significantly enriched."
+      )
+    ))
   }
 
   message("\nRunEnrichment complete.")

@@ -62,6 +62,7 @@
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -140,12 +141,12 @@ multiple features, this produces a gene × donor grid.</p>
 <blockquote>
 <p><strong>Pain point fixed.</strong> Seurat’s
 <code>FeaturePlot(..., split.by =)</code> renders the panels with
-<strong>no colour legend at all</strong> - you can’t tell what the
-colours mean, and the common <code>&amp; RestoreLegend()</code>
-workaround attaches a guide that doesn’t match the data.
-<code><a href="../reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> keeps <strong>one shared, accurate
-colour scale</strong> across every panel, so expression is directly
-comparable across conditions.</p>
+<strong>no color legend at all</strong> - you can’t tell what the colors
+mean, and the common <code>&amp; RestoreLegend()</code> workaround
+attaches a guide that doesn’t match the data.
+<code><a href="../reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> keeps <strong>one shared, accurate color
+scale</strong> across every panel, so expression is directly comparable
+across conditions.</p>
 </blockquote>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>

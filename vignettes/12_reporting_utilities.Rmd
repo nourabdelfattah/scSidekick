@@ -23,7 +23,7 @@ options(cli.width = 80)
 
 ## Overview
 
-scSidekick is built so that **the write-up writes itself**. As you analyse, the
+scSidekick is built so that **the write-up writes itself**. As you analyze, the
 package captures the provenance you'll need months later at paper time:
 
 - **Auto-logged figure legends** - every figure-saving function drops a

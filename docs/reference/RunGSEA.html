@@ -60,6 +60,7 @@ Build NES heatmaps showing top top_n pathways per cluster.
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -109,6 +110,7 @@ loop) and <code>split.by</code> (inner loop) levels:</p><ol><li><p>Subset the ob
 <span>  pathway_sets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Hallmark <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>category <span class="op">=</span> <span class="st">"H"</span><span class="op">)</span>, KEGG <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>category <span class="op">=</span> <span class="st">"C2"</span>,</span>
 <span>    subcategory <span class="op">=</span> <span class="st">"CP:KEGG"</span><span class="op">)</span>, Reactome <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>category <span class="op">=</span> <span class="st">"C2"</span>, subcategory <span class="op">=</span></span>
 <span>    <span class="st">"CP:REACTOME"</span><span class="op">)</span>, WP <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>category <span class="op">=</span> <span class="st">"C2"</span>, subcategory <span class="op">=</span> <span class="st">"CP:WIKIPATHWAYS"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  search_terms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  species <span class="op">=</span> <span class="st">"Homo sapiens"</span>,</span>
 <span>  assay <span class="op">=</span> <span class="st">"RNA"</span>,</span>
 <span>  min_cells <span class="op">=</span> <span class="fl">20L</span>,</span>
@@ -219,7 +221,18 @@ Component</p></li>
 <li><p><code>list(category = "C7", subcategory = "IMMUNESIGDB")</code> - ImmuneSigDB
 (immune gene sets; recommended for immune datasets)</p></li>
 <li><p><code>list(category = "C8")</code> - Cell-type signature gene sets</p></li>
-</ul><p>See <code><a href="https://igordot.github.io/msigdbr/reference/msigdbr_collections.html" class="external-link">msigdbr::msigdbr_collections()</a></code> for the full catalogue.</p></dd>
+</ul><p>See <code><a href="https://igordot.github.io/msigdbr/reference/msigdbr_collections.html" class="external-link">msigdbr::msigdbr_collections()</a></code> for the full catalog.</p></dd>
+
+
+<dt id="arg-search-terms">search_terms<a class="anchor" aria-label="anchor" href="#arg-search-terms"></a></dt>
+<dd><p>Optional keyword filter for gene-set names (case-
+insensitive, regex), applied after fetching each database in <code>pathway_sets</code>
+(or to the names of a custom <code>gene_sets</code> list). Two forms: a character
+vector is an OR search where any set matching at least one term is kept
+(e.g. <code>c("APOPTOSIS", "CELL_DEATH")</code>); a list of character vectors is a
+union of AND-groups where all terms in an element must appear in the same
+name (e.g. <code>list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")</code>). Ignored when
+<code>deg_df</code> is supplied. <code>NULL</code> (default) tests all gene sets.</p></dd>
 
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>

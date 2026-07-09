@@ -48,6 +48,7 @@ assembled with patchwork."><meta property="og:image" content="https://nourabdelf
     <li><a class="dropdown-item" href="../articles/17_cnv.html">17 - Copy Number Variation</a></li>
     <li><a class="dropdown-item" href="../articles/18_cnmf.html">18 - Gene Expression Programs (cNMF)</a></li>
     <li><a class="dropdown-item" href="../articles/19_ura.html">19 - Upstream Regulator Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/20_pseudotime.html">20 - Pseudotime &amp; Trajectory Analysis</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
@@ -102,6 +103,7 @@ assembled with <span class="pkg">patchwork</span>.</p>
 <span>  layer <span class="op">=</span> <span class="st">"data"</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pdf_width <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pdf_height <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -166,7 +168,13 @@ Default <code>FALSE</code>.</p></dd>
 
 <dt id="arg-add-stats">add_stats<a class="anchor" aria-label="anchor" href="#arg-add-stats"></a></dt>
 <dd><p>Logical.  Add Wilcoxon significance brackets via
-<span class="pkg">ggsignif</span>.  Default <code>FALSE</code>.</p></dd>
+<span class="pkg">ggsignif</span>.  Default <code>FALSE</code>.  <strong>Caveat:</strong> these tests are
+computed per cell, so with many cells per group they are pseudoreplicated
+and p-values are inflated (brackets often read <code>"***"</code> regardless of
+the true effect).  They are useful as a descriptive overlay only; for valid
+between-sample inference aggregate to samples with
+<code><a href="PlotPseudoBulk.html">PlotPseudoBulk</a></code>.  A warning is emitted when <code>add_stats =
+  TRUE</code>.</p></dd>
 
 
 <dt id="arg-comparisons">comparisons<a class="anchor" aria-label="anchor" href="#arg-comparisons"></a></dt>
@@ -232,6 +240,13 @@ from <code>PrepObject</code> when a Seurat object is passed.</p></dd>
 <dt id="arg-object-name">object_name<a class="anchor" aria-label="anchor" href="#arg-object-name"></a></dt>
 <dd><p>Character.  Filename prefix.  Walks up from
 <code>PrepObject</code> when a Seurat object is passed.</p></dd>
+
+
+<dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
+<dd><p>Character or <code>NULL</code>.  Base name (no extension) for the
+saved PDF.  When supplied it is used verbatim (the <code>object_name</code>,
+feature, <code>group.by</code>/<code>split.by</code> and <code>plot_type</code> pieces are
+skipped).  <code>NULL</code> (default) auto-builds the name from those variables.</p></dd>
 
 
 <dt id="arg-pdf-width">pdf_width<a class="anchor" aria-label="anchor" href="#arg-pdf-width"></a></dt>

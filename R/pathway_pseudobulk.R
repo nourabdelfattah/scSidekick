@@ -130,6 +130,14 @@
 #'   (see [msigdbr::msigdbr_collections()]). The element name becomes the
 #'   label used in output filenames. Default: Hallmark, KEGG, Reactome,
 #'   WikiPathways. Ignored when `gene_sets` or `deg_df` is supplied.
+#' @param search_terms Optional keyword filter for gene-set names (case-
+#'   insensitive, regex), applied after fetching each database in `pathway_sets`
+#'   (or to the names of a custom `gene_sets` list). Two forms: a character
+#'   vector is an OR search where any set matching at least one term is kept
+#'   (e.g. `c("APOPTOSIS", "CELL_DEATH")`); a list of character vectors is a
+#'   union of AND-groups where all terms in an element must appear in the same
+#'   name (e.g. `list(c("T_CELL", "ACTIVATION"), "APOPTOSIS")`). Ignored when
+#'   `deg_df` is supplied. `NULL` (default) tests all gene sets.
 #' @param species Character. Species name passed to [msigdbr::msigdbr()].
 #'   Use `"human"` or `"mouse"` (shorthand accepted) or any full name returned
 #'   by `msigdbr::msigdbr_species()`. Default `"human"`.
@@ -261,6 +269,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                  KEGG     = list(category = "C2", subcategory = "CP:KEGG"),
                                  Reactome = list(category = "C2", subcategory = "CP:REACTOME"),
                                  WP       = list(category = "C2", subcategory = "CP:WIKIPATHWAYS")),
+                               search_terms     = NULL,
                                species          = "human",
                                output_dir,
                                assay            = NULL,
@@ -605,7 +614,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       gsea_run_ssgsea         = run.ssgsea,
       gsea_top_n_ssgsea       = top_n_ssgsea,
       gsea_ssgsea_sig_col     = if (isTRUE(ssgsea.use.padj)) "padj" else "p",
-      methods_text       = paste0(
+      gsea_search_terms       = if (!is.null(search_terms)) .format_search_terms(search_terms) else NULL,
+      gsea_pb_methods_text = paste0(
         "Donor-level gene set enrichment analysis was performed using a ",
         "pseudobulk approach. Raw counts (assay: '", assay %||% "default",
         "') were summed per biological sample ('", sample.by, "') within ",
@@ -623,6 +633,12 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
         ". Genes were ranked by the moderated t-statistic from limma and ",
         "gene set enrichment was assessed using fgsea (Korotkevich et al., ",
         "2021) against the following MSigDB collections: ", db_list_str,
+        if (!is.null(search_terms))
+          paste0("; gene sets matching the keyword filter ",
+                 .format_search_terms(search_terms),
+                 " were pooled across all collections and analyzed together ",
+                 "as a single set")
+        else "",
         ". NES > 0 indicates enrichment in the first term of each contrast.",
         if (nes.cutoff > 0)
           paste0(" Pathways with max |NES| < ", nes.cutoff,
@@ -653,14 +669,58 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       deg_top_n        = deg_top_n
     )
     fgsea_dbs <- list(DEG = gs_res$gene_sets)
+    # Filter custom named gene_sets by search_terms (ignored for deg_df)
+    if (!is.null(search_terms) && !is.null(gene_sets)) {
+      keep <- .apply_search_terms(names(fgsea_dbs$DEG), search_terms)
+      fgsea_dbs$DEG <- fgsea_dbs$DEG[keep]
+      message("search_terms matched ", sum(keep), " of ", length(keep), " custom gene sets.")
+      if (sum(keep) == 0)
+        stop("No custom gene sets matched: ", .format_search_terms(search_terms))
+    } else if (!is.null(search_terms) && !is.null(deg_df)) {
+      message("Note: search_terms is ignored when deg_df is supplied.")
+    }
   } else {
     fgsea_dbs <- lapply(names(pathway_sets), function(db) {
-      ps <- pathway_sets[[db]]
+      ps  <- pathway_sets[[db]]
       mdf <- .msigdbr_get(species = species, category = ps$category,
                           subcategory = ps$subcategory)
+      if (!is.null(search_terms)) {
+        keep <- .apply_search_terms(mdf$gs_name, search_terms)
+        mdf  <- mdf[keep, , drop = FALSE]
+        if (nrow(mdf) == 0) {
+          warning("No gene sets in '", db, "' matched: ",
+                  .format_search_terms(search_terms), " -- skipping.", call. = FALSE)
+          return(NULL)
+        }
+        message("  [", db, "] ", length(unique(mdf$gs_name)),
+                " gene sets matched: ", .format_search_terms(search_terms))
+      }
       split(mdf$gene_symbol, mdf$gs_name)
     })
     names(fgsea_dbs) <- names(pathway_sets)
+    fgsea_dbs <- Filter(Negate(is.null), fgsea_dbs)
+    if (length(fgsea_dbs) == 0)
+      stop("No gene sets matched the search_terms in any database. ",
+           "Check spelling or broaden the terms.")
+
+    # ── Pool matched pathways across databases when searching by keyword ──────
+    # With search_terms the intent is to look up a pathway by name regardless of
+    # which collection it lives in. Merge every matched gene set into a single
+    # collection named after the search term so all hits are ranked and shown
+    # together in one heatmap (rather than one folder/heatmap per database).
+    # Mirrors RunSCssGSEA and RunGSEA. MSigDB gene-set names are globally unique
+    # (prefixed by collection), so the source database stays visible per row.
+    if (!is.null(search_terms)) {
+      pooled  <- do.call(c, unname(fgsea_dbs))
+      pooled  <- pooled[!duplicated(names(pooled))]
+      terms   <- unlist(search_terms, use.names = FALSE)
+      pool_nm <- toupper(gsub("[^A-Za-z0-9]+", "_", paste(terms, collapse = "_")))
+      pool_nm <- gsub("^_+|_+$", "", pool_nm)
+      if (!nzchar(pool_nm)) pool_nm <- "search"
+      fgsea_dbs <- stats::setNames(list(pooled), pool_nm)
+      message("Pooled ", length(pooled), " matched gene set(s) from ",
+              length(pathway_sets), " collection(s) into one: '", pool_nm, "'.")
+    }
   }
 
   ## ---- pseudobulk: reuse precomputed, or aggregate (sum counts per sample x ident) ----
@@ -846,7 +906,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       # Show which coefficients are actually missing so the user can fix their cf() calls
       missing_by <- vapply(dropped, function(nm) {
         toks <- unique(regmatches(contrasts[[nm]],
-                                  gregexpr("group[A-Za-z0-9._]+", contrasts[[nm]])[[1]]))
+                                  gregexpr("group[A-Za-z0-9._]+", contrasts[[nm]]))[[1]])
         bad <- toks[!toks %in% colnames(design)]
         if (length(bad)) paste(bad, collapse = ", ") else "?"
       }, character(1))
@@ -1314,7 +1374,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       if (length(dropped)) {
         missing_by <- vapply(dropped, function(nm) {
           toks <- unique(regmatches(contrasts[[nm]],
-                                    gregexpr("group[A-Za-z0-9._]+", contrasts[[nm]])[[1]]))
+                                    gregexpr("group[A-Za-z0-9._]+", contrasts[[nm]]))[[1]])
           bad <- toks[!toks %in% colnames(design)]
           if (length(bad)) paste(bad, collapse = ", ") else "?"
         }, character(1))

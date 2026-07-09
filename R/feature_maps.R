@@ -544,7 +544,7 @@ GenerateFeatureMaps <- function(seurat_object,
     lgd_pos <- if (legend.side %in% c("bottom", "top")) "bottom" else "right"
     legend <- ggpubr::get_legend(
       basic[[1]] + theme_NourMin() + Seurat::NoAxes() +
-        ggplot2::guides(color = ggplot2::guide_colourbar(
+        ggplot2::guides(color = ggplot2::guide_colorbar(
           title          = gene,
           title.position = "top",
           title.theme    = ggplot2::element_text(size = 10),
@@ -561,20 +561,45 @@ GenerateFeatureMaps <- function(seurat_object,
     # ====================================================================
     if (layout_method == "metadata") {
 
-      # max_row_len is always length(col_levels): every row gets one slot per
-      # column-level, whether a panel exists or not.  Empty slots are filled
-      # with theme_void() placeholders RIGHT WHERE THEY BELONG, so split.by
-      # levels that are absent in a given row.by level (e.g. "Reference" only
-      # having Male samples) stay in the correct column instead of shifting left.
-      max_row_len <- length(col_levels)
+      # Choose the column layout per row based on how split.by relates to row.by.
+      #
+      #   Nested design (e.g. Sample within Response): each split.by level occurs
+      #     in exactly one row.by level. Show only the columns that belong to
+      #     each row, packed left and padded at the END to the longest row (like
+      #     PlotSpatialDimPlots), so no interior empty panels appear.
+      #
+      #   Crossed design (e.g. Sex × AD): a split.by level occurs in more than
+      #     one row. Give every row one slot per split.by level and drop empty
+      #     combinations in place (theme_void placeholder) so columns stay
+      #     aligned across rows.
+      #
+      # The design is detected automatically from the data.
+      present_by_row <- lapply(row_levels, function(r) {
+        cells_r <- as.character(seurat_object@meta.data[[row.by]]) == r
+        intersect(col_levels,
+                  unique(as.character(seurat_object@meta.data[[split.by]][cells_r])))
+      })
+      names(present_by_row) <- row_levels
+      col_row_counts <- table(unlist(present_by_row))
+      is_nested      <- length(col_row_counts) > 0 && all(col_row_counts <= 1L)
+
+      if (is_nested) {
+        row_cols_map <- present_by_row
+        max_row_len  <- max(vapply(row_cols_map, length, integer(1)))
+      } else {
+        row_cols_map <- stats::setNames(rep(list(col_levels), length(row_levels)),
+                                        row_levels)
+        max_row_len  <- length(col_levels)
+      }
 
       row_plot_lists <- list()
 
       for (r in row_levels) {
-        row_plots   <- list()
+        cols_here     <- row_cols_map[[r]]
+        row_plots     <- list()
         has_any_panel <- FALSE
 
-        for (co in col_levels) {
+        for (co in cols_here) {
           combo        <- paste(r, co, sep = "_")
           panel_found  <- FALSE
 
@@ -595,12 +620,19 @@ GenerateFeatureMaps <- function(seurat_object,
           }
 
           if (!panel_found) {
-            # Insert empty placeholder - preserves column alignment when a
-            # split.by level is absent for this row.by level
+            # Empty placeholder in place - preserves column alignment for a
+            # crossed design when a split.by level is absent for this row.
             row_plots[[length(row_plots) + 1]] <-
               ggplot2::ggplot() + ggplot2::theme_void()
           }
         }
+
+        # Pad the END to max_row_len. In nested mode this fills the trailing
+        # slots of shorter rows; in crossed mode rows are already full so this
+        # is a no-op.
+        while (length(row_plots) < max_row_len)
+          row_plots[[length(row_plots) + 1]] <-
+            ggplot2::ggplot() + ggplot2::theme_void()
 
         row_plot_lists[[r]] <- if (has_any_panel) row_plots else list()
       }
@@ -612,7 +644,6 @@ GenerateFeatureMaps <- function(seurat_object,
         rp <- row_plot_lists[[r]]
         if (length(rp) == 0) next
         valid_row_levels <- c(valid_row_levels, r)
-        # No end-padding needed - every row already has max_row_len slots
         single_row <- ggpubr::ggarrange(plotlist = rp,
                                          nrow = 1, ncol = max_row_len)
         list_of_rows[[length(list_of_rows) + 1]] <- ggpubr::annotate_figure(

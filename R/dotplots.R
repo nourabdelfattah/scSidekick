@@ -6,7 +6,7 @@
 # SplitDotPlot2 - extends SplitDotPlot with gene-axis clustering and a
 #                 minimum-expression filter
 # FastDotPlot   - like SplitDotPlot2 but accepts a gene name pattern (regex)
-#                 and can slice the gene dendrogram into k labelled groups
+#                 and can slice the gene dendrogram into k labeled groups
 # FastDotPlot2  - FastDotPlot + optional EnrichR enrichment header aligned
 #                 above each gene-cluster panel
 #
@@ -71,9 +71,13 @@
 #   file_name : explicit base name from the caller (highest priority; NULL = ignore)
 #   auto_base : a deduced base (e.g. the markers_df variable name or gene pattern)
 #   suffix    : function tag appended when no explicit file_name (e.g. "SplitDotPlot")
+#   group.by  : y-axis grouping variable, appended so different groupings do not
+#               collide or overwrite each other on disk
+#   split.by  : row-split variable, appended for the same reason
 # When file_name is given it is used verbatim (object/subset prefixes are skipped),
 # so the user gets exactly the name they asked for.
-.dotplot_path <- function(output_dir, seurat_object, file_name, auto_base, suffix) {
+.dotplot_path <- function(output_dir, seurat_object, file_name, auto_base, suffix,
+                          group.by = NULL, split.by = NULL) {
   if (!is.null(file_name) && nzchar(file_name)) {
     base <- file_name
   } else {
@@ -82,7 +86,10 @@
     # auto_base is used as the descriptive middle (df name or pattern) when it is
     # informative; otherwise fall back to the function suffix alone.
     mid   <- if (!is.null(auto_base) && nzchar(auto_base)) auto_base else NULL
-    parts <- c(if (nchar(obj) > 0) obj, if (nchar(sub) > 0) sub, mid, suffix)
+    grp   <- if (!is.null(group.by)  && nzchar(group.by))  group.by  else NULL
+    spl   <- if (!is.null(split.by)  && nzchar(split.by))  split.by  else NULL
+    parts <- c(if (nchar(obj) > 0) obj, if (nchar(sub) > 0) sub,
+               mid, grp, spl, suffix)
     base  <- paste(parts, collapse = "_")
   }
   fname <- gsub("[^A-Za-z0-9._-]", "_", base)
@@ -142,9 +149,11 @@
 #'   \code{\link{PrepObject}}, unless \code{AutoSavePlots = FALSE} was set
 #'   there.
 #' @param file_name Character or \code{NULL}. Base name (no extension) for the
-#'   saved PDF. \code{NULL} (default) auto-deduces the name from the
-#'   \code{markers_df} variable name, falling back to
-#'   \code{object_name_group.by_SplitDotPlot}.
+#'   saved PDF. \code{NULL} (default) auto-generates a name that includes the
+#'   \code{markers_df} variable name (when detectable) followed by
+#'   \code{group.by} and \code{split.by}, e.g.
+#'   \code{<markers>_<group.by>_<split.by>_SplitDotPlot}, so different
+#'   groupings and splits never overwrite each other.
 #' @return A ggplot2 object (invisibly when saved to disk).
 #' @export
 SplitDotPlot <- function(seurat_object,
@@ -293,8 +302,10 @@ SplitDotPlot <- function(seurat_object,
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     fpath <- .dotplot_path(output_dir, seurat_object, file_name,
-                           auto_base = df_name %||% group.by,
-                           suffix    = "SplitDotPlot")
+                           auto_base = df_name,
+                           suffix    = "SplitDotPlot",
+                           group.by  = group.by,
+                           split.by  = split.by)
     grDevices::pdf(fpath, width = sug_w, height = sug_h)
     print(p)
     grDevices::dev.off()
@@ -502,8 +513,10 @@ SplitDotPlot2 <- function(seurat_object,
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     fpath <- .dotplot_path(output_dir, seurat_object, file_name,
-                           auto_base = df_name %||% group.by,
-                           suffix    = "SplitDotPlot2")
+                           auto_base = df_name,
+                           suffix    = "SplitDotPlot2",
+                           group.by  = group.by,
+                           split.by  = split.by)
     grDevices::pdf(fpath, width = sug_w, height = sug_h)
     print(p)
     grDevices::dev.off()
@@ -535,7 +548,7 @@ SplitDotPlot2 <- function(seurat_object,
 #' Fast dot plot with regex gene selection and k-group gene clustering
 #'
 #' Like [SplitDotPlot2()] but accepts genes via a character vector **or** a
-#' regex pattern, and can slice the gene dendrogram into `k_genes` labelled
+#' regex pattern, and can slice the gene dendrogram into `k_genes` labeled
 #' panels using `cutree()`.
 #'
 #' @param seurat_object A Seurat object.
@@ -559,9 +572,10 @@ SplitDotPlot2 <- function(seurat_object,
 #'
 #' @inheritParams SplitDotPlot
 #' @param file_name Character or \code{NULL}. Base name (no extension) for the
-#'   saved PDF. \code{NULL} (default) auto-deduces a name that always includes
-#'   \code{group.by} and adds the \code{pattern} when one is used, e.g.
-#'   \code{object_name_group.by_pattern_<pattern>_FastDotPlot}.
+#'   saved PDF. \code{NULL} (default) auto-generates a name that includes the
+#'   gene pattern (when used) followed by \code{group.by} and \code{split.by},
+#'   e.g. \code{<pattern>_<group.by>_<split.by>_FastDotPlot}, so different
+#'   groupings and splits never overwrite each other.
 #' @return A ggplot2 object (invisibly when saved to disk).
 #' @export
 FastDotPlot <- function(seurat_object,
@@ -747,7 +761,9 @@ FastDotPlot <- function(seurat_object,
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     fpath <- .dotplot_path(output_dir, seurat_object, file_name,
                            auto_base = auto_base,
-                           suffix    = "FastDotPlot")
+                           suffix    = "FastDotPlot",
+                           group.by  = group.by,
+                           split.by  = split.by)
     grDevices::pdf(fpath, width = sug_w, height = sug_h)
     print(p)
     grDevices::dev.off()
@@ -1109,7 +1125,9 @@ FastDotPlot2 <- function(seurat_object,
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     fpath <- .dotplot_path(output_dir, seurat_object, file_name,
                            auto_base = auto_base,
-                           suffix    = "FastDotPlot2")
+                           suffix    = "FastDotPlot2",
+                           group.by  = group.by,
+                           split.by  = split.by)
     grDevices::pdf(fpath, width = sug_w, height = sug_h)
     print(combined_plot)
     grDevices::dev.off()

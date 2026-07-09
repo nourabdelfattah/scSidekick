@@ -225,7 +225,7 @@ PrepObject <- function(
     stop("Variable(s) not found in seurat_object@meta.data:\n  ",
          paste(bad_vars, collapse = ", "))
 
-  # ── 1. Initialise nk_settings if absent ────────────────────────────────────
+  # ── 1. Initialize nk_settings if absent ────────────────────────────────────
   if (is.null(seurat_object@misc$nk_settings))
     seurat_object@misc$nk_settings <- list(colors = list(), levels = list())
   if (is.null(seurat_object@misc$nk_settings$colors))
