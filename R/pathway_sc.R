@@ -102,14 +102,26 @@
     deg_top_n            = 20,
     gene_set_library     = NULL,
     gene_set_subcategory = NULL,
+    pathway_sets         = NULL,
     search_terms         = NULL,
     species              = "Homo sapiens"
 ) {
 
   # ── Mode 1: direct named list ───────────────────────────────────────────────
+  # search_terms filters the custom names too when supplied (matches RunGSEA /
+  # RunGSEA_pseudobulk's own behavior for this same case - it must not be
+  # silently bypassed just because gene_sets was supplied manually).
   if (!is.null(gene_sets)) {
     if (!is.list(gene_sets) || is.null(names(gene_sets)))
       stop("`gene_sets` must be a *named* list of character vectors.")
+    if (!is.null(search_terms)) {
+      keep <- .apply_search_terms(names(gene_sets), search_terms)
+      gene_sets <- gene_sets[keep]
+      message("  search_terms matched ", sum(keep), " of ", length(keep),
+              " custom gene set(s).")
+      if (sum(keep) == 0)
+        stop("No custom gene sets matched: ", .format_search_terms(search_terms))
+    }
     return(list(gene_sets = gene_sets, feature_cats = NULL))
   }
 
@@ -170,23 +182,40 @@
   }
 
   # ── Mode 3 / 4: MSigDB via msigdbr ─────────────────────────────────────────
-  if (!is.null(gene_set_library) || !is.null(search_terms)) {
+  if (!is.null(pathway_sets) || !is.null(gene_set_library) || !is.null(search_terms)) {
     if (!requireNamespace("msigdbr", quietly = TRUE))
       stop("Package 'msigdbr' is required for MSigDB gene sets.\n",
            "Install with: BiocManager::install('msigdbr')")
 
-    message("  Fetching gene sets from MSigDB",
-            if (!is.null(gene_set_library))
-              paste0(" (", gene_set_library,
-                     if (!is.null(gene_set_subcategory))
-                       paste0("/", gene_set_subcategory) else "",
-                     ")") else " (all collections)",
-            "...")
-    m_df <- .msigdbr_get(
-      species     = species,
-      category    = gene_set_library,
-      subcategory = gene_set_subcategory
-    )
+    if (!is.null(pathway_sets)) {
+      # Multi-collection mode (matches RunGSEA's pathway_sets): fetch every
+      # named collection and combine them into one pool of gene sets, since
+      # RunSCssGSEA scores everything into a single heatmap/boxplot set
+      # regardless of source collection (unlike RunGSEA, which keeps one
+      # heatmap per database).
+      message("  Fetching gene sets from MSigDB (", length(pathway_sets),
+              " collection(s): ", paste(names(pathway_sets), collapse = ", "),
+              ")...")
+      m_df <- do.call(rbind, lapply(names(pathway_sets), function(nm) {
+        ps <- pathway_sets[[nm]]
+        .msigdbr_get(species = species, category = ps$category,
+                     subcategory = ps$subcategory)
+      }))
+      m_df <- m_df[!duplicated(m_df[c("gs_name", "gene_symbol")]), ]
+    } else {
+      message("  Fetching gene sets from MSigDB",
+              if (!is.null(gene_set_library))
+                paste0(" (", gene_set_library,
+                       if (!is.null(gene_set_subcategory))
+                         paste0("/", gene_set_subcategory) else "",
+                       ")") else " (all collections)",
+              "...")
+      m_df <- .msigdbr_get(
+        species     = species,
+        category    = gene_set_library,
+        subcategory = gene_set_subcategory
+      )
+    }
 
     if (!is.null(search_terms)) {
       logic_str <- .format_search_terms(search_terms)
@@ -721,7 +750,9 @@
 #'   cell barcodes when `subset_by = NULL`.
 #'
 #' @param gene_sets Named list of gene vectors (Mode 1). `NULL` if using another
-#'   mode.
+#'   mode. When `search_terms` is also supplied, it filters these custom names
+#'   too (matching [RunGSEA()]/[RunGSEA_pseudobulk()] behavior) rather than
+#'   being silently ignored.
 #' @param deg_df Data frame of DEG results (Mode 2). `NULL` otherwise.
 #'   Compatible with standard outputs from [presto::wilcoxauc()], edgeR, or any
 #'   table with gene, group, and log-fold-change columns.
@@ -741,8 +772,9 @@
 #' @param deg_top_n Integer. Top N genes per group (by `deg_fc_column`) to include
 #'   in each gene set. Default `20`.
 #'
-#' @param gene_set_library Character or `NULL`. MSigDB collection code (Mode 3
-#'   or 4). Common options:
+#' @param gene_set_library Character or `NULL`. MSigDB collection code for a
+#'   *single* collection (Mode 3 or 4). Ignored when `pathway_sets` is
+#'   supplied. Common options:
 #'   \itemize{
 #'     \item `"H"` - Hallmark (50 coherent biological processes)
 #'     \item `"C2"` - Curated: canonical pathways (combine with
@@ -754,9 +786,20 @@
 #'     \item `"C7"` - Immunologic signatures (IMMUNESIGDB)
 #'     \item `"C8"` - Cell-type signatures
 #'   }
-#'   `NULL` fetches all collections (slow; use with `search_terms`).
-#' @param gene_set_subcategory Character or `NULL`. MSigDB sub-collection code.
+#'   `NULL` (and `pathway_sets` also `NULL`) fetches all collections (slow;
+#'   use with `search_terms`).
+#' @param gene_set_subcategory Character or `NULL`. MSigDB sub-collection code,
+#'   paired with `gene_set_library`. Ignored when `pathway_sets` is supplied.
 #'   Default `NULL` (entire collection).
+#' @param pathway_sets Named list or `NULL`. Test **multiple** MSigDB
+#'   collections at once - the same argument and format [RunGSEA()] and
+#'   [RunGSEA_pseudobulk()] use, e.g.
+#'   \code{list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
+#'   subcategory = "CP:KEGG"))}. All listed collections are fetched and pooled
+#'   into a single set of gene sets (RunSCssGSEA always scores everything into
+#'   one heatmap/boxplot set, unlike RunGSEA's one-heatmap-per-database
+#'   output). When supplied, this takes priority over `gene_set_library` /
+#'   `gene_set_subcategory`. `NULL` (default) uses those two instead.
 #' @param search_terms Search filter applied to MSigDB gene-set names (case-
 #'   insensitive, regex). Accepts two forms:
 #'
@@ -782,6 +825,10 @@
 #'   package's ssGSEA algorithm; `"ucell"` uses the UCell package's rank-based
 #'   U statistic, which is faster and memory-efficient for large datasets but
 #'   does not produce normalized enrichment scores.
+#' @param assay Character. Seurat assay to pull normalized (`"data"` layer)
+#'   expression from. Default `"RNA"`. BPCells/sketch-aware: pass `"sketch"`
+#'   to score a Seurat v5 sketch-subsampled assay for large datasets instead
+#'   of the full `"RNA"` assay.
 #' @param downsample Integer or `NULL`. Maximum cells per `group.by` identity
 #'   to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} - downsampling to
 #'   500-2000 cells per group dramatically reduces runtime with minimal loss of
@@ -812,12 +859,23 @@
 #'   Override when your display grouping (`group.by`) differs from your
 #'   statistical grouping (e.g. display by fine cell type, test by broad
 #'   disease category).
-#' @param p_cutoff Numeric. BH-adjusted p-value threshold for selecting
-#'   pathways to display in the heatmap. Default `0.05`.
+#' @param p_cutoff Numeric. Significance threshold for selecting pathways to
+#'   display in the heatmap - compared against BH-adjusted or raw p-value
+#'   depending on `use.padj`. Default `0.05`.
+#' @param use.padj Logical. When `TRUE` (default), `p_cutoff` is compared
+#'   against the BH-adjusted p-value (`p_adj`). Set to `FALSE` to use the raw
+#'   p-value instead -- useful when many pathways make BH correction too
+#'   aggressive and real signals drop out. Affects pathway selection for the
+#'   heatmap and the significance wording in legend text.
 #' @param show_only_significant Logical. If `TRUE`, heatmap shows only
-#'   pathways with `p_adj < p_cutoff`. Falls back to top 30 by statistic if no
-#'   pathways pass the threshold. If `FALSE`, all pathways are shown. Default
-#'   `TRUE`.
+#'   pathways passing `p_cutoff` (see `use.padj`). Falls back to top 30 by
+#'   statistic if no pathways pass the threshold. If `FALSE`, all pathways are
+#'   shown. Ignored when `pathways` is supplied. Default `TRUE`.
+#' @param pathways Character vector or `NULL`. Force these specific pathway
+#'   names into the heatmap/boxplots regardless of significance, bypassing the
+#'   `p_cutoff` filter entirely (e.g. a pathway of interest that didn't clear
+#'   the threshold). Names not found among the tested gene sets are dropped
+#'   with a warning. Default `NULL` (use the significance-based selection).
 #' @param group_colors Named character vector of colors for `group.by` levels.
 #'   `NULL` (default) auto-generates colors from the Nour palette.
 #' @param split_colors Named character vector of colors for `split.by` levels.
@@ -849,9 +907,11 @@
 #' @param add_boxplots Logical. If `TRUE` (default), generate per-pathway
 #'   boxplot pages showing per-cell score distributions across `group.by`
 #'   groups (and split by `split.by` if set).
-#' @param add_pvalues Logical. If `TRUE` (default), add BH-adjusted p-value
-#'   brackets to boxplots using `ggpubr::stat_compare_means()`. Requires
-#'   `add_boxplots = TRUE`.
+#' @param add_pvalues Logical. If `TRUE` (default), add pairwise t-test
+#'   p-value brackets to boxplots using `ggpubr::stat_compare_means()`.
+#'   These are raw (unadjusted) p-values for each displayed pair - not
+#'   BH-corrected, and unrelated to the `use.padj`/`p_cutoff` pathway-selection
+#'   threshold above. Requires `add_boxplots = TRUE`.
 #'
 #' @param add_to_object Logical. If `FALSE` (default), returns the enrichment
 #'   scores data frame invisibly and does not modify the Seurat object (scores
@@ -911,11 +971,13 @@ RunSCssGSEA <- function(
 
     gene_set_library       = NULL,
     gene_set_subcategory   = NULL,
+    pathway_sets           = NULL,
     search_terms           = NULL,
     species                = "Homo sapiens",
 
     # Scoring parameters
     method                 = "gsva",  # "gsva" (ssGSEA, default) or "ucell" (U statistic, faster)
+    assay                  = "RNA",   # e.g. "sketch" for a Seurat v5 sketch-subsampled assay
     downsample             = NULL,
     min.size               = 5,
     ssgsea.norm            = TRUE,    # GSVA only: normalize scores to [0,1]
@@ -928,7 +990,9 @@ RunSCssGSEA <- function(
     fit                    = "ANOVA",
     sig_group_by           = NULL,
     p_cutoff               = 0.05,
+    use.padj               = TRUE,
     show_only_significant  = TRUE,
+    pathways               = NULL,
 
     # Colors (NULL = auto-generated from Nour palette)
     group_colors           = NULL,
@@ -947,12 +1011,49 @@ RunSCssGSEA <- function(
     # Output
     add_to_object             = FALSE,
     output_dir,
+    resume_folder             = NULL,
+    timestamp                 = TRUE,
     object_name               = "Analysis",
     subset_name               = "",
     caffeinate                = FALSE
 ) {
 
+  # Captured first, exactly as the user typed it (unevaluated) - see
+  # .nk_call_text() - so the methods JSON can record the literal call.
+  call_text <- .nk_call_text(match.call(), "RunSCssGSEA")
+
+  resume_not_set <- missing(resume)   # captured before any reassignment below
   if (caffeinate) { .caff <- .nk_caffeinate(); on.exit(.nk_decaffeinate(.caff), add = TRUE) }
+
+  # ── Resolve the run directory (default: one timestamped subfolder per call,
+  # so re-running with different settings into the same output_dir never
+  # overwrites a previous run's files/methods JSON). See .nk_resolve_run_dir().
+  if (isTRUE(timestamp) || !is.null(resume_folder) || !identical(resume, FALSE)) {
+    fp <- list(
+      group.by = group.by, split.by = split.by, species = species,
+      method = method, assay = assay, min.size = min.size,
+      subset_cells = subset_cells, subset_by = subset_by,
+      subset_values = if (isTRUE(subset_cells)) subset_values else NULL,
+      gene_sets_names = if (!is.null(gene_sets)) sort(names(gene_sets)) else NULL,
+      deg_df_dim  = if (!is.null(deg_df)) dim(deg_df) else NULL,
+      deg_df_cols = if (!is.null(deg_df)) sort(colnames(deg_df)) else NULL,
+      gene_set_library = gene_set_library, gene_set_subcategory = gene_set_subcategory,
+      pathway_sets = pathway_sets,
+      search_terms = search_terms
+    )
+    resolved   <- .nk_resolve_run_dir(output_dir, "RunSCssGSEA", timestamp = timestamp,
+                                      resume = resume, resume_folder = resume_folder,
+                                      current_params = fp)
+    output_dir <- resolved$dir
+    # Normalize resume to a clean TRUE/FALSE for the rest of the function (it
+    # may currently be "last"). Respect an explicit resume = FALSE from the
+    # caller; otherwise TRUE if the resolver matched a previous run OR the
+    # caller asked for TRUE/"last" (harmless no-op checks against a brand-new,
+    # empty folder when no previous run matched).
+    user_forced_no_resume <- !resume_not_set && identical(resume, FALSE)
+    resume <- !user_forced_no_resume &&
+      (resolved$resumed || isTRUE(resume) || identical(resume, "last"))
+  }
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
   file_prefix <- trimws(paste(object_name, subset_name))
@@ -1011,6 +1112,7 @@ RunSCssGSEA <- function(
     deg_top_n            = deg_top_n,
     gene_set_library     = gene_set_library,
     gene_set_subcategory = gene_set_subcategory,
+    pathway_sets         = pathway_sets,
     search_terms         = search_terms,
     species              = species
   )
@@ -1116,8 +1218,8 @@ RunSCssGSEA <- function(
   # ── 4. Extract normalized expression ────────────────────────────────────────
   # .get_layer_data() handles Seurat v3 (slot=) / v5 (layer=) / BPCells lazy
   # matrices (subsets rows first, then materialises to dgCMatrix).
-  message("Extracting RNA normalized counts (data layer)...")
-  expr_mat <- .get_layer_data(obj_use, assay = "RNA", layer = "data")
+  message("Extracting normalized counts from assay '", assay, "' (data layer)...")
+  expr_mat <- .get_layer_data(obj_use, assay = assay, layer = "data")
 
   # ── 5. Score cells ────────────────────────────────────────────────────────────
   #
@@ -1267,22 +1369,46 @@ RunSCssGSEA <- function(
   }
 
   # ── 8. Select pathways for display ──────────────────────────────────────────
-  if (show_only_significant && !all(is.na(sig_df$p_adj))) {
-    show_pws <- sig_df$pathway[!is.na(sig_df$p_adj) &
-                                  sig_df$p_adj < p_cutoff]
+  # `pathways` lets the user force specific pathways into the heatmap/boxplots
+  # regardless of significance, bypassing the p_cutoff filter entirely - useful
+  # for a hypothesis-driven look at a pathway that didn't clear the threshold.
+  # Matching tolerates method-specific suffixes UCell appends to every gene set
+  # name (e.g. "SetB" -> "SetB_UCell"), so the user can type either the
+  # original gene-set name or the exact scored name.
+  sig_col_for_cutoff <- if (isTRUE(use.padj)) "p_adj" else "p_value"
+  if (!is.null(pathways)) {
+    base_names <- sub("_UCell$", "", sig_df$pathway)
+    match_idx  <- match(pathways, sig_df$pathway)
+    unmatched  <- is.na(match_idx)
+    match_idx[unmatched] <- match(pathways[unmatched], base_names)
+    show_pws    <- sig_df$pathway[stats::na.omit(match_idx)]
+    missing_pws <- pathways[is.na(match_idx)]
+    if (length(missing_pws) > 0)
+      warning("scSidekick: pathway(s) not found in the tested gene sets, ",
+              "skipped: ", paste(missing_pws, collapse = ", "), call. = FALSE)
+    if (length(show_pws) == 0)
+      stop("None of the requested 'pathways' were found among the tested ",
+           "gene sets. Check spelling, or inspect the gene set names used.")
+    message("  Showing ", length(show_pws), " user-requested pathway(s) ",
+            "(bypassing the significance filter).")
+  } else if (show_only_significant && !all(is.na(sig_df[[sig_col_for_cutoff]]))) {
+    show_pws <- sig_df$pathway[!is.na(sig_df[[sig_col_for_cutoff]]) &
+                                  sig_df[[sig_col_for_cutoff]] < p_cutoff]
     if (length(show_pws) == 0) {
       n_fb <- min(30L, nrow(sig_df))
-      message("  No pathways significant at p_adj < ", p_cutoff,
+      message("  No pathways significant at ", sig_col_for_cutoff, " < ", p_cutoff,
               "; falling back to top ", n_fb, " by test statistic.")
       show_pws <- utils::head(
-        sig_df$pathway[order(sig_df$p_adj, na.last = TRUE)], n_fb)
+        sig_df$pathway[order(sig_df[[sig_col_for_cutoff]], na.last = TRUE)], n_fb)
     } else {
-      message("  ", length(show_pws), " significant pathway(s) at p_adj < ",
-              p_cutoff, ".")
+      message("  ", length(show_pws), " significant pathway(s) at ",
+              sig_col_for_cutoff, " < ", p_cutoff, ".")
     }
   } else {
     show_pws <- rownames(scores)
   }
+  # Shared label for legend text below, reflecting the actual basis used.
+  sig_basis_lbl <- if (isTRUE(use.padj)) "BH-adjusted p" else "raw p"
 
   # ── 9. Resolve group / split colors ────────────────────────────────────────
   # Factor levels preserved; user-supplied colors take priority - only
@@ -1343,7 +1469,7 @@ RunSCssGSEA <- function(
       paste0("GSVA ssGSEA", if (ssgsea.norm) " (normalized)" else ""),
     ". ", length(show_pws), " pathway(s) shown",
     if (show_only_significant)
-      paste0(" (BH-adjusted p < ", p_cutoff, " by one-way ", fit, ")")
+      paste0(" (", sig_basis_lbl, " < ", p_cutoff, " by one-way ", fit, ")")
     else "",
     ". Rows: gene sets; columns: group means. ",
     "Color scale: row z-score, symmetric around 0 (blue = low, red = high)."
@@ -1376,7 +1502,7 @@ RunSCssGSEA <- function(
       if (nchar(sc_ctx$obj_name) > 0) paste0(" [", sc_ctx$obj_name, "]") else "",
       ", ", length(show_pws), " pathway(s)",
       if (show_only_significant)
-        paste0(" (BH-adjusted p < ", p_cutoff, " by one-way ", fit, ")")
+        paste0(" (", sig_basis_lbl, " < ", p_cutoff, " by one-way ", fit, ")")
       else "",
       ". Each page = one pathway. x-axis: ",
       if (!is.null(split.by))
@@ -1385,7 +1511,7 @@ RunSCssGSEA <- function(
         group.by,
       "; y-axis: ",
       if (method == "ucell") "UCell score." else "ssGSEA enrichment score.",
-      if (add_pvalues) " BH-adjusted p-value brackets shown (ggpubr)." else ""
+      if (add_pvalues) " Raw (unadjusted) pairwise t-test p-value brackets shown (ggpubr); not BH-corrected." else ""
     ))
   }
 
@@ -1436,7 +1562,7 @@ RunSCssGSEA <- function(
       " with Benjamini-Hochberg correction. ",
       length(show_pws),
       if (show_only_significant)
-        paste0(" pathway(s) with adjusted p < ", p_cutoff, " are highlighted.")
+        paste0(" pathway(s) with ", sig_basis_lbl, " < ", p_cutoff, " are highlighted.")
       else
         " pathway(s) shown (all)."
     )
@@ -1446,10 +1572,11 @@ RunSCssGSEA <- function(
         output_dir   = sc_ssgsea_dir,
         extra_params = list(
           date                  = format(Sys.Date()),
+          function_call         = call_text,
           sc_ssgsea_group_by    = group.by,
           sc_ssgsea_split_by    = if (is.null(split.by)) "none" else split.by,
           sc_ssgsea_method      = method,
-          sc_ssgsea_assay       = "RNA",
+          sc_ssgsea_assay       = assay,
           sc_ssgsea_gene_sets   = gs_label,
           sc_ssgsea_n_gene_sets = length(gene_sets_use),
           sc_ssgsea_min_size    = min.size,

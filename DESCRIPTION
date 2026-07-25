@@ -1,6 +1,6 @@
 Package: scSidekick
 Title: A Single-Cell and Spatial Transcriptomics Toolkit
-Version: 1.0.0
+Version: 1.1.0
 Authors@R:
     person(given = "Nourhan",
            family = "Abdelfattah",

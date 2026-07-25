@@ -19,7 +19,7 @@ every other feature-plotting function in the package uses): genes are
 pulled via the v5/BPCells/sketch-safe .get_layer_data(), and numeric
 meta.data columns (module scores, cNMF usages, QC metrics, other
 pseudotime columns, ...) are used directly - both are accepted
-interchangeably in features.'><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+interchangeably in features.'><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -27,7 +27,7 @@ interchangeably in features.'><meta property="og:image" content="https://nourabd
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -107,11 +107,17 @@ interchangeably in <code>features</code>.</p>
 <span>  assay <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  layer <span class="op">=</span> <span class="st">"data"</span>,</span>
 <span>  min_expr <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  donor.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  color.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"loess"</span>,</span>
 <span>  se <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  add_cor <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cor_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"spearman"</span>, <span class="st">"pearson"</span><span class="op">)</span>,</span>
+<span>  show_points <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  point_size <span class="op">=</span> <span class="fl">0.4</span>,</span>
+<span>  point_alpha <span class="op">=</span> <span class="fl">0.25</span>,</span>
 <span>  scales <span class="op">=</span> <span class="st">"free_y"</span>,</span>
 <span>  ncol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -161,6 +167,16 @@ pulled toward zero by dropout. <code>min_expr = 0</code> removes exact zeros.
 <code>NULL</code> (default) keeps all cells.</p></dd>
 
 
+<dt id="arg-donor-by">donor.by<a class="anchor" aria-label="anchor" href="#arg-donor-by"></a></dt>
+<dd><p>Character or <code>NULL</code>. When a donor/patient column is
+given, cells are collapsed to <strong>one point per donor</strong> (mean x and
+mean y) before fitting, so both the trend and points reflect independent
+patients rather than cells. This is the honest way to relate a donor-level
+variable (e.g. age, a clinical score) to a per-cell value, and avoids
+drawing thousands of overlapping cell points. <code>show_points</code> defaults
+to <code>TRUE</code> when this is set. <code>NULL</code> (default) keeps cell-level.</p></dd>
+
+
 <dt id="arg-color-by">color.by<a class="anchor" aria-label="anchor" href="#arg-color-by"></a></dt>
 <dd><p>Character or <code>NULL</code>. Metadata column to color the
 smoothed trend lines by (e.g. <code>"Sample"</code>, to see whether replicates
@@ -180,12 +196,48 @@ set) keeps all levels.</p></dd>
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Character. Smoothing method passed to
-<code><a href="https://ggplot2.tidyverse.org/reference/geom_smooth.html" class="external-link">ggplot2::geom_smooth()</a></code>. Default <code>"loess"</code>.</p></dd>
+<code><a href="https://ggplot2.tidyverse.org/reference/geom_smooth.html" class="external-link">ggplot2::geom_smooth()</a></code>. <code>"loess"</code> (default) fits a flexible,
+non-parametric curve - appropriate when the relationship's shape is
+unknown or non-monotonic. Use <code>"lm"</code> for a straight-line (linear)
+fit when the relationship looks linear/monotonic (e.g. after inspecting
+it with <code>add_cor = TRUE</code>, or from prior knowledge of the variables);
+<code>"glm"</code> is also accepted for a generalized linear fit.</p></dd>
 
 
 <dt id="arg-se">se<a class="anchor" aria-label="anchor" href="#arg-se"></a></dt>
 <dd><p>Logical. Show the smoother's standard-error ribbon. Default
 <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-add-cor">add_cor<a class="anchor" aria-label="anchor" href="#arg-add-cor"></a></dt>
+<dd><p>Logical. Annotate each facet with a correlation coefficient
+and p-value (via <code><a href="https://rpkgs.datanovia.com/ggpubr/reference/stat_cor.html" class="external-link">ggpubr::stat_cor()</a></code>), computed directly from the
+plotted x/y (donor-level when <code>donor.by</code> is set) - this is the
+direct way to test the relationship shown by the trend line without
+routing through <code><a href="CorrelateGene.html">CorrelateGene</a>()</code>/<code><a href="PlotCorrelation.html">PlotCorrelation</a>()</code>,
+which are built around a gene-vs-many-genes screen keyed on a Seurat
+object rather than an arbitrary x/y pair. When <code>color.by</code> is set,
+one annotation is shown per color group. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-cor-method">cor_method<a class="anchor" aria-label="anchor" href="#arg-cor-method"></a></dt>
+<dd><p>Character. <code>"spearman"</code> (default; rank-based,
+appropriate for monotonic but not necessarily linear relationships) or
+<code>"pearson"</code> (linear correlation). Only used when <code>add_cor =
+  TRUE</code>.</p></dd>
+
+
+<dt id="arg-show-points">show_points<a class="anchor" aria-label="anchor" href="#arg-show-points"></a></dt>
+<dd><p>Logical. Overlay the raw observations under the trend.
+Besides showing individual points, this trains the y-axis on the full data
+range - <code>geom_smooth()</code> alone auto-scales the axis to the fitted line,
+which can look "clipped" relative to the spread of the data. Default
+<code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-point-size-point-alpha">point_size, point_alpha<a class="anchor" aria-label="anchor" href="#arg-point-size-point-alpha"></a></dt>
+<dd><p>Size and transparency of the overlaid points
+when <code>show_points = TRUE</code>. Defaults <code>0.4</code> and <code>0.25</code>.</p></dd>
 
 
 <dt id="arg-scales">scales<a class="anchor" aria-label="anchor" href="#arg-scales"></a></dt>

@@ -5,6 +5,9 @@ template:
   bslib:
     primary: '#2f4b7c'
     link-color: '#227ed4'
+  includes:
+    in_header: |
+      <meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw" />
 home:
   title: scSidekick - Single-Cell & Spatial Transcriptomics Toolkit
   description: |

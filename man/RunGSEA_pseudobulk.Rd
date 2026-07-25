@@ -38,6 +38,7 @@ RunGSEA_pseudobulk(
   min.samples.per.group = 3L,
   run.ssgsea = TRUE,
   ssgsea.use.padj = TRUE,
+  gsea.use.padj = TRUE,
   top_n_heatmap = 30L,
   top_n_ssgsea = 30L,
   nes.cutoff = 1,
@@ -46,6 +47,8 @@ RunGSEA_pseudobulk(
     row_names_max_width = grid::unit(15, "cm")),
   heatmap_colors = NULL,
   resume = FALSE,
+  resume_folder = NULL,
+  timestamp = TRUE,
   save.rds = TRUE,
   redo_plots = FALSE,
   caffeinate = FALSE
@@ -84,9 +87,11 @@ per broad cell class, brain region, or any other grouping variable without
 calling the function multiple times. Default \code{NULL}.}
 
 \item{run_label}{Character or \code{NULL}. Short label appended to output
-filenames and plot titles to distinguish this run from others saved to the
-same \code{output_dir}. Set automatically when \code{subset.by} is used; otherwise
-leave \code{NULL} unless you need a custom tag.}
+filenames, plot titles, AND (when \code{timestamp = TRUE}) the run's
+subfolder name, to distinguish this run from others saved to the same
+\code{output_dir} (e.g. \code{run_label = "with_age_covariate"}). Set automatically
+when \code{subset.by} is used; otherwise leave \code{NULL} unless you need a custom
+tag.}
 
 \item{pseudobulk}{Optional precomputed pseudobulk. A named list with
 elements \verb{$counts} (genes x samples matrix) and \verb{$samples} (sample-level
@@ -195,6 +200,11 @@ BH correction too aggressive and real signals drop out. Affects pathway
 selection for heatmaps, boxplot panel selection, and significance bracket
 thresholds. Default \code{TRUE}.}
 
+\item{gsea.use.padj}{Logical. Same choice as \code{ssgsea.use.padj}, but for the
+main fgsea NES heatmaps: which column (\code{padj} vs. raw \code{pval}) drives the
+significance stars (\code{*} / \verb{**} / \verb{***}) drawn in each pathway x cell-type
+(or pathway x contrast, for the summary heatmap) cell. Default \code{TRUE}.}
+
 \item{top_n_heatmap}{Integer. Number of pathways shown in the NES heatmap
 per contrast/database combination, selected by maximum |NES| across cell
 types. Default \code{30}.}
@@ -234,10 +244,38 @@ Examples:
 \code{circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
 }}
 
-\item{resume}{Logical. Skip cell types whose GSEA CSV files already exist in
-\code{output_dir} (from a previous partial run). Useful when a long run crashed
-mid-way. Cell types with any missing output are rerun; already-complete
-ones are skipped with a message. Default \code{FALSE}.}
+\item{resume}{Logical or \code{"last"}. Controls both WHICH subfolder this call
+uses and whether cached computation is reused:
+\describe{
+\item{\code{FALSE} (default)}{Always start a fresh, new timestamped
+subfolder (see \code{timestamp}).}
+\item{\code{TRUE}}{Scan \code{output_dir} for previous
+\verb{RunGSEA_pseudobulk_*} subfolders whose call-time parameters
+(\code{group.by}, \code{sample.by}, \code{contrast.by}, \code{covariates}, gene sets,
+etc. - NOT purely cosmetic ones like \code{heatmap_colors}) match this
+call exactly. Zero matches falls back to a fresh subfolder; one match
+resumes it (skipping recomputation the same way \code{pseudobulk} reuse
+already does); several matches prompt interactively
+(\code{utils::menu()}) when the session is interactive, or \code{stop()} with
+instructions otherwise.}
+\item{\code{"last"}}{Same scan, but silently resumes the most recent match
+instead of asking.}
+}
+Within a resumed subfolder, cell types whose GSEA CSV files already exist
+are additionally skipped (as before) so a crashed run can continue.}
+
+\item{resume_folder}{Character or \code{NULL}. Explicitly resume this exact
+subfolder (a bare folder name under \code{output_dir}, or a full path),
+skipping the scan/match described under \code{resume}. Useful in scripts where
+you already know which previous run to continue.}
+
+\item{timestamp}{Logical. When \code{TRUE} (default), every fresh call gets its
+own subfolder named \verb{RunGSEA_pseudobulk[_run_label]_<YYYYMMDD-HHMMSS>}
+under \code{output_dir}, so re-running with different settings (e.g. with vs.
+without \code{covariates}) into the same \code{output_dir} never overwrites a
+previous run's files or methods JSON. Set \code{FALSE} to use \code{output_dir}
+directly (legacy behavior) - in that mode you are responsible for giving
+different configurations different \code{output_dir} values yourself.}
 
 \item{save.rds}{Logical. Save the pseudobulk counts, sample metadata, GSEA
 results, and ssGSEA results as \code{RunGSEA_pseudobulk_results.rds} in

@@ -73,9 +73,11 @@
 #'   per broad cell class, brain region, or any other grouping variable without
 #'   calling the function multiple times. Default `NULL`.
 #' @param run_label Character or `NULL`. Short label appended to output
-#'   filenames and plot titles to distinguish this run from others saved to the
-#'   same `output_dir`. Set automatically when `subset.by` is used; otherwise
-#'   leave `NULL` unless you need a custom tag.
+#'   filenames, plot titles, AND (when `timestamp = TRUE`) the run's
+#'   subfolder name, to distinguish this run from others saved to the same
+#'   `output_dir` (e.g. `run_label = "with_age_covariate"`). Set automatically
+#'   when `subset.by` is used; otherwise leave `NULL` unless you need a custom
+#'   tag.
 #' @param pseudobulk Optional precomputed pseudobulk. A named list with
 #'   elements `$counts` (genes x samples matrix) and `$samples` (sample-level
 #'   metadata data frame). Supply the value returned by a previous
@@ -165,6 +167,10 @@
 #'   BH correction too aggressive and real signals drop out. Affects pathway
 #'   selection for heatmaps, boxplot panel selection, and significance bracket
 #'   thresholds. Default `TRUE`.
+#' @param gsea.use.padj Logical. Same choice as `ssgsea.use.padj`, but for the
+#'   main fgsea NES heatmaps: which column (`padj` vs. raw `pval`) drives the
+#'   significance stars (`*` / `**` / `***`) drawn in each pathway x cell-type
+#'   (or pathway x contrast, for the summary heatmap) cell. Default `TRUE`.
 #' @param top_n_heatmap Integer. Number of pathways shown in the NES heatmap
 #'   per contrast/database combination, selected by maximum |NES| across cell
 #'   types. Default `30`.
@@ -198,10 +204,36 @@
 #'     \item \strong{Tighter scale for subtle signals:}
 #'       `circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))`
 #'   }
-#' @param resume Logical. Skip cell types whose GSEA CSV files already exist in
-#'   `output_dir` (from a previous partial run). Useful when a long run crashed
-#'   mid-way. Cell types with any missing output are rerun; already-complete
-#'   ones are skipped with a message. Default `FALSE`.
+#' @param resume Logical or `"last"`. Controls both WHICH subfolder this call
+#'   uses and whether cached computation is reused:
+#'   \describe{
+#'     \item{`FALSE` (default)}{Always start a fresh, new timestamped
+#'       subfolder (see `timestamp`).}
+#'     \item{`TRUE`}{Scan `output_dir` for previous
+#'       `RunGSEA_pseudobulk_*` subfolders whose call-time parameters
+#'       (`group.by`, `sample.by`, `contrast.by`, `covariates`, gene sets,
+#'       etc. - NOT purely cosmetic ones like `heatmap_colors`) match this
+#'       call exactly. Zero matches falls back to a fresh subfolder; one match
+#'       resumes it (skipping recomputation the same way `pseudobulk` reuse
+#'       already does); several matches prompt interactively
+#'       (`utils::menu()`) when the session is interactive, or `stop()` with
+#'       instructions otherwise.}
+#'     \item{`"last"`}{Same scan, but silently resumes the most recent match
+#'       instead of asking.}
+#'   }
+#'   Within a resumed subfolder, cell types whose GSEA CSV files already exist
+#'   are additionally skipped (as before) so a crashed run can continue.
+#' @param resume_folder Character or `NULL`. Explicitly resume this exact
+#'   subfolder (a bare folder name under `output_dir`, or a full path),
+#'   skipping the scan/match described under `resume`. Useful in scripts where
+#'   you already know which previous run to continue.
+#' @param timestamp Logical. When `TRUE` (default), every fresh call gets its
+#'   own subfolder named `RunGSEA_pseudobulk[_run_label]_<YYYYMMDD-HHMMSS>`
+#'   under `output_dir`, so re-running with different settings (e.g. with vs.
+#'   without `covariates`) into the same `output_dir` never overwrites a
+#'   previous run's files or methods JSON. Set `FALSE` to use `output_dir`
+#'   directly (legacy behavior) - in that mode you are responsible for giving
+#'   different configurations different `output_dir` values yourself.
 #' @param save.rds Logical. Save the pseudobulk counts, sample metadata, GSEA
 #'   results, and ssGSEA results as `RunGSEA_pseudobulk_results.rds` in
 #'   `output_dir`. Required for `redo_plots = TRUE`. Default `TRUE`.
@@ -277,6 +309,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                min.samples.per.group = 3L,
                                run.ssgsea       = TRUE,
                                ssgsea.use.padj  = TRUE,
+                               gsea.use.padj    = TRUE,
                                top_n_heatmap    = 30L,
                                top_n_ssgsea     = 30L,
                                nes.cutoff       = 1.0,
@@ -286,16 +319,57 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                                        row_names_max_width = grid::unit(15, "cm")),
                                heatmap_colors   = NULL,
                                resume           = FALSE,
+                               resume_folder    = NULL,
+                               timestamp        = TRUE,
                                save.rds         = TRUE,
                                redo_plots       = FALSE,
                                caffeinate       = FALSE) {
 
+  # Captured first, exactly as the user typed it (unevaluated) - see
+  # .nk_call_text() - so the methods JSON can record the literal call.
+  call_text <- .nk_call_text(match.call(), "RunGSEA_pseudobulk")
+
+  resume_not_set <- missing(resume)   # captured before any reassignment below
   if (caffeinate) { .caff <- .nk_caffeinate(); on.exit(.nk_decaffeinate(.caff), add = TRUE) }
 
   # Backwards-compatibility aliases
   group.by    <- group.by    %||% identity_column
   sample.by   <- sample.by   %||% sample_column
   contrast.by <- contrast.by %||% group_column
+
+  # ── Resolve the run directory (default: one timestamped subfolder per call,
+  # so re-running with different settings - e.g. with/without covariates -
+  # into the same output_dir never overwrites a previous run). See
+  # .nk_resolve_run_dir() for the full resume/timestamp/resume_folder scheme.
+  # Skipped for subset.by's recursive calls: the parent call below passes
+  # timestamp = FALSE with an already-unique per-subset path.
+  if (isTRUE(timestamp) || !is.null(resume_folder) || !identical(resume, FALSE)) {
+    fp <- list(
+      group.by = group.by, sample.by = sample.by, contrast.by = contrast.by,
+      split.by = split.by, covariates = covariates, contrasts = contrasts,
+      assay = assay, min.cells = min.cells,
+      min.samples.per.group = min.samples.per.group, run.ssgsea = run.ssgsea,
+      species = species,
+      gene_sets_names = if (!is.null(gene_sets)) sort(names(gene_sets)) else NULL,
+      deg_df_dim  = if (!is.null(deg_df)) dim(deg_df) else NULL,
+      deg_df_cols = if (!is.null(deg_df)) sort(colnames(deg_df)) else NULL,
+      pathway_sets = if (is.null(gene_sets) && is.null(deg_df)) pathway_sets else NULL,
+      search_terms = search_terms
+    )
+    resolved   <- .nk_resolve_run_dir(output_dir, "RunGSEA_pseudobulk",
+                                      run_label = run_label, timestamp = timestamp,
+                                      resume = resume, resume_folder = resume_folder,
+                                      current_params = fp)
+    output_dir <- resolved$dir
+    # Normalize resume to a clean TRUE/FALSE for the rest of the function (it
+    # may currently be "last"). Respect an explicit resume = FALSE from the
+    # caller; otherwise TRUE if the resolver matched a previous run OR the
+    # caller asked for TRUE/"last" (harmless no-op checks against a brand-new,
+    # empty folder when no previous run matched).
+    user_forced_no_resume <- !resume_not_set && identical(resume, FALSE)
+    resume <- !user_forced_no_resume &&
+      (resolved$resumed || isTRUE(resume) || identical(resume, "last"))
+  }
 
   # Auto-detect precomputed pseudobulk from seurat_object@misc if not supplied.
   # Only the list($counts, $samples) format produced by RunGSEA_pseudobulk is
@@ -368,12 +442,18 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           deg_top_n             = deg_top_n,
           pathway_sets          = pathway_sets,
           species               = species,
+          # This path is already unique per subset level (nested under the
+          # PARENT call's already-resolved, timestamped output_dir) so the
+          # recursive call must not timestamp/resolve again.
           output_dir            = file.path(output_dir, make.names(sl), make.names(contrast.by)),
+          timestamp             = FALSE,
+          resume                = FALSE,
           assay                 = assay,
           min.cells             = min.cells,
           min.samples.per.group = min.samples.per.group,
           run.ssgsea            = run.ssgsea,
           ssgsea.use.padj       = ssgsea.use.padj,
+          gsea.use.padj         = gsea.use.padj,
           top_n_heatmap         = top_n_heatmap,
           top_n_ssgsea          = top_n_ssgsea,
           nes.cutoff            = nes.cutoff,
@@ -469,7 +549,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           message("  NES heatmap: ", cn, " / ", db)
           .pb_nes_heatmap(sub, cn, db, db_dir, top_n_heatmap, heatmap_params,
                           heatmap_colors = heatmap_colors, run_label = run_label,
-                          ctx_str = pb_ctx_str)
+                          ctx_str = pb_ctx_str, use.padj = gsea.use.padj)
 
           for (ct in unique(sub$cell_type)) {
             fg <- sub[sub$cell_type == ct, , drop = FALSE]
@@ -493,7 +573,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
               heatmap_params = heatmap_params,
               heatmap_colors = heatmap_colors,
               run_label      = run_label,
-              ctx_str        = pb_ctx_str)
+              ctx_str        = pb_ctx_str,
+              use.padj       = gsea.use.padj)
           }
         }
       }
@@ -600,6 +681,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 
     .write_subdir_params(output_dir, list(
       date                    = format(Sys.Date()),
+      function_call           = call_text,
       gsea_method             = "pseudobulk (limma-voom)",
       gsea_ident_col          = group.by,
       gsea_sample_col         = sample.by,
@@ -896,6 +978,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     y <- edgeR::calcNormFactors(y)
     form <- stats::as.formula(paste("~ 0 + group", if (length(covariates)) paste("+", paste(covariates, collapse = " + ")) else ""))
     design <- stats::model.matrix(form, data = s); colnames(design) <- make.names(colnames(design))
+    if (length(covariates)) .pb_check_design_rank(design, s, form, ct, covariates)
     v <- limma::voom(y, design)
     fit <- limma::lmFit(v, design)
     # only keep contrasts whose coefficients all exist for this cell type
@@ -954,7 +1037,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       if (!nrow(sub)) next
       .pb_nes_heatmap(sub, cn, db, file.path(output_dir, cn, db), top_n_heatmap, heatmap_params,
                       heatmap_colors = heatmap_colors, run_label = run_label,
-                      ctx_str = pb_ctx_str)
+                      ctx_str = pb_ctx_str, use.padj = gsea.use.padj)
     }
     ## ---- summary NES heatmap: pathways x contrasts, per cell type per db ----
     if (length(unique(gsea$contrast)) > 1L) {
@@ -970,7 +1053,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           heatmap_params = heatmap_params,
           heatmap_colors = heatmap_colors,
           run_label      = run_label,
-          ctx_str        = pb_ctx_str)
+          ctx_str        = pb_ctx_str,
+          use.padj       = gsea.use.padj)
       }
     }
   }
@@ -1072,6 +1156,54 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   all(toks %in% coefs)
 }
 
+# .pb_check_design_rank()
+# Diagnoses (without altering) a rank-deficient pseudobulk design matrix - the
+# classic "Coefficients not estimable" limma warning. This becomes much more
+# likely once samples are split by group.by (e.g. by cell type, or a variable
+# like Sex used AS group.by): a covariate that varies fine across the FULL
+# dataset can become constant or fully confounded with contrast.by once
+# restricted to just this one group.by level, even though the identical
+# covariate + contrast combination was fine when run as a single pooled
+# contrast. Prints a clear, per-cell-type explanation of exactly which
+# covariate/level is aliased with which contrast level, plus a small
+# cross-tab, instead of limma's generic message with no cell-type context.
+.pb_check_design_rank <- function(design, s, form, ct, covariates) {
+  rank_ok <- tryCatch(qr(design)$rank == ncol(design), error = function(e) TRUE)
+  if (rank_ok) return(invisible(NULL))
+
+  al <- tryCatch({
+    fit0 <- stats::lm(stats::update(form, stats::rnorm(nrow(s)) ~ .), data = s)
+    stats::alias(fit0)$Complete
+  }, error = function(e) NULL)
+
+  message("\n  *** scSidekick: rank-deficient design for cell type '", ct, "' ***")
+  message("  The design matrix has ", ncol(design), " columns but rank ",
+          tryCatch(qr(design)$rank, error = function(e) NA), " - at least one ",
+          "coefficient cannot be estimated for this cell type (limma will ",
+          "report it as NA).")
+  if (!is.null(al) && nrow(al) > 0) {
+    for (rn in rownames(al)) {
+      terms_involved <- colnames(al)[al[rn, ] != 0]
+      message("    '", rn, "' is fully determined by: ",
+              paste(terms_involved, collapse = ", "),
+              " - these are perfectly confounded for cell type '", ct, "'.")
+    }
+  }
+  for (cov in covariates) {
+    if (cov %in% colnames(s) && (is.factor(s[[cov]]) || is.character(s[[cov]]))) {
+      tab <- table(Group = s$group, Covariate = s[[cov]])
+      message("    Cross-tab of 'group' x '", cov, "' for cell type '", ct, "':")
+      message(paste(utils::capture.output(print(tab)), collapse = "\n"))
+    }
+  }
+  message("  This is a genuine data limitation for this cell type (the ",
+          "covariate has no independent variation left once split this way), ",
+          "not a bug - consider excluding this covariate for this cell type, ",
+          "combining cell types, or accepting that the confounded term cannot ",
+          "be adjusted for here.\n")
+  invisible(al)
+}
+
 #' @keywords internal
 .pb_lollipop <- function(fg, db, ct, cn, db_dir, n = 15, run_label = NULL, ctx_str = "") {
   fg <- fg[fg$padj < 0.25, , drop = FALSE]; if (!nrow(fg)) return(invisible())
@@ -1099,13 +1231,18 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 
 #' @keywords internal
 .pb_nes_heatmap <- function(sub, cn, db, db_dir, top_n, heatmap_params = list(),
-                            heatmap_colors = NULL, run_label = NULL, ctx_str = "") {
+                            heatmap_colors = NULL, run_label = NULL, ctx_str = "",
+                            use.padj = TRUE) {
   dir.create(db_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Build NES and padj matrices (pathways × cell types)
-  m  <- as.matrix(tapply(sub$NES,  list(sub$pathway, sub$cell_type),
+  # Build NES and significance matrices (pathways × cell types). use.padj
+  # picks which fgsea column drives the stars - both are always computed by
+  # fgsea, this only changes which one cell_fun compares against 0.05/0.01/0.001.
+  sig_col   <- if (isTRUE(use.padj)) "padj" else "pval"
+  sig_label <- if (isTRUE(use.padj)) "BH-adjusted p" else "raw p"
+  m  <- as.matrix(tapply(sub$NES,     list(sub$pathway, sub$cell_type),
                          function(x) x[1]))
-  pm <- as.matrix(tapply(sub$padj, list(sub$pathway, sub$cell_type),
+  pm <- as.matrix(tapply(sub[[sig_col]], list(sub$pathway, sub$cell_type),
                          function(x) x[1]))
   m[is.na(m)] <- 0
 
@@ -1171,7 +1308,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     ". Rows = top ", nrow(m), " gene sets by max |NES| across cell types (columns). ",
     "Method: edgeR TMM normalization, limma-voom moderated t-statistic pre-ranking, fgsea. ",
     "Positive NES = enriched in the first term of the contrast. ",
-    "Stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
+    "Stars: * ", sig_label, " < 0.05, ** < 0.01, *** < 0.001."))
 }
 
 # ---------------------------------------------------------------------------
@@ -1188,7 +1325,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                      heatmap_params = list(),
                                      heatmap_colors = NULL,
                                      run_label      = NULL,
-                                     ctx_str        = "") {
+                                     ctx_str        = "",
+                                     use.padj       = TRUE) {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) return(invisible())
 
   sub <- gsea_db[gsea_db$cell_type == ct, , drop = FALSE]
@@ -1197,9 +1335,12 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   contrasts_present <- unique(as.character(sub$contrast))
   if (length(contrasts_present) < 2L) return(invisible())
 
-  # Full pathway x contrast NES and padj matrices
-  m  <- as.matrix(tapply(sub$NES,  list(sub$pathway, sub$contrast), function(x) x[1]))
-  pm <- as.matrix(tapply(sub$padj, list(sub$pathway, sub$contrast), function(x) x[1]))
+  # Full pathway x contrast NES and significance matrices (use.padj picks
+  # which fgsea column drives the stars - see .pb_nes_heatmap()).
+  sig_col   <- if (isTRUE(use.padj)) "padj" else "pval"
+  sig_label <- if (isTRUE(use.padj)) "BH-adjusted p" else "raw p"
+  m  <- as.matrix(tapply(sub$NES,        list(sub$pathway, sub$contrast), function(x) x[1]))
+  pm <- as.matrix(tapply(sub[[sig_col]], list(sub$pathway, sub$contrast), function(x) x[1]))
   m[is.na(m)] <- 0
 
   # Step 1: union of top_n pathways from each contrast column (mirrors the
@@ -1281,7 +1422,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
     ". Rows = union of top ", top_n, " pathways per contrast",
     if (nes.cutoff > 0) paste0(", filtered to max |NES| >= ", nes.cutoff) else "",
     "; columns = all contrasts tested. ",
-    "Stars: * BH < 0.05, ** < 0.01, *** < 0.001."))
+    "Stars: * ", sig_label, " < 0.05, ** < 0.01, *** < 0.001."))
 
   invisible(m_sub)
 }
@@ -1368,6 +1509,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
               else ""))
       design <- stats::model.matrix(form, data = s)
       colnames(design) <- make.names(colnames(design))
+      if (length(covariates)) .pb_check_design_rank(design, s, form, ct, covariates)
       valid_mask <- vapply(contrasts, function(ex) .coef_in(ex, colnames(design)), logical(1))
       valid      <- contrasts[valid_mask]
       dropped    <- names(contrasts)[!valid_mask]

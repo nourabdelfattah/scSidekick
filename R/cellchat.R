@@ -455,14 +455,22 @@ RunCellChat <- function(seurat_object       = NULL,
       try(CellChat::netVisual_aggregate(cc, signaling = pw,
                                         layout = "chord",
                                         color.use = grp_cols), silent = TRUE)
-      # 5. Heatmap (ComplexHeatmap - print calls draw())
+      # 5. Gene-level (ligand-receptor) chord diagram (base/circos - draws
+      # directly, no print). Unlike the pathway-aggregate chord above, each
+      # sector here is one ligand/receptor gene split by sender/receiver cell
+      # type, so individual L-R gene pairs within the pathway are visible.
+      try(CellChat::netVisual_chord_gene(cc, signaling = pw,
+                                         color.use = grp_cols,
+                                         title.name = paste0(pw, " signaling network")),
+          silent = TRUE)
+      # 6. Heatmap (ComplexHeatmap - print calls draw())
       try(print(CellChat::netVisual_heatmap(cc, signaling = pw,
                                             color.heatmap = "Reds",
                                             color.use = grp_cols)), silent = TRUE)
-      # 6. L-R pair contribution (ggplot)
+      # 7. L-R pair contribution (ggplot)
       try(print(CellChat::netAnalysis_contribution(cc, signaling = pw)),
           silent = TRUE)
-      # 7. Sender/receiver scatter (ggplot)
+      # 8. Sender/receiver scatter (ggplot)
       try(print(CellChat::netAnalysis_signalingRole_scatter(cc, signaling = pw,
                                                             title = pw,
                                                             color.use = grp_cols)),
@@ -473,8 +481,11 @@ RunCellChat <- function(seurat_object       = NULL,
         " signaling pathway, condition = ", grp,
         if (nzchar(cc_ds_str)) paste0(" (", cc_ds_str, ")") else "",
         ". Panels: (1) signaling role network, (2) hierarchy layout, ",
-        "(3) circle layout, (4) chord diagram, (5) pairwise communication ",
-        "probability heatmap, (6) L-R pair contribution, (7) sender/receiver scatter."
+        "(3) circle layout, (4) pathway-aggregate chord diagram, ",
+        "(5) gene-level ligand-receptor chord diagram (each sector is one ",
+        "ligand/receptor gene by sender/receiver cell type), ",
+        "(6) pairwise communication probability heatmap, ",
+        "(7) L-R pair contribution, (8) sender/receiver scatter."
       ))
     }
 

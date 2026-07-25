@@ -7,7 +7,7 @@ mean z-scored enrichment per group."><meta property="og:description" content="Ru
 Seurat object using GSVA (compatible with both GSVA v1 and v2 APIs),
 computes group-level significance (ANOVA or Kruskal-Wallis), saves enrichment
 scores and significance tables as CSVs, and produces a ComplexHeatmap PDF of
-mean z-scored enrichment per group."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+mean z-scored enrichment per group."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +15,7 @@ mean z-scored enrichment per group."><meta property="og:image" content="https://
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -99,9 +99,11 @@ mean z-scored enrichment per group.</p>
 <span>  deg_top_n <span class="op">=</span> <span class="fl">20</span>,</span>
 <span>  gene_set_library <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gene_set_subcategory <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  pathway_sets <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  search_terms <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  species <span class="op">=</span> <span class="st">"Homo sapiens"</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"gsva"</span>,</span>
+<span>  assay <span class="op">=</span> <span class="st">"RNA"</span>,</span>
 <span>  downsample <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min.size <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  ssgsea.norm <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -112,7 +114,9 @@ mean z-scored enrichment per group.</p>
 <span>  fit <span class="op">=</span> <span class="st">"ANOVA"</span>,</span>
 <span>  sig_group_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  p_cutoff <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  use.padj <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  show_only_significant <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  pathways <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  group_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  split_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  heatmap_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>row_names_side <span class="op">=</span> <span class="st">"left"</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -122,6 +126,8 @@ mean z-scored enrichment per group.</p>
 <span>  add_pvalues <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  add_to_object <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">output_dir</span>,</span>
+<span>  resume_folder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">"Analysis"</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  caffeinate <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -167,7 +173,9 @@ cell barcodes when <code>subset_by = NULL</code>.</p></dd>
 
 <dt id="arg-gene-sets">gene_sets<a class="anchor" aria-label="anchor" href="#arg-gene-sets"></a></dt>
 <dd><p>Named list of gene vectors (Mode 1). <code>NULL</code> if using another
-mode.</p></dd>
+mode. When <code>search_terms</code> is also supplied, it filters these custom names
+too (matching <code><a href="RunGSEA.html">RunGSEA()</a></code>/<code><a href="RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code> behavior) rather than
+being silently ignored.</p></dd>
 
 
 <dt id="arg-deg-df">deg_df<a class="anchor" aria-label="anchor" href="#arg-deg-df"></a></dt>
@@ -210,8 +218,9 @@ in each gene set. Default <code>20</code>.</p></dd>
 
 
 <dt id="arg-gene-set-library">gene_set_library<a class="anchor" aria-label="anchor" href="#arg-gene-set-library"></a></dt>
-<dd><p>Character or <code>NULL</code>. MSigDB collection code (Mode 3
-or 4). Common options:</p><ul><li><p><code>"H"</code> - Hallmark (50 coherent biological processes)</p></li>
+<dd><p>Character or <code>NULL</code>. MSigDB collection code for a
+<em>single</em> collection (Mode 3 or 4). Ignored when <code>pathway_sets</code> is
+supplied. Common options:</p><ul><li><p><code>"H"</code> - Hallmark (50 coherent biological processes)</p></li>
 <li><p><code>"C2"</code> - Curated: canonical pathways (combine with
 <code>gene_set_subcategory = "CP:KEGG"</code>, <code>"CP:REACTOME"</code>,
 <code>"CP:WIKIPATHWAYS"</code>, <code>"CP:BIOCARTA"</code>, <code>"CP:PID"</code>)</p></li>
@@ -220,12 +229,26 @@ or 4). Common options:</p><ul><li><p><code>"H"</code> - Hallmark (50 coherent bi
 <li><p><code>"C6"</code> - Oncogenic signatures</p></li>
 <li><p><code>"C7"</code> - Immunologic signatures (IMMUNESIGDB)</p></li>
 <li><p><code>"C8"</code> - Cell-type signatures</p></li>
-</ul><p><code>NULL</code> fetches all collections (slow; use with <code>search_terms</code>).</p></dd>
+</ul><p><code>NULL</code> (and <code>pathway_sets</code> also <code>NULL</code>) fetches all collections (slow;
+use with <code>search_terms</code>).</p></dd>
 
 
 <dt id="arg-gene-set-subcategory">gene_set_subcategory<a class="anchor" aria-label="anchor" href="#arg-gene-set-subcategory"></a></dt>
-<dd><p>Character or <code>NULL</code>. MSigDB sub-collection code.
+<dd><p>Character or <code>NULL</code>. MSigDB sub-collection code,
+paired with <code>gene_set_library</code>. Ignored when <code>pathway_sets</code> is supplied.
 Default <code>NULL</code> (entire collection).</p></dd>
+
+
+<dt id="arg-pathway-sets">pathway_sets<a class="anchor" aria-label="anchor" href="#arg-pathway-sets"></a></dt>
+<dd><p>Named list or <code>NULL</code>. Test <strong>multiple</strong> MSigDB
+collections at once - the same argument and format <code><a href="RunGSEA.html">RunGSEA()</a></code> and
+<code><a href="RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code> use, e.g.
+<code>list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
+  subcategory = "CP:KEGG"))</code>. All listed collections are fetched and pooled
+into a single set of gene sets (RunSCssGSEA always scores everything into
+one heatmap/boxplot set, unlike RunGSEA's one-heatmap-per-database
+output). When supplied, this takes priority over <code>gene_set_library</code> /
+<code>gene_set_subcategory</code>. <code>NULL</code> (default) uses those two instead.</p></dd>
 
 
 <dt id="arg-search-terms">search_terms<a class="anchor" aria-label="anchor" href="#arg-search-terms"></a></dt>
@@ -254,6 +277,13 @@ mouse datasets. See <code><a href="https://igordot.github.io/msigdbr/reference/m
 package's ssGSEA algorithm; <code>"ucell"</code> uses the UCell package's rank-based
 U statistic, which is faster and memory-efficient for large datasets but
 does not produce normalized enrichment scores.</p></dd>
+
+
+<dt id="arg-assay">assay<a class="anchor" aria-label="anchor" href="#arg-assay"></a></dt>
+<dd><p>Character. Seurat assay to pull normalized (<code>"data"</code> layer)
+expression from. Default <code>"RNA"</code>. BPCells/sketch-aware: pass <code>"sketch"</code>
+to score a Seurat v5 sketch-subsampled assay for large datasets instead
+of the full <code>"RNA"</code> assay.</p></dd>
 
 
 <dt id="arg-downsample">downsample<a class="anchor" aria-label="anchor" href="#arg-downsample"></a></dt>
@@ -313,15 +343,32 @@ disease category).</p></dd>
 
 
 <dt id="arg-p-cutoff">p_cutoff<a class="anchor" aria-label="anchor" href="#arg-p-cutoff"></a></dt>
-<dd><p>Numeric. BH-adjusted p-value threshold for selecting
-pathways to display in the heatmap. Default <code>0.05</code>.</p></dd>
+<dd><p>Numeric. Significance threshold for selecting pathways to
+display in the heatmap - compared against BH-adjusted or raw p-value
+depending on <code>use.padj</code>. Default <code>0.05</code>.</p></dd>
+
+
+<dt id="arg-use-padj">use.padj<a class="anchor" aria-label="anchor" href="#arg-use-padj"></a></dt>
+<dd><p>Logical. When <code>TRUE</code> (default), <code>p_cutoff</code> is compared
+against the BH-adjusted p-value (<code>p_adj</code>). Set to <code>FALSE</code> to use the raw
+p-value instead – useful when many pathways make BH correction too
+aggressive and real signals drop out. Affects pathway selection for the
+heatmap and the significance wording in legend text.</p></dd>
 
 
 <dt id="arg-show-only-significant">show_only_significant<a class="anchor" aria-label="anchor" href="#arg-show-only-significant"></a></dt>
 <dd><p>Logical. If <code>TRUE</code>, heatmap shows only
-pathways with <code>p_adj &lt; p_cutoff</code>. Falls back to top 30 by statistic if no
-pathways pass the threshold. If <code>FALSE</code>, all pathways are shown. Default
-<code>TRUE</code>.</p></dd>
+pathways passing <code>p_cutoff</code> (see <code>use.padj</code>). Falls back to top 30 by
+statistic if no pathways pass the threshold. If <code>FALSE</code>, all pathways are
+shown. Ignored when <code>pathways</code> is supplied. Default <code>TRUE</code>.</p></dd>
+
+
+<dt id="arg-pathways">pathways<a class="anchor" aria-label="anchor" href="#arg-pathways"></a></dt>
+<dd><p>Character vector or <code>NULL</code>. Force these specific pathway
+names into the heatmap/boxplots regardless of significance, bypassing the
+<code>p_cutoff</code> filter entirely (e.g. a pathway of interest that didn't clear
+the threshold). Names not found among the tested gene sets are dropped
+with a warning. Default <code>NULL</code> (use the significance-based selection).</p></dd>
 
 
 <dt id="arg-group-colors">group_colors<a class="anchor" aria-label="anchor" href="#arg-group-colors"></a></dt>
@@ -367,9 +414,11 @@ groups (and split by <code>split.by</code> if set).</p></dd>
 
 
 <dt id="arg-add-pvalues">add_pvalues<a class="anchor" aria-label="anchor" href="#arg-add-pvalues"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> (default), add BH-adjusted p-value
-brackets to boxplots using <code><a href="https://rpkgs.datanovia.com/ggpubr/reference/stat_compare_means.html" class="external-link">ggpubr::stat_compare_means()</a></code>. Requires
-<code>add_boxplots = TRUE</code>.</p></dd>
+<dd><p>Logical. If <code>TRUE</code> (default), add pairwise t-test
+p-value brackets to boxplots using <code><a href="https://rpkgs.datanovia.com/ggpubr/reference/stat_compare_means.html" class="external-link">ggpubr::stat_compare_means()</a></code>.
+These are raw (unadjusted) p-values for each displayed pair - not
+BH-corrected, and unrelated to the <code>use.padj</code>/<code>p_cutoff</code> pathway-selection
+threshold above. Requires <code>add_boxplots = TRUE</code>.</p></dd>
 
 
 <dt id="arg-add-to-object">add_to_object<a class="anchor" aria-label="anchor" href="#arg-add-to-object"></a></dt>

@@ -30,6 +30,8 @@ RunGSEA(
   nes.cutoff = 1,
   output_dir = NULL,
   resume = FALSE,
+  resume_folder = NULL,
+  timestamp = TRUE,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
   heatmap_colors = NULL,
@@ -157,8 +159,22 @@ skip the filter. Default \code{1.0}.}
 written here in a structured subdirectory tree. If \code{NULL}, results are
 only returned as an R list.}
 
-\item{resume}{Logical. If \code{TRUE} and \code{output_dir} is set, skip work that
-has already been completed:
+\item{resume}{Logical or \code{"last"}. Controls both WHICH subfolder this call
+uses and whether cached work is reused:
+\describe{
+\item{\code{FALSE} (default)}{Always start a fresh, new timestamped
+subfolder (see \code{timestamp}).}
+\item{\code{TRUE}}{Scan \code{output_dir} for previous \verb{RunGSEA_*} subfolders
+whose call-time parameters (\code{group.by}, \code{split.by}, \code{species}, gene
+sets, etc.) match this call exactly. Zero matches falls back to a
+fresh subfolder; one match resumes it; several matches prompt
+interactively (\code{utils::menu()}) when the session is interactive, or
+\code{stop()} with instructions otherwise.}
+\item{\code{"last"}}{Same scan, but silently resumes the most recent match
+instead of asking.}
+}
+Within a resumed subfolder, work already completed is additionally
+skipped:
 \itemize{
 \item \strong{DE cache}: Wilcoxon DE results for each \verb{(label, split)} pair
 are saved to \verb{output_dir/label/de_cache_<split>_<label>.rds} and
@@ -166,8 +182,17 @@ reloaded on subsequent runs instead of re-running \code{presto::wilcoxauc}.
 \item \strong{DB-level skip}: If the full NES heatmap PDF for a
 \verb{(label, split, db_name)} triple already exists, that database is
 skipped entirely (its slot in the return list is set to \code{NULL}).
-}
-Default \code{FALSE}.}
+}}
+
+\item{resume_folder}{Character or \code{NULL}. Explicitly resume this exact
+subfolder (a bare folder name under \code{output_dir}, or a full path),
+skipping the scan/match described under \code{resume}.}
+
+\item{timestamp}{Logical. When \code{TRUE} (default), every fresh call gets its
+own subfolder named \verb{RunGSEA_<YYYYMMDD-HHMMSS>} under \code{output_dir}, so
+re-running with different settings into the same \code{output_dir} never
+overwrites a previous run's files or methods JSON. Set \code{FALSE} to use
+\code{output_dir} directly (legacy behavior).}
 
 \item{heatmap_params}{Named list of additional arguments forwarded to
 \code{\link[ComplexHeatmap:Heatmap]{ComplexHeatmap::Heatmap()}} for both the full and summary NES heatmaps.

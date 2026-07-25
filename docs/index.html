@@ -21,6 +21,7 @@
 <meta property="og:description" content="A personal toolkit for scRNA-seq and spatial transcriptomics analysis built on top of Seurat. Provides enhanced visualization, pathway analysis, cell-cell communication wrappers, and automated reporting.
 ">
 <meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png">
+<meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -30,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -119,7 +120,7 @@
 <div class="section level3">
 <h3 id="id_1--shared-accurate-color-scales-across-split-feature-panels">1 · Shared, accurate color scales across split feature panels<a class="anchor" aria-label="anchor" href="#id_1--shared-accurate-color-scales-across-split-feature-panels"></a>
 </h3>
-<p>Splitting a feature plot by a condition is the single most common comparison in single-cell work — and by default a single legend is placed ambiguously across panels, and that shared scale can be lost when a custom palette is supplied. <code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code> locks <strong>one shared, labeled color scale</strong> across every panel so the comparison is honest. No per-call workarounds needed.</p>
+<p>Splitting a feature plot by a condition is the single most common comparison in single-cell work — and by default a single legend is placed ambiguously across panels, and that shared scale can be lost when a custom palette is supplied. <code><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots()</a></code> locks <strong>one shared, labeled color scale</strong> across every panel so the comparison is honest. No per-call workarounds needed.</p>
 <p><strong>Panel A — split by a single variable:</strong></p>
 <table class="table">
 <tr>
@@ -141,12 +142,12 @@
 </table>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Panel A: split by donor — one shared color bar</span></span>
-<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>, split.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>, split.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Panel B — split by lane, arranged in rows by donor (metadata layout):</strong></p>
 <p>When samples cross two variables (e.g., lane × donor), <code>row.by</code> adds a second faceting dimension and <code>layout_method = "metadata"</code> aligns panels by their actual metadata coordinates rather than wrapping them in arbitrary order — so the grid itself tells the story.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Panel B: lane on columns, donor on rows, positionally aligned</span></span>
-<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
+<span><span class="fu"><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">bmcite</span>, features <span class="op">=</span> <span class="st">"LYZ"</span>,</span>
 <span>                 split.by <span class="op">=</span> <span class="st">"lane"</span>, row.by <span class="op">=</span> <span class="st">"donor"</span>,</span>
 <span>                 layout_method <span class="op">=</span> <span class="st">"metadata"</span><span class="op">)</span></span></code></pre></div>
 <p align="center">
@@ -399,7 +400,7 @@
 </ul>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/PlotDimPlots.html">PlotDimPlots</a></span><span class="op">(</span><span class="va">obj</span>,        group.by <span class="op">=</span> <span class="st">"CellType"</span>, split.by <span class="op">=</span> <span class="st">"Sample"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>,    features <span class="op">=</span> <span class="st">"CD3E"</span>,     split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>,    features <span class="op">=</span> <span class="st">"CD3E"</span>,     split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/SplitDotPlot.html">SplitDotPlot</a></span><span class="op">(</span><span class="va">obj</span>,        markers_df <span class="op">=</span> <span class="va">m</span>, group.by <span class="op">=</span> <span class="st">"CellType"</span>, split.by <span class="op">=</span> <span class="st">"Condition"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>,     variables <span class="op">=</span> <span class="st">"CellType"</span>, fill_variable <span class="op">=</span> <span class="st">"Group"</span>, row_variable <span class="op">=</span> <span class="st">"Sex"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>,             group.by <span class="op">=</span> <span class="st">"celltype.l2"</span>, split.by <span class="op">=</span> <span class="st">"celltype.l1"</span><span class="op">)</span></span>
@@ -441,7 +442,7 @@
 <span><span class="fu"><a href="reference/PlotDimPlots.html">PlotDimPlots</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span>                                   <span class="co"># UMAP split by Sample</span></span>
 <span><span class="fu"><a href="reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">obj</span>, variables <span class="op">=</span> <span class="st">"seurat_clusters"</span>, <span class="co"># composition at a glance</span></span>
 <span>                fill_variable <span class="op">=</span> <span class="st">"Group"</span>, count_unit <span class="op">=</span> <span class="st">"cells"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>, features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CD3E"</span>, <span class="st">"CD79A"</span>, <span class="st">"LYZ"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots</a></span><span class="op">(</span><span class="va">obj</span>, features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CD3E"</span>, <span class="st">"CD79A"</span>, <span class="st">"LYZ"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/GroupHeatmap.html">GroupHeatmap</a></span><span class="op">(</span><span class="va">obj</span>, features <span class="op">=</span> <span class="va">marker_genes</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">obj</span>, group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/create_analysis_pptx.html">create_analysis_pptx</a></span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"./Figures"</span>, object_name <span class="op">=</span> <span class="st">"MyProject"</span><span class="op">)</span></span></code></pre></div>
@@ -491,7 +492,7 @@
 <tr>
 <td><strong>Feature expression</strong></td>
 <td>
-<code><a href="reference/GenerateFeatureMaps.html">PlotFeaturePlots()</a></code>, <code><a href="reference/PlotFeature.html">PlotFeature()</a></code>, <code><a href="reference/PlotMultiFeature.html">PlotMultiFeature()</a></code>, <code><a href="reference/GenerateFeatureMaps.html">GenerateFeatureMaps()</a></code>
+<code><a href="reference/PlotFeaturePlots.html">PlotFeaturePlots()</a></code>, <code><a href="reference/PlotFeature.html">PlotFeature()</a></code>, <code><a href="reference/PlotMultiFeature.html">PlotMultiFeature()</a></code>, <code><a href="reference/PlotFeaturePlots.html">GenerateFeatureMaps()</a></code>
 </td>
 </tr>
 <tr>
@@ -577,7 +578,7 @@
 <tr>
 <td><strong>Spatial</strong></td>
 <td>
-<code><a href="reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots()</a></code>, <code><a href="reference/GenerateSpatialFeatureMaps.html">PlotSpatialFeaturePlots()</a></code>, <code><a href="reference/GenerateMasterGeneMaps.html">PlotMasterMaps()</a></code>
+<code><a href="reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots()</a></code>, <code><a href="reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots()</a></code>, <code><a href="reference/PlotMasterMaps.html">PlotMasterMaps()</a></code>
 </td>
 </tr>
 <tr>

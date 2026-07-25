@@ -1,7 +1,7 @@
 # =============================================================================
 # scSidekick single-cell feature map generator
 #
-# GenerateFeatureMaps - batch FeaturePlot across genes, split by a metadata
+# PlotFeaturePlots - batch FeaturePlot across genes, split by a metadata
 #   variable, with shared per-gene color limits, a common legend, and
 #   optional PDF output. Supports two layout modes:
 #     "auto"     - auto-computes rows x cols from number of split levels
@@ -325,7 +325,7 @@
 #'   otherwise writes PDFs and returns `NULL` invisibly. When
 #'   `join_plots = TRUE`, invisibly returns the combined tiled figure.
 #' @export
-GenerateFeatureMaps <- function(seurat_object,
+PlotFeaturePlots <- function(seurat_object,
                                  assay         = "RNA",
                                  reduction     = "umap",
                                  features,
@@ -382,7 +382,7 @@ GenerateFeatureMaps <- function(seurat_object,
   # ── Multiple split.by: recurse once per variable ───────────────────────────
   if (!is.null(split.by) && length(split.by) > 1L) {
     results <- lapply(stats::setNames(split.by, split.by), function(sb) {
-      GenerateFeatureMaps(
+      PlotFeaturePlots(
         seurat_object = seurat_object,
         assay         = assay,
         reduction     = reduction,
@@ -915,7 +915,7 @@ GenerateFeatureMaps <- function(seurat_object,
   invisible(last_plot)
 }
 
-# Short-name alias
-#' @describeIn GenerateFeatureMaps Preferred short alias.
+# Long-form alias (kept for backward compatibility)
+#' @describeIn PlotFeaturePlots Long-form alias.
 #' @export
-PlotFeaturePlots <- GenerateFeatureMaps
+GenerateFeatureMaps <- PlotFeaturePlots

@@ -66,7 +66,7 @@ featureheatmaps, assignment helper
 \item \code{"All UMAPs"} - the combined multi-panel UMAP PDF
 \item \code{"Composition"} - barplots, chord diagrams, rose/trend plots,
 iteration-with-bar figures
-\item \code{"Feature Maps"} - GenerateFeatureMaps per-gene UMAPs
+\item \code{"Feature Maps"} - PlotFeaturePlots per-gene UMAPs
 \item \code{"Pathway Analysis"} - GSEA heatmaps and lollipop PDFs
 \item \code{"CellChat"} - RunCellChat, CompareCellChat, and
 RankCellChatPathways output PDFs

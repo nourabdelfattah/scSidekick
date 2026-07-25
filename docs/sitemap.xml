@@ -49,10 +49,6 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/FastDotPlot2.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/FilterGenesByPct.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GenerateDirectories.html</loc></url>
-<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GenerateFeatureMaps.html</loc></url>
-<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GenerateMasterGeneMaps.html</loc></url>
-<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GenerateSpatialDimMaps.html</loc></url>
-<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GenerateSpatialFeatureMaps.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GetCNMFPrograms.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GetCNMFTopGenes.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/GetColors.html</loc></url>
@@ -79,8 +75,10 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotEnrichment.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotFeature.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotFeatureDistribution.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotFeaturePlots.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotFeatureTrend.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotGSEAEnrichment.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotMasterMaps.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotMetaSummary.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotMultiFeature.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotPathwayButterfly.html</loc></url>
@@ -90,6 +88,8 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotPseudotime.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotQCMetrics.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotRose.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotSpatialDimPlots.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotSpatialFeaturePlots.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotTrajectory.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotTrendLabeled.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotVolcano.html</loc></url>

@@ -1,0 +1,7 @@
+# Long-form alias pages (real content duplicates the canonical Plot* page
+# generated for the same topic; excluded to avoid duplicate-content URLs).
+# See NEWS.md 1.1.0 for the Generate*/Plot* naming swap.
+reference/GenerateFeatureMaps.html
+reference/GenerateMasterGeneMaps.html
+reference/GenerateSpatialDimMaps.html
+reference/GenerateSpatialFeatureMaps.html

@@ -226,6 +226,7 @@ When you want a pathway *score per cell* (e.g. to overlay on the UMAP),
 RunSCssGSEA(obj,
   group.by         = "CellType",
   gene_set_library = "H",          # MSigDB Hallmark
+  assay            = "sketch",     # score the sketch-subsampled assay instead of full "RNA"
   output_dir       = "./Figures/ssGSEA")
 ```
 

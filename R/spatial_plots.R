@@ -1,9 +1,9 @@
 # =============================================================================
 # scSidekick spatial transcriptomics visualization
 #
-# GenerateSpatialFeatureMaps - batch spatial feature plots (genes OR metadata)
-# GenerateSpatialDimMaps     - batch spatial cell-type/cluster dim plots
-# GenerateMasterGeneMaps     - per-gene 4-column PDF: UMAP + spatial side-by-side
+# PlotSpatialFeaturePlots - batch spatial feature plots (genes OR metadata)
+# PlotSpatialDimPlots     - batch spatial cell-type/cluster dim plots
+# PlotMasterMaps          - per-gene 4-column PDF: UMAP + spatial side-by-side
 #
 # All functions share the same auto-sizing logic for spatial point sizes
 # (median nearest-neighbor distance scaled to plot area) and support both
@@ -92,7 +92,7 @@
 }
 
 # --------------------------------------------------------------------------- #
-# GenerateSpatialFeatureMaps                                                   #
+# PlotSpatialFeaturePlots                                                      #
 # --------------------------------------------------------------------------- #
 
 #' Batch spatial feature plots for genes and/or metadata columns
@@ -149,7 +149,7 @@
 #' @return Invisibly returns the last plot when `output_dir = NULL`. When
 #'   `join_plots = TRUE`, invisibly returns the combined tiled figure.
 #' @export
-GenerateSpatialFeatureMaps <- function(seurat_object,
+PlotSpatialFeaturePlots <- function(seurat_object,
                                         features,
                                         layout_method  = "auto",
                                         row.by        = NULL,
@@ -442,7 +442,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 }
 
 # --------------------------------------------------------------------------- #
-# GenerateSpatialDimMaps                                                       #
+# PlotSpatialDimPlots                                                          #
 # --------------------------------------------------------------------------- #
 
 #' Batch spatial dimensionality-reduction (cell-type) plots
@@ -450,7 +450,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 #' Produces [Seurat::SpatialDimPlot()] panels for each image in the object,
 #' one figure per metadata variable in \code{group_by_vars}. Supports the same
 #' \code{"auto"} / \code{"metadata"} layout modes as
-#' [GenerateSpatialFeatureMaps()]. When multiple variables are supplied,
+#' [PlotSpatialFeaturePlots()]. When multiple variables are supplied,
 #' \code{join_plots = TRUE} tiles them into a single page.
 #'
 #' @param seurat_object A Seurat object with spatial images.
@@ -506,7 +506,7 @@ GenerateSpatialFeatureMaps <- function(seurat_object,
 #' @return Invisibly returns the plot, or a named list of plots when
 #'   \code{join_plots = FALSE} and multiple variables are supplied.
 #' @export
-GenerateSpatialDimMaps <- function(seurat_object,
+PlotSpatialDimPlots <- function(seurat_object,
                                     group_by_vars   = NULL,
                                     layout_method   = "auto",
                                     row.by          = NULL,
@@ -571,7 +571,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
       } else {
         legendnrow[[((i - 1) %% length(legendnrow)) + 1]]
       }
-      GenerateSpatialDimMaps(
+      PlotSpatialDimPlots(
         seurat_object   = seurat_object,
         group_by_vars   = gb,
         layout_method   = layout_method,
@@ -853,7 +853,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
 }
 
 # --------------------------------------------------------------------------- #
-# GenerateMasterGeneMaps                                                       #
+# PlotMasterMaps                                                               #
 # --------------------------------------------------------------------------- #
 
 #' 4-column master gene map: UMAP clusters + UMAP expression + Spatial clusters + Spatial expression
@@ -898,7 +898,7 @@ GenerateSpatialDimMaps <- function(seurat_object,
 #' @return Invisibly returns the last assembled plot when \code{output_dir =
 #'   NULL}; otherwise writes PDFs and returns \code{NULL} invisibly.
 #' @export
-GenerateMasterGeneMaps <- function(seurat_object,
+PlotMasterMaps <- function(seurat_object,
                                     features,
                                     imgalpha        = 1,
                                     alpha           = 1,
@@ -937,7 +937,7 @@ GenerateMasterGeneMaps <- function(seurat_object,
   # ── Multiple group.by: recurse once per variable ───────────────────────────
   if (length(group.by) > 1L) {
     for (gb in group.by) {
-      GenerateMasterGeneMaps(
+      PlotMasterMaps(
         seurat_object   = seurat_object,
         features        = features,
         imgalpha        = imgalpha,
@@ -1147,17 +1147,17 @@ GenerateMasterGeneMaps <- function(seurat_object,
 }
 
 # =============================================================================
-# Short-name aliases  (preferred calling convention)
+# Long-form aliases  (kept for backward compatibility)
 # =============================================================================
 
-#' @describeIn GenerateSpatialFeatureMaps Preferred short alias.
+#' @describeIn PlotSpatialFeaturePlots Long-form alias.
 #' @export
-PlotSpatialFeaturePlots <- GenerateSpatialFeatureMaps
+GenerateSpatialFeatureMaps <- PlotSpatialFeaturePlots
 
-#' @describeIn GenerateSpatialDimMaps Preferred short alias.
+#' @describeIn PlotSpatialDimPlots Long-form alias.
 #' @export
-PlotSpatialDimPlots <- GenerateSpatialDimMaps
+GenerateSpatialDimMaps <- PlotSpatialDimPlots
 
-#' @describeIn GenerateMasterGeneMaps Preferred short alias.
+#' @describeIn PlotMasterMaps Long-form alias.
 #' @export
-PlotMasterMaps <- GenerateMasterGeneMaps
+GenerateMasterGeneMaps <- PlotMasterMaps

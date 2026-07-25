@@ -809,7 +809,7 @@ log_figure_legend <- function(out_dir, filename, text) {
 #'     \item `"All UMAPs"` - the combined multi-panel UMAP PDF
 #'     \item `"Composition"` - barplots, chord diagrams, rose/trend plots,
 #'       iteration-with-bar figures
-#'     \item `"Feature Maps"` - GenerateFeatureMaps per-gene UMAPs
+#'     \item `"Feature Maps"` - PlotFeaturePlots per-gene UMAPs
 #'     \item `"Pathway Analysis"` - GSEA heatmaps and lollipop PDFs
 #'     \item `"CellChat"` - RunCellChat, CompareCellChat, and
 #'       RankCellChatPathways output PDFs

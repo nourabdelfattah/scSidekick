@@ -185,17 +185,25 @@ cc_results <- RunCellChat(bmcite,
 
 ## 7. Outputs produced per group
 
-For each level of `group.by`, `RunCellChat()` saves the following files:
+For each level of `group.by`, `RunCellChat()` writes a `{group}/` sub-folder
+under `output_dir`, plus the serialized CellChat object under `robj_dir`
+(`output_dir/CellChatObjects` by default):
 
 | File | Content |
 |------|---------|
-| `CellChatObjects/{group}_CellChat.rds` | Serialized CellChat object |
-| `{group}_interaction_heatmap.pdf` | Heatmap of interaction counts/weights |
-| `{group}_chord_diagram.pdf` | Chord diagram of significant L-R pairs |
-| `{group}_bubble_plot.pdf` | Dot size = p-value, color = probability |
-| `{group}_pathway_summary.pdf` | Bar chart of top signaling pathways |
-| `{group}_outgoing_patterns.pdf` | Outgoing communication patterns (if `run.patterns`) |
-| `{group}_incoming_patterns.pdf` | Incoming communication patterns (if `run.patterns`) |
+| `CellChatObjects/{group}CellChat.rds` | Serialized CellChat object (final; used by `redo_plots`, `CompareCellChat`, `RankCellChatPathways`) |
+| `{group}/{group} Number of Interactions.pdf` | Circle plot: interaction counts between cell types |
+| `{group}/{group} Interaction Weights.pdf` | Circle plot: interaction strength (probability-weighted) between cell types |
+| `{group}/{group} Individual Groups.pdf` | One circle panel per sender cell type, edges scaled to the global max |
+| `{group}/Pathways/{group} {pathway} cell-cell communication.pdf` | One multi-panel PDF per significant pathway: (1) signaling role network, (2) hierarchy layout, (3) circle layout, (4) pathway-aggregate chord diagram, (5) gene-level ligand-receptor chord diagram (`netVisual_chord_gene` - one sector per ligand/receptor gene by sender/receiver cell type), (6) pairwise communication probability heatmap, (7) L-R pair contribution, (8) sender/receiver scatter |
+| `{group}/{group} {cell type} bubble plot.pdf` | One bubble plot per cell type as sender; dot size = communication probability, color = significance, all targets on the y-axis |
+| `{group}/{group} dominant sender receiver.pdf` | Scatter of outgoing vs. incoming signaling strength per cell type, aggregated across all pathways |
+| `{group}/{group} k{k} outgoing communication patterns.pdf` | Outgoing pattern analysis at latent pattern count `k` (one PDF per `k` in `pattern_k_range`, if `run.patterns = TRUE`) |
+| `{group}/{group} k{k} incoming communication patterns.pdf` | Incoming pattern analysis at latent pattern count `k` (one PDF per `k` in `pattern_k_range`, if `run.patterns = TRUE`) |
+
+Every PDF above has a matching `.legend` sidecar file (plain text) describing
+its panels - see vignette 12 ("Reporting & Utilities") for the general
+sidecar convention used package-wide.
 
 ---
 

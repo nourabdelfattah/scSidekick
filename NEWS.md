@@ -1,3 +1,86 @@
+# scSidekick 1.1.0
+
+## Pathway analysis
+
+- `RunGSEA()` NES heatmaps now show significance stars (`*`/`**`/`***` by
+  `padj`), previously computed but never drawn.
+- `RunGSEA()`, `RunGSEA_pseudobulk()`, and `RunSCssGSEA()` now write every
+  run into its own timestamped subfolder under `output_dir` by default
+  (`timestamp = TRUE`), with a `resume` / `resume_folder` system that scans
+  for a previous run with matching parameters and reuses it - `resume = TRUE`
+  prompts when several match, `resume = "last"` picks the most recent
+  automatically. The literal function call (as typed, with argument values)
+  is also now recorded in each run's methods JSON.
+- `RunGSEA_pseudobulk()` gains `use.padj` to choose raw p vs. BH-adjusted p
+  as both the significance-star basis and the heatmap-selection cutoff for
+  its main NES heatmaps (the ssGSEA sub-step already had this); legend text
+  now correctly reflects whichever basis was actually used instead of always
+  saying "BH-adjusted."
+- `RunGSEA_pseudobulk()` adds a design-rank diagnostic
+  (`stats::alias()`-based) that explains *why* a given `covariates` +
+  `contrast.by`/`group.by` combination produces "coefficients not
+  estimable" - typically a confound between a covariate and the contrast,
+  not a bug.
+- `RunSCssGSEA()`:
+  - `search_terms` no longer gets silently bypassed when `gene_sets` is
+    supplied manually - it now filters custom gene set names too, matching
+    `RunGSEA()` / `RunGSEA_pseudobulk()` behavior.
+  - New `pathway_sets` argument fetches and pools **multiple** MSigDB
+    collections in one run (the same named-list format `RunGSEA()` uses),
+    instead of being limited to a single `gene_set_library` /
+    `gene_set_subcategory` pair.
+  - New `assay` argument (default `"RNA"`) makes the function actually
+    BPCells/sketch-aware as documented - previously hardcoded to `"RNA"`
+    with no way to score a Seurat v5 sketch-subsampled assay.
+  - New `use.padj` toggle and `pathways` argument (manual pathway override,
+    with UCell `"_UCell"`-suffix-tolerant matching) for the significance
+    heatmap.
+  - Corrected boxplot legend text: pairwise p-value brackets are raw
+    (unadjusted) t-test p-values via `ggpubr`, not BH-corrected as previously
+    (incorrectly) stated.
+
+## Cell-cell communication
+
+- `RunCellChat()`'s per-pathway multi-panel PDF gains a gene-level
+  ligand-receptor chord diagram (`CellChat::netVisual_chord_gene()`) showing
+  individual ligand/receptor genes by sender/receiver cell type, alongside
+  the existing pathway-aggregate chord diagram.
+
+## Visualization
+
+- `PlotMetaSummary()` Table 1 output now includes a table-specific legend
+  (in-table footnote + `.legend` sidecar) stating exactly which statistical
+  test was used per variable type, instead of an unexplained bare p-value
+  column. New `numeric_stat`, `cat_display`, and `separate_tables` arguments.
+- `GroupHeatmap()` gains a `timestamp` argument to version repeated PDF saves
+  instead of overwriting; `legend_side` now moves both the color legend and
+  annotation legends together.
+- `PlotFeatureTrend()` gains `donor.by` (collapse to one point per donor
+  before fitting - the honest way to relate a donor-level variable to a
+  per-cell value), `add_cor` / `cor_method` (correlation coefficient and
+  p-value annotation via `ggpubr::stat_cor()`), and `show_points` /
+  `point_size` / `point_alpha` (overlay raw observations and train the
+  y-axis on the full data range).
+
+## Bug fixes
+
+- Fixed a docs/export regression in `R/pseudobulk.R` where a private helper
+  had absorbed `PlotPseudoBulk()`'s roxygen block, causing `PlotPseudoBulk()`
+  to silently lose its `@export` and documentation.
+- `PlotFeaturePlots()`, `PlotMasterMaps()`, `PlotSpatialDimPlots()`, and
+  `PlotSpatialFeaturePlots()` are the primary documented names again (`?`
+  now resolves directly for each), with `GenerateFeatureMaps()`,
+  `GenerateMasterGeneMaps()`, `GenerateSpatialDimMaps()`, and
+  `GenerateSpatialFeatureMaps()` kept as long-form aliases - matching how
+  they're actually referenced everywhere else in the package (README,
+  vignettes). Previously the doc pages were filed under the long-form
+  names, and a stray `man/.gitignore` had excluded 3 of the 4 doc pages
+  from git entirely.
+
+## Site
+
+- Added a Google Search Console verification tag to the pkgdown site config.
+
 # scSidekick 1.0.0
 
 Initial release.

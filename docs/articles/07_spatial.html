@@ -16,6 +16,7 @@
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="scSidekick - Spatial Transcriptomics: PlotSpatialDimPlots, PlotSpatialFeaturePlots, PlotMasterMaps">
+<meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -25,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,17 +105,17 @@ counterparts but render expression and metadata directly on the tissue
 image:</p>
 <ul>
 <li>
-<strong><code><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots()</a></code></strong> - color spots by
+<strong><code><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots()</a></code></strong> - color spots by
 a metadata variable (e.g. cluster, condition, spatial domain). Long-form
-alias: <code><a href="../reference/GenerateSpatialDimMaps.html">GenerateSpatialDimMaps()</a></code>.</li>
+alias: <code><a href="../reference/PlotSpatialDimPlots.html">GenerateSpatialDimMaps()</a></code>.</li>
 <li>
-<strong><code><a href="../reference/GenerateSpatialFeatureMaps.html">PlotSpatialFeaturePlots()</a></code></strong> - color
+<strong><code><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots()</a></code></strong> - color
 spots by gene expression. Long-form alias:
-<code><a href="../reference/GenerateSpatialFeatureMaps.html">GenerateSpatialFeatureMaps()</a></code>.</li>
+<code><a href="../reference/PlotSpatialFeaturePlots.html">GenerateSpatialFeatureMaps()</a></code>.</li>
 <li>
-<strong><code><a href="../reference/GenerateMasterGeneMaps.html">PlotMasterMaps()</a></code></strong> - combined figure:
+<strong><code><a href="../reference/PlotMasterMaps.html">PlotMasterMaps()</a></code></strong> - combined figure:
 tissue image + gene expression panels + cluster-colored UMAP side by
-side. Long-form alias: <code><a href="../reference/GenerateMasterGeneMaps.html">GenerateMasterGeneMaps()</a></code>.</li>
+side. Long-form alias: <code><a href="../reference/PlotMasterMaps.html">GenerateMasterGeneMaps()</a></code>.</li>
 </ul>
 <p>All three functions accept <code>group.by</code>,
 <code>split.by</code>, <code>layout_method</code>, and
@@ -168,7 +169,7 @@ will appear consistently across all spatial figures.</p>
 <h3 id="basic-spatial-cluster-map">1. Basic spatial cluster map<a class="anchor" aria-label="anchor" href="#basic-spatial-cluster-map"></a>
 </h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## scSidekick: Set `donor.by` in PrepObject() to include sample counts in figure legends and methods text.</span></span></code></pre>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
@@ -184,7 +185,7 @@ maps colors to cluster numbers. The palette comes from
 <p>Passing a vector to <code>group.by</code> produces one spatial map
 per variable.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seurat_clusters"</span>, <span class="st">"Celltypes"</span><span class="op">)</span>,join_plots <span class="op">=</span> <span class="cn">T</span>,legendnrow <span class="op">=</span> <span class="fl">2</span>,<span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
 <pre><code><span><span class="co">## Spatial DimMap: Celltypes - 1x2</span></span></code></pre>
@@ -200,7 +201,7 @@ one showing which spots are annotated WT vs KO.</p>
 spots - useful for comparing two sections where spot density
 differs.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by     <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  uniform_size <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
@@ -219,7 +220,7 @@ ROIs stored in the same object.</p>
 <span><span class="va">brain2</span><span class="op">=</span><span class="va">brain</span></span>
 <span><span class="va">brain2</span><span class="op">$</span><span class="va">rep</span><span class="op">=</span><span class="fl">2</span></span>
 <span><span class="va">braindouble</span><span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">brain</span>,<span class="va">brain2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">braindouble</span>,</span>
+<span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">braindouble</span>,</span>
 <span>  group.by      <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  layout_method <span class="op">=</span> <span class="st">"metadata"</span>,</span>
 <span>  row.by <span class="op">=</span> <span class="st">"rep"</span><span class="op">)</span></span></code></pre></div>
@@ -233,7 +234,7 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 </h3>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Colors from PrepObject (default)</span></span>
-<span><span class="va">p1</span><span class="op">=</span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<span><span class="va">p1</span><span class="op">=</span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -241,7 +242,7 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 <span><span class="va">my_cols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GetColors.html">GetColors</a></span><span class="op">(</span><span class="va">brain</span>, <span class="st">"seurat_clusters"</span><span class="op">)</span></span>
 <span><span class="va">my_cols</span><span class="op">[</span><span class="st">"0"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"#FF0000"</span>  <span class="co"># re-color cluster 0</span></span>
 <span></span>
-<span><span class="va">p2</span><span class="op">=</span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<span><span class="va">p2</span><span class="op">=</span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  colors   <span class="op">=</span> <span class="va">my_cols</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
@@ -254,7 +255,7 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 </h3>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#to automatically save on disk set PrepObject(AutoSavePlots = T)</span></span>
-<span><span class="fu"><a href="../reference/GenerateSpatialDimMaps.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  output_dir  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">"MouseBrain"</span><span class="op">)</span></span></code></pre></div>
@@ -269,7 +270,7 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 <h3 id="basic-spatial-gene-expression">1. Basic spatial gene expression<a class="anchor" aria-label="anchor" href="#basic-spatial-gene-expression"></a>
 </h3>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateSpatialFeatureMaps.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,join_plots <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span></code></pre></div>
 <p><img src="07_spatial_files/figure-html/spatial-feat-basic-1.png" width="1440"></p>
 <p>Each gene generates one spatial map. Spot color encodes normalized
@@ -282,7 +283,7 @@ anatomical locations.</p>
 <h3 id="metadata-driven-layout">2. Metadata-driven layout<a class="anchor" aria-label="anchor" href="#metadata-driven-layout"></a>
 </h3>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateSpatialFeatureMaps.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">braindouble</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">braindouble</span>,</span>
 <span>  features      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,</span>
 <span>  layout_method <span class="op">=</span> <span class="st">"metadata"</span>,</span>
 <span>  row.by <span class="op">=</span> <span class="st">"rep"</span><span class="op">)</span></span></code></pre></div>
@@ -298,7 +299,7 @@ occupies a distinct tissue section in the same object.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#to automatically save on disk set PrepObject(AutoSavePlots = T)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/GenerateSpatialFeatureMaps.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,</span>
 <span>  output_dir  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">"MouseBrain"</span>,</span>
@@ -321,7 +322,7 @@ figure or lab presentation.</p>
 <h3 id="basic-master-map">1. Basic master map<a class="anchor" aria-label="anchor" href="#basic-master-map"></a>
 </h3>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateMasterGeneMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span><span class="op">)</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="07_spatial_files/figure-html/master-basic-1.png" width="1152"></p>
@@ -336,7 +337,7 @@ expressed and which clusters drive that expression.</p>
 <h3 id="multiple-group-by">2. Multiple <code>group.by</code><a class="anchor" aria-label="anchor" href="#multiple-group-by"></a>
 </h3>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateMasterGeneMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seurat_clusters"</span>, <span class="st">"Celltypes"</span><span class="op">)</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -348,7 +349,7 @@ you get 4 pages.</p>
 <h3 id="custom-gene-expression-color-scale">3. Custom gene expression color scale<a class="anchor" aria-label="anchor" href="#custom-gene-expression-color-scale"></a>
 </h3>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/GenerateMasterGeneMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features    <span class="op">=</span> <span class="st">"Hpca"</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  gene_colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lightgrey"</span>, <span class="st">"#006837"</span><span class="op">)</span>,</span>

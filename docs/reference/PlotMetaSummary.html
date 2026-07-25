@@ -7,7 +7,7 @@ count."><meta property="og:description" content="Deduplicates cell-level metadat
 multi-panel bar chart: one column per metadata variable, one row per
 level of an optional row-splitting variable (e.g. Sex).  Bars are stacked
 by fill_variable and each segment is optionally annotated with its
-count."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+count."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +15,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -103,6 +103,9 @@ count.</p>
 <span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  return_data <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  return_flextable <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  numeric_stat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean_sd"</span>, <span class="st">"median_iqr"</span><span class="op">)</span>,</span>
+<span>  cat_display <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"n_pct"</span>, <span class="st">"pct_n"</span>, <span class="st">"fraction"</span>, <span class="st">"n"</span><span class="op">)</span>,</span>
+<span>  separate_tables <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  stats.method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nonparametric"</span>, <span class="st">"parametric"</span>, <span class="st">"auto"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  pdf.width <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pdf.height <span class="op">=</span> <span class="cn">NULL</span></span>

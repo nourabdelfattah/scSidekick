@@ -82,6 +82,71 @@
   }
 }
 
+# One-paragraph, table-specific explanation of exactly which tests were used,
+# built from what is actually present in THIS table (categorical vars, numeric
+# vars, group count, stratification) - not a generic boilerplate sentence.
+# Used both as the in-table footer and as the .legend sidecar text.
+.stats_footer_text <- function(method, has_cat, has_num, n_groups, has_strata,
+                               cat_display, numeric_stat, run_stats) {
+  parts <- character(0)
+
+  if (run_stats) {
+    test_bits <- character(0)
+    if (has_cat) {
+      test_bits <- c(test_bits, switch(method,
+        nonparametric = "Fisher's exact test",
+        parametric    = "Pearson's chi-squared test",
+        auto          = "Pearson's chi-squared test (Fisher's exact test when any expected cell count < 5)",
+        none          = NULL
+      ))
+    }
+    if (has_num) {
+      test_bits <- c(test_bits, switch(method,
+        nonparametric = if (n_groups == 2L) "Wilcoxon rank-sum test" else "Kruskal-Wallis test",
+        parametric    = if (n_groups == 2L) "Welch's t-test" else "one-way ANOVA",
+        auto          = if (n_groups == 2L)
+          "Welch's t-test (or Wilcoxon rank-sum test when a group fails a Shapiro-Wilk normality check)"
+        else
+          "one-way ANOVA (or Kruskal-Wallis test when a group fails a Shapiro-Wilk normality check)",
+        none          = NULL
+      ))
+    }
+    if (length(test_bits)) {
+      lbl <- character(0)
+      if (has_cat) lbl <- c(lbl, "categorical variables")
+      if (has_num) lbl <- c(lbl, "numeric variables")
+      stat_sentence <- paste0(
+        "Statistical tests: ",
+        paste(mapply(function(t, l) paste0(t, " (", l, ")"), test_bits, lbl),
+              collapse = "; "), ".")
+      parts <- c(parts, stat_sentence)
+    }
+    if (has_strata)
+      parts <- c(parts,
+        "Each stratum's p-value was computed independently within that stratum (not pooled across strata).")
+    parts <- c(parts, "Bold p-values indicate p < 0.05.")
+  }
+
+  fmt_bit <- if (has_cat) switch(cat_display,
+    n_pct    = "n (% of the column's group total)",
+    pct_n    = "% (n) of the column's group total",
+    fraction = "n/N (N = the column's group total)",
+    n        = "n (raw count)"
+  ) else NULL
+  num_bit <- if (has_num) switch(numeric_stat,
+    median_iqr = "median [IQR]",
+    "mean ± SD"
+  ) else NULL
+  fmt_sentence <- paste0(
+    "Values shown as: ",
+    paste(c(if (!is.null(fmt_bit)) paste0(fmt_bit, " for categorical variables"),
+            if (!is.null(num_bit)) paste0(num_bit, " for numeric variables")),
+          collapse = "; "), ".")
+  parts <- c(fmt_sentence, parts)
+
+  paste(parts, collapse = " ")
+}
+
 # =============================================================================
 # .build_meta_table1()
 # Assemble a stratified "Table 1": every variable (categorical + numeric) in a
@@ -214,7 +279,28 @@
     }
   }
   ft <- flextable::valign(ft, j = "Variable", valign = "top", part = "body")
-  flextable::autofit(flextable::theme_vanilla(ft))
+  ft <- flextable::autofit(flextable::theme_vanilla(ft))
+
+  # Table-specific legend: which test(s) were used (this is what was missing -
+  # a mixed cat+numeric table previously showed a bare, unexplained "p-value"
+  # header with no indication of which test each row actually used). Added
+  # both as an in-table footer (travels with the .docx) and as an attribute
+  # (reused verbatim for the .legend sidecar by .meta_emit_tables()).
+  legend_txt <- .stats_footer_text(
+    method        = method,
+    has_cat       = any(!vapply(all_vars, is_num, logical(1))),
+    has_num       = any(vapply(all_vars, is_num, logical(1))),
+    n_groups      = length(fill_lvls),
+    has_strata    = !is.null(strata_var),
+    cat_display   = cat_display,
+    numeric_stat  = numeric_stat,
+    run_stats     = run_stats
+  )
+  ft <- flextable::add_footer_lines(ft, values = legend_txt)
+  ft <- flextable::fontsize(ft, size = 7, part = "footer")
+  ft <- flextable::italic(ft, part = "footer")
+  attr(ft, "legend_text") <- legend_txt
+  ft
 }
 
 # =============================================================================
@@ -225,7 +311,7 @@
 # =============================================================================
 .meta_emit_tables <- function(dd, all_vars, num_vars, fill_var, strata_var,
                               method, cat_display, numeric_stat, separate_tables,
-                              output_dir, object_name, file_name) {
+                              output_dir, object_name, file_name, id_column = NULL) {
   run_stats <- method != "none" && !is.null(fill_var)
   cat_vars  <- setdiff(all_vars, num_vars)
 
@@ -261,7 +347,27 @@
                      error = function(e) {
                        warning("Could not save ", nm, " to .docx: ",
                                conditionMessage(e)); FALSE })
-      if (ok) message("scSidekick: Saved table to ", fp)
+      if (ok) {
+        message("scSidekick: Saved table to ", fp)
+        # .legend sidecar, matching every other autosaved output in the
+        # package. Leads with what the table shows, then the exact test/format
+        # legend already computed for (and printed as a footer inside) the
+        # table itself, so the two never drift out of sync.
+        tbl_vars <- switch(nm,
+          crosstab      = cat_vars,
+          numeric_table = num_vars,
+          all_vars)
+        n_unit <- if (!is.null(id_column))
+          paste0("unique '", id_column, "' values") else "rows"
+        opening <- paste0(
+          "Table summarizing ", paste(tbl_vars, collapse = ", "),
+          " by ", fill_var,
+          if (!is.null(strata_var)) paste0(", stratified by ", strata_var) else "",
+          ". N = ", format(nrow(dd), big.mark = ","), " ", n_unit,
+          if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "", "."
+        )
+        .write_legend_sidecar(fp, paste(opening, attr(out[[nm]], "legend_text")))
+      }
     }
   }
   out
@@ -737,7 +843,7 @@ PlotMetaSummary <- function(data,
       if (!is.null(id_column)) dd <- dplyr::distinct(dd)
       result$flextable <- .meta_emit_tables(dd, all_variables, numeric_vars,
         fill_variable, row_variable, stats.method, cat_display, numeric_stat,
-        separate_tables, output_dir, object_name, file_name)
+        separate_tables, output_dir, object_name, file_name, id_column)
     }
     if (return_data) result$data <- meta
     if (!return_flextable && !return_data) return(numeric_plot)
@@ -1129,7 +1235,7 @@ PlotMetaSummary <- function(data,
       if (!is.null(id_column)) dd <- dplyr::distinct(dd)
       result$flextable <- .meta_emit_tables(dd, all_variables, numeric_vars,
         fill_variable, row_variable, stats.method, cat_display, numeric_stat,
-        separate_tables, output_dir, object_name, file_name)
+        separate_tables, output_dir, object_name, file_name, id_column)
     }
   }
 

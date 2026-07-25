@@ -306,6 +306,71 @@ ComputePseudobulk <- function(seurat_object,
 # PlotPseudoBulk
 # =============================================================================
 
+# Build a "Group: A (Row1: N=x, Row2: N=y), B (...)" breakdown directly from
+# the pseudobulk cache (one row per donor.by x group.by x split.by x row.by
+# combination, after min_cells/exclude filtering), so the legend states
+# exactly how many donors/samples are IN the plot per group - and per row
+# within each group when row.by is set - instead of one pooled total that
+# hides how N is actually split across groups.
+.pb_n_breakdown <- function(cache, group.by, grp_lvls, row.by, row_lvls) {
+  grp_col <- as.character(cache[[group.by]])
+  if (is.null(row.by)) {
+    n_tab <- stats::setNames(
+      vapply(grp_lvls, function(g) sum(grp_col == g), integer(1)), grp_lvls)
+    sentence <- paste0(group.by, ": ",
+      paste(sprintf("%s (N=%d)", names(n_tab), n_tab), collapse = ", "))
+    return(list(sentence = sentence, n_tab = n_tab, has_row = FALSE))
+  }
+  row_col <- as.character(cache[[row.by]])
+  n_tab   <- matrix(0L, nrow = length(grp_lvls), ncol = length(row_lvls),
+                    dimnames = list(grp_lvls, row_lvls))
+  for (g in grp_lvls) for (r in row_lvls)
+    n_tab[g, r] <- sum(grp_col == g & row_col == r)
+  grp_bits <- vapply(grp_lvls, function(g)
+    paste0(g, " (", paste(sprintf("%s: N=%d", row_lvls, n_tab[g, ]), collapse = ", "), ")"),
+    character(1))
+  sentence <- paste0(group.by, ": ", paste(grp_bits, collapse = ", "))
+  list(sentence = sentence, n_tab = n_tab, has_row = TRUE)
+}
+
+# When several features are plotted together and one has more missing values
+# than the others in some group (a clinical score only collected for a subset
+# of patients, say), a single shared N is misleading for that feature. Compare
+# each feature's non-NA count per (group, row) cell against the "nominal" cell
+# size from .pb_n_breakdown() (the count achievable when nothing is missing),
+# and return one footnote sentence per feature that falls short somewhere.
+# character(0) when every feature is fully available in every cell.
+.pb_availability_notes <- function(cache, valid_features, group.by, row.by, n_breakdown) {
+  grp_col <- as.character(cache[[group.by]])
+  row_col <- if (!is.null(row.by)) as.character(cache[[row.by]]) else NULL
+  notes <- character(0)
+  for (feat in valid_features) {
+    vals <- cache[[feat]]
+    if (is.null(vals)) next
+    shortfalls <- character(0)
+    if (n_breakdown$has_row) {
+      for (g in rownames(n_breakdown$n_tab)) for (r in colnames(n_breakdown$n_tab)) {
+        nominal <- n_breakdown$n_tab[g, r]
+        if (nominal == 0L) next
+        avail <- sum(grp_col == g & row_col == r & !is.na(vals))
+        if (avail < nominal)
+          shortfalls <- c(shortfalls, sprintf("%s/%s (n=%d of %d)", g, r, avail, nominal))
+      }
+    } else {
+      for (g in names(n_breakdown$n_tab)) {
+        nominal <- n_breakdown$n_tab[[g]]
+        if (nominal == 0L) next
+        avail <- sum(grp_col == g & !is.na(vals))
+        if (avail < nominal)
+          shortfalls <- c(shortfalls, sprintf("%s (n=%d of %d)", g, avail, nominal))
+      }
+    }
+    if (length(shortfalls) > 0L)
+      notes <- c(notes, paste0(feat, " was only available for: ",
+                               paste(shortfalls, collapse = "; "), "."))
+  }
+  notes
+}
 #' Pseudobulk box + dot plots for gene expression
 #'
 #' Plots mean gene expression per donor (or per donor x cell type, etc.) as
@@ -832,28 +897,43 @@ PlotPseudoBulk <- function(seurat_object,
             " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
 
     n_donors <- length(unique(cache[[donor.by]]))
+
+    # Per-group (and per-row, when row.by is set) N - not one pooled total
+    # that hides how N actually splits across the plotted groups.
+    n_breakdown <- .pb_n_breakdown(cache, group.by, grp_lvls, row.by, row_lvls)
+    # When several features are plotted together and one has more missing
+    # values than the others in some group, note exactly where it falls short
+    # rather than letting a single reported N misrepresent that feature.
+    avail_notes <- if (length(valid_features) > 1L)
+      .pb_availability_notes(cache, valid_features, group.by, row.by, n_breakdown)
+    else character(0)
+
+    test_lbl <- if (test == "wilcox.test") "Wilcoxon rank-sum test" else "Welch's t-test"
+
     .write_legend_sidecar(fpath, paste0(
       "Pseudobulk box plot of ", paste(valid_features, collapse = ", "),
       " across ", format(ncol(seurat_object), big.mark = ","), " ", pb_unit,
       " from ", n_donors, " ", donor.by, " donors",
       if (nchar(object_name) > 0) paste0(" [", object_name, "]") else "",
       ". Each dot = mean log-normalized expression for one ", donor.by, ", ",
-      "grouped by ", group.by,
+      "grouped by ", n_breakdown$sentence,
       if (!is.null(split.by)) paste0(", split by ", split.by) else "",
-      if (!is.null(row.by))   paste0(", rows by ", row.by)   else "",
       ". Box: median, IQR; whiskers: 1.5x IQR.",
       if (min_cells > 0L)
         paste0(" Groups with fewer than ", min_cells,
                " ", pb_unit, " per ", donor.by, " were excluded.")
       else "",
       if (add_stats)
-        " Statistical comparisons: Wilcoxon rank-sum test on donor-level means."
+        paste0(" Statistical comparisons: ", test_lbl, " on donor-level means.")
       else "",
       if (!is.null(exclude) && length(exclude) > 0L)
         paste0(" Excluded: ",
                paste(mapply(function(col, vals)
                  paste0(col, " = ", paste(vals, collapse = ", ")),
                  names(exclude), exclude), collapse = "; "), ".")
+      else "",
+      if (length(avail_notes) > 0L)
+        paste0(" Note: ", paste(avail_notes, collapse = " "))
       else ""
     ))
   }

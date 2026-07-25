@@ -6,7 +6,7 @@
 #                 PrepObject integration.
 #
 # Replaces SCP::FeatureStatPlot for scSidekick workflows.
-# The violin panel used by GenerateFeatureMaps (add_boxplot = TRUE) also
+# The violin panel used by PlotFeaturePlots (add_boxplot = TRUE) also
 # delegates to the shared internal builder .build_feature_panel().
 # =============================================================================
 

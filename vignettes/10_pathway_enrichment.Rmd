@@ -54,7 +54,11 @@ mean z-score heatmap (pathways x groups) and optional per-pathway boxplots.
 | 3. MSigDB collection | `gene_set_library` | `"H"` (Hallmark) |
 | 4. MSigDB search | `search_terms` | `c("interferon","apoptosis")` |
 
-Modes 3 and 4 can be combined.
+Modes 3 and 4 can be combined. To pull from **multiple** MSigDB collections at
+once (instead of the single `gene_set_library`/`gene_set_subcategory` pair),
+use `pathway_sets` - the same named-list argument `RunGSEA()` uses, e.g.
+`list(Hallmark = list(category = "H"), KEGG = list(category = "C2", subcategory = "CP:KEGG"))`.
+When supplied, `pathway_sets` takes priority over `gene_set_library`/`gene_set_subcategory`.
 
 ---
 
@@ -79,6 +83,9 @@ bmcite <- PrepObject(bmcite,
 ## 1.3 Mode 1: Custom gene sets
 
 Pass a named list of gene vectors. Each element becomes one row in the heatmap.
+`search_terms` also filters these custom set names when supplied, exactly as
+it does for `gene_set_library`/`pathway_sets` (Modes 3/4) - it is not ignored
+just because the gene sets were entered manually.
 
 ```{r sc-custom}
 RunSCssGSEA(bmcite,
@@ -90,6 +97,18 @@ RunSCssGSEA(bmcite,
   ),
   output_dir  = tempdir(),
   object_name = "bmcite")
+
+# search_terms narrows the custom list down to matching names only
+RunSCssGSEA(bmcite,
+  group.by     = "celltype.l1",
+  gene_sets    = list(
+    T_effector  = c("GZMB", "PRF1", "IFNG", "TNF"),
+    T_exhausted = c("PDCD1", "HAVCR2", "LAG3", "TIGIT"),
+    NK_cytotoxic = c("NCR1", "KLRB1", "GNLY", "NKG7")
+  ),
+  search_terms = "T_",   # keeps only T_effector and T_exhausted
+  output_dir   = tempdir(),
+  object_name  = "bmcite")
 ```
 
 ---
@@ -240,23 +259,35 @@ RunSCssGSEA(bmcite,
 | `seurat_object` | Seurat | required | Annotated Seurat object |
 | `group.by` | character | required | Metadata column for grouping |
 | `split.by` | character or `NULL` | `NULL` | Run independently per level |
-| `gene_sets` | named list or `NULL` | `NULL` | Mode 1: custom gene lists |
+| `subset_cells` | logical | `FALSE` | Subset cells before analysis |
+| `subset_by` | character or `NULL` | `NULL` | Metadata column to subset on (`NULL` → `subset_values` are barcodes) |
+| `subset_values` | character or `NULL` | `NULL` | Levels or barcodes to keep when `subset_cells = TRUE` |
+| `gene_sets` | named list or `NULL` | `NULL` | Mode 1: custom gene lists. Filtered by `search_terms` too, if supplied |
 | `deg_df` | data frame or `NULL` | `NULL` | Mode 2: DEG table |
-| `gene_set_library` | character or `NULL` | `NULL` | Mode 3: MSigDB collection code |
-| `search_terms` | character/list or `NULL` | `NULL` | Mode 4: keyword filter |
-| `pathway_sets` | named list | Hallmark | MSigDB collections for Modes 3/4 |
+| `gene_set_library` | character or `NULL` | `NULL` | Mode 3: single MSigDB collection code. Ignored if `pathway_sets` supplied |
+| `gene_set_subcategory` | character or `NULL` | `NULL` | Sub-collection code, paired with `gene_set_library` |
+| `pathway_sets` | named list or `NULL` | `NULL` | Mode 3/4: multiple MSigDB collections at once (same format as `RunGSEA()`); takes priority over `gene_set_library`/`gene_set_subcategory` |
+| `search_terms` | character/list or `NULL` | `NULL` | Mode 4: keyword filter (also filters custom `gene_sets`) |
 | `method` | character | `"gsva"` | Scoring backend: `"gsva"` or `"ucell"` |
+| `assay` | character | `"RNA"` | Seurat assay to score (`"data"` layer). Use `"sketch"` for a Seurat v5 sketch-subsampled assay |
 | `downsample` | integer or `NULL` | `NULL` | Max cells per group |
-| `min.size` | integer | `10` | Min gene-set size after intersection |
-| `ssgsea.norm` | logical | `FALSE` | Normalize ssGSEA scores to range |
+| `min.size` | integer | `5` | Min gene-set size after intersection |
+| `ssgsea.norm` | logical | `TRUE` | GSVA only: normalize ssGSEA scores to `[0,1]` |
 | `ucell_max_rank` | integer | `1500` | UCell only: top genes considered |
-| `p_cutoff` | numeric | `0.05` | Adjusted p-value threshold for heatmap rows |
+| `sig_group_by` | character or `NULL` | `NULL` | Metadata column for significance testing, if different from `group.by` |
+| `p_cutoff` | numeric | `0.05` | Significance threshold for heatmap rows (raw or adjusted, per `use.padj`) |
+| `use.padj` | logical | `TRUE` | Use BH-adjusted p-value (vs. raw p) for `p_cutoff` and heatmap stars |
 | `show_only_significant` | logical | `TRUE` | Show only significant pathways |
+| `pathways` | character or `NULL` | `NULL` | Manually override which pathways are shown (bypasses `show_only_significant`) |
+| `split_colors` | named list/vector or `NULL` | `NULL` | Custom colors for `split.by` levels |
 | `heatmap_colors` | `colorRamp2` or `NULL` | `NULL` | Custom color function |
 | `heatmap_params` | named list | `list(...)` | Extra args to `ComplexHeatmap::Heatmap()` |
 | `add_boxplots` | logical | `TRUE` | Per-pathway boxplots |
-| `add_pvalues` | logical | `TRUE` | Add p-values to boxplots |
+| `add_pvalues` | logical | `TRUE` | Add raw (unadjusted) t-test p-value brackets to boxplots |
+| `add_to_object` | logical | `FALSE` | Store scores back into `seurat_object@meta.data` |
 | `resume` | logical | `FALSE` | Reload checkpoint CSV |
+| `resume_folder` | character or `NULL` | `NULL` | Explicit run folder to resume from (bypasses fingerprint matching) |
+| `timestamp` | logical | `TRUE` | Create a timestamped subfolder under `output_dir` for this run |
 | `caffeinate` | logical | `FALSE` | Prevent system sleep |
 
 ---

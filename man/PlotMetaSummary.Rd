@@ -25,6 +25,9 @@ PlotMetaSummary(
   file_name = NULL,
   return_data = FALSE,
   return_flextable = FALSE,
+  numeric_stat = c("mean_sd", "median_iqr"),
+  cat_display = c("n_pct", "pct_n", "fraction", "n"),
+  separate_tables = FALSE,
   stats.method = c("nonparametric", "parametric", "auto", "none"),
   pdf.width = NULL,
   pdf.height = NULL

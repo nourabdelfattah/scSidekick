@@ -11,11 +11,17 @@ PlotFeatureTrend(
   assay = NULL,
   layer = "data",
   min_expr = NULL,
+  donor.by = NULL,
   color.by = NULL,
   group.by = NULL,
   groups = NULL,
   method = "loess",
   se = FALSE,
+  add_cor = FALSE,
+  cor_method = c("spearman", "pearson"),
+  show_points = FALSE,
+  point_size = 0.4,
+  point_alpha = 0.25,
   scales = "free_y",
   ncol = NULL,
   colors = NULL,
@@ -49,6 +55,14 @@ dropped so the trend reflects the expressing population rather than being
 pulled toward zero by dropout. \code{min_expr = 0} removes exact zeros.
 \code{NULL} (default) keeps all cells.}
 
+\item{donor.by}{Character or \code{NULL}. When a donor/patient column is
+given, cells are collapsed to \strong{one point per donor} (mean x and
+mean y) before fitting, so both the trend and points reflect independent
+patients rather than cells. This is the honest way to relate a donor-level
+variable (e.g. age, a clinical score) to a per-cell value, and avoids
+drawing thousands of overlapping cell points. \code{show_points} defaults
+to \code{TRUE} when this is set. \code{NULL} (default) keeps cell-level.}
+
 \item{color.by}{Character or \code{NULL}. Metadata column to color the
 smoothed trend lines by (e.g. \code{"Sample"}, to see whether replicates
 agree). \code{NULL} (default) draws a single trend line per feature.}
@@ -61,10 +75,38 @@ cells by (e.g. plot the trend within one cluster only).}
 set) keeps all levels.}
 
 \item{method}{Character. Smoothing method passed to
-\code{ggplot2::geom_smooth()}. Default \code{"loess"}.}
+\code{ggplot2::geom_smooth()}. \code{"loess"} (default) fits a flexible,
+non-parametric curve - appropriate when the relationship's shape is
+unknown or non-monotonic. Use \code{"lm"} for a straight-line (linear)
+fit when the relationship looks linear/monotonic (e.g. after inspecting
+it with \code{add_cor = TRUE}, or from prior knowledge of the variables);
+\code{"glm"} is also accepted for a generalized linear fit.}
 
 \item{se}{Logical. Show the smoother's standard-error ribbon. Default
 \code{FALSE}.}
+
+\item{add_cor}{Logical. Annotate each facet with a correlation coefficient
+and p-value (via \code{ggpubr::stat_cor()}), computed directly from the
+plotted x/y (donor-level when \code{donor.by} is set) - this is the
+direct way to test the relationship shown by the trend line without
+routing through \code{\link{CorrelateGene}()}/\code{\link{PlotCorrelation}()},
+which are built around a gene-vs-many-genes screen keyed on a Seurat
+object rather than an arbitrary x/y pair. When \code{color.by} is set,
+one annotation is shown per color group. Default \code{FALSE}.}
+
+\item{cor_method}{Character. \code{"spearman"} (default; rank-based,
+appropriate for monotonic but not necessarily linear relationships) or
+\code{"pearson"} (linear correlation). Only used when \code{add_cor =
+  TRUE}.}
+
+\item{show_points}{Logical. Overlay the raw observations under the trend.
+Besides showing individual points, this trains the y-axis on the full data
+range - \code{geom_smooth()} alone auto-scales the axis to the fitted line,
+which can look "clipped" relative to the spread of the data. Default
+\code{FALSE}.}
+
+\item{point_size, point_alpha}{Size and transparency of the overlaid points
+when \code{show_points = TRUE}. Defaults \code{0.4} and \code{0.25}.}
 
 \item{scales}{Character. Passed to \code{facet_wrap()}. Default
 \code{"free_y"} (expression ranges differ across genes).}

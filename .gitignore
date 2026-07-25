@@ -10,7 +10,6 @@
 .Rhistory
 .RData
 .Ruserdata
-
 # macOS
 .DS_Store
 __MACOSX/
@@ -21,10 +20,10 @@ Icon
 *.pdf
 *.pptx
 Rplots.pdf
-
 # Local data preparation scripts and cached objects (paths are machine-specific)
 data-raw/
 # Compiled vignettes (built by R CMD check / pkgdown)
 inst/doc/
 vignettes/*.html
 vignettes/*.R
+scSidekick.Rproj

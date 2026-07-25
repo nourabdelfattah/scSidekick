@@ -17,7 +17,7 @@ fgsea::fgsea() using AUC scores as ranking statistics.
 Generate a lollipop NES plot (top/bottom 10 pathways per cluster).
 Build NES heatmaps showing top top_n pathways per cluster.
 
-"><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+"><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -25,7 +25,7 @@ Build NES heatmaps showing top top_n pathways per cluster.
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -120,6 +120,8 @@ loop) and <code>split.by</code> (inner loop) levels:</p><ol><li><p>Subset the ob
 <span>  nes.cutoff <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  resume_folder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  heatmap_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>row_names_side <span class="op">=</span> <span class="st">"left"</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    row_names_max_width <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">15</span>, <span class="st">"cm"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  heatmap_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -287,14 +289,46 @@ only returned as an R list.</p></dd>
 
 
 <dt id="arg-resume">resume<a class="anchor" aria-label="anchor" href="#arg-resume"></a></dt>
-<dd><p>Logical. If <code>TRUE</code> and <code>output_dir</code> is set, skip work that
-has already been completed:</p><ul><li><p><strong>DE cache</strong>: Wilcoxon DE results for each <code>(label, split)</code> pair
+<dd><p>Logical or <code>"last"</code>. Controls both WHICH subfolder this call
+uses and whether cached work is reused:</p><dl><dt><code>FALSE</code> (default)</dt>
+<dd><p>Always start a fresh, new timestamped
+subfolder (see <code>timestamp</code>).</p></dd>
+
+<dt><code>TRUE</code></dt>
+<dd><p>Scan <code>output_dir</code> for previous <code>RunGSEA_*</code> subfolders
+whose call-time parameters (<code>group.by</code>, <code>split.by</code>, <code>species</code>, gene
+sets, etc.) match this call exactly. Zero matches falls back to a
+fresh subfolder; one match resumes it; several matches prompt
+interactively (<code><a href="https://rdrr.io/r/utils/menu.html" class="external-link">utils::menu()</a></code>) when the session is interactive, or
+<code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> with instructions otherwise.</p></dd>
+
+<dt><code>"last"</code></dt>
+<dd><p>Same scan, but silently resumes the most recent match
+instead of asking.</p></dd>
+
+
+</dl><p>Within a resumed subfolder, work already completed is additionally
+skipped:</p><ul><li><p><strong>DE cache</strong>: Wilcoxon DE results for each <code>(label, split)</code> pair
 are saved to <code>output_dir/label/de_cache_&lt;split&gt;_&lt;label&gt;.rds</code> and
 reloaded on subsequent runs instead of re-running <code><a href="https://rdrr.io/pkg/presto/man/wilcoxauc.html" class="external-link">presto::wilcoxauc</a></code>.</p></li>
 <li><p><strong>DB-level skip</strong>: If the full NES heatmap PDF for a
 <code>(label, split, db_name)</code> triple already exists, that database is
 skipped entirely (its slot in the return list is set to <code>NULL</code>).</p></li>
-</ul><p>Default <code>FALSE</code>.</p></dd>
+</ul></dd>
+
+
+<dt id="arg-resume-folder">resume_folder<a class="anchor" aria-label="anchor" href="#arg-resume-folder"></a></dt>
+<dd><p>Character or <code>NULL</code>. Explicitly resume this exact
+subfolder (a bare folder name under <code>output_dir</code>, or a full path),
+skipping the scan/match described under <code>resume</code>.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code> (default), every fresh call gets its
+own subfolder named <code>RunGSEA_&lt;YYYYMMDD-HHMMSS&gt;</code> under <code>output_dir</code>, so
+re-running with different settings into the same <code>output_dir</code> never
+overwrites a previous run's files or methods JSON. Set <code>FALSE</code> to use
+<code>output_dir</code> directly (legacy behavior).</p></dd>
 
 
 <dt id="arg-heatmap-params">heatmap_params<a class="anchor" aria-label="anchor" href="#arg-heatmap-params"></a></dt>

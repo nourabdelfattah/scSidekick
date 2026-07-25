@@ -13,7 +13,7 @@
 #     override any default without repeating all arguments
 # ---------------------------------------------------------------------------
 .gsea_ht <- function(mat, title, filepath, heatmap_params = list(),
-                     heatmap_colors = NULL) {
+                     heatmap_colors = NULL, padj_mat = NULL) {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE))
     stop("Package 'ComplexHeatmap' is required for GSEA heatmaps.")
   if (!requireNamespace("circlize", quietly = TRUE))
@@ -21,6 +21,25 @@
 
   n_rows <- nrow(mat)
   n_cols <- ncol(mat)
+
+  # Significance stars (each pathway x cluster cell already has its own padj
+  # from that cluster's independent fgsea run - see the caller). Matches the
+  # cell_fun pattern used by RunGSEA_pseudobulk's NES heatmaps.
+  cell_fn <- NULL
+  if (!is.null(padj_mat)) {
+    pm_aligned <- padj_mat[rownames(mat), colnames(mat), drop = FALSE]
+    stars_mat  <- ifelse(
+      is.na(pm_aligned), "",
+      ifelse(pm_aligned < 0.001, "***",
+      ifelse(pm_aligned < 0.01,  "**",
+      ifelse(pm_aligned < 0.05,  "*",  ""))))
+    sf <- stars_mat   # captured in closure
+    cell_fn <- function(j, i, x, y, width, height, fill) {
+      s <- sf[i, j]
+      if (nzchar(s))
+        grid::grid.text(s, x, y, gp = grid::gpar(fontsize = 8, col = "black"))
+    }
+  }
 
   # Truncate very long pathway names so the PDF stays a manageable width
   max_rn_chars <- 80L
@@ -84,6 +103,7 @@
     column_title_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
     border            = FALSE,
     use_raster        = FALSE,
+    cell_fun          = cell_fn,
     width             = grid::unit(n_cols * cell_w_pt, "pt"),
     height            = grid::unit(n_rows * cell_h_pt, "pt"),
     heatmap_legend_param = list(
@@ -254,8 +274,22 @@
 #'   }
 #'   Note: for NES heatmaps, diverging palettes (centered at 0) are
 #'   semantically correct because 0 means "no enrichment".
-#' @param resume Logical. If `TRUE` and `output_dir` is set, skip work that
-#'   has already been completed:
+#' @param resume Logical or `"last"`. Controls both WHICH subfolder this call
+#'   uses and whether cached work is reused:
+#'   \describe{
+#'     \item{`FALSE` (default)}{Always start a fresh, new timestamped
+#'       subfolder (see `timestamp`).}
+#'     \item{`TRUE`}{Scan `output_dir` for previous `RunGSEA_*` subfolders
+#'       whose call-time parameters (`group.by`, `split.by`, `species`, gene
+#'       sets, etc.) match this call exactly. Zero matches falls back to a
+#'       fresh subfolder; one match resumes it; several matches prompt
+#'       interactively (`utils::menu()`) when the session is interactive, or
+#'       `stop()` with instructions otherwise.}
+#'     \item{`"last"`}{Same scan, but silently resumes the most recent match
+#'       instead of asking.}
+#'   }
+#'   Within a resumed subfolder, work already completed is additionally
+#'   skipped:
 #'   \itemize{
 #'     \item **DE cache**: Wilcoxon DE results for each `(label, split)` pair
 #'       are saved to `output_dir/label/de_cache_<split>_<label>.rds` and
@@ -264,7 +298,14 @@
 #'       `(label, split, db_name)` triple already exists, that database is
 #'       skipped entirely (its slot in the return list is set to `NULL`).
 #'   }
-#'   Default `FALSE`.
+#' @param resume_folder Character or `NULL`. Explicitly resume this exact
+#'   subfolder (a bare folder name under `output_dir`, or a full path),
+#'   skipping the scan/match described under `resume`.
+#' @param timestamp Logical. When `TRUE` (default), every fresh call gets its
+#'   own subfolder named `RunGSEA_<YYYYMMDD-HHMMSS>` under `output_dir`, so
+#'   re-running with different settings into the same `output_dir` never
+#'   overwrites a previous run's files or methods JSON. Set `FALSE` to use
+#'   `output_dir` directly (legacy behavior).
 #' @param caffeinate Logical. If `TRUE`, prevents the Mac from sleeping during
 #'   the run via `caffeinate`. Useful for long multi-database runs overnight.
 #'   Default `FALSE`.
@@ -308,12 +349,19 @@ RunGSEA <- function(seurat_object,
                      nes.cutoff     = 1.0,
                      output_dir     = NULL,
                      resume         = FALSE,
+                     resume_folder  = NULL,
+                     timestamp      = TRUE,
                      heatmap_params = list(row_names_side      = "left",
                                            show_row_dend       = FALSE,
                                            row_names_max_width = grid::unit(15, "cm")),
                      heatmap_colors = NULL,
                      caffeinate     = FALSE) {
 
+  # Captured first, exactly as the user typed it (unevaluated) - see
+  # .nk_call_text() - so the methods JSON can record the literal call.
+  call_text <- .nk_call_text(match.call(), "RunGSEA")
+
+  resume_not_set <- missing(resume)   # captured before any reassignment below
   if (caffeinate) { .caff <- .nk_caffeinate(); on.exit(.nk_decaffeinate(.caff), add = TRUE) }
 
   # Walk up output_dir from PrepObject when not explicitly supplied
@@ -331,6 +379,35 @@ RunGSEA <- function(seurat_object,
             "Assign the return value (results <- RunGSEA(...)) or set ",
             "output_dir in this call or via PrepObject(output_dir = ...).",
             call. = FALSE)
+
+  # ── Resolve the run directory (default: one timestamped subfolder per call,
+  # so re-running with different settings into the same output_dir never
+  # overwrites a previous run's CSVs/PDFs/JSON). See .nk_resolve_run_dir().
+  if (!is.null(output_dir) &&
+      (isTRUE(timestamp) || !is.null(resume_folder) || !identical(resume, FALSE))) {
+    fp <- list(
+      group.by = group.by, split.by = split.by, label.by = label.by,
+      species = species, assay = assay, min_cells = min_cells,
+      gene_sets_names = if (!is.null(gene_sets)) sort(names(gene_sets)) else NULL,
+      deg_df_dim  = if (!is.null(deg_df)) dim(deg_df) else NULL,
+      deg_df_cols = if (!is.null(deg_df)) sort(colnames(deg_df)) else NULL,
+      pathway_sets = if (is.null(gene_sets) && is.null(deg_df)) pathway_sets else NULL,
+      search_terms = search_terms
+    )
+    resolved   <- .nk_resolve_run_dir(output_dir, "RunGSEA", timestamp = timestamp,
+                                      resume = resume, resume_folder = resume_folder,
+                                      current_params = fp)
+    output_dir <- resolved$dir
+    # Normalize resume to a clean TRUE/FALSE for the rest of the function
+    # (it may currently be "last", which the file-existence checks below - a
+    # bare `resume && ...` - cannot evaluate). Respect an explicit resume =
+    # FALSE from the caller; otherwise TRUE if the resolver matched a previous
+    # run OR the caller asked for TRUE/"last" (harmless no-op checks against a
+    # brand-new, empty folder when no previous run matched).
+    user_forced_no_resume <- !resume_not_set && identical(resume, FALSE)
+    resume <- !user_forced_no_resume &&
+      (resolved$resumed || isTRUE(resume) || identical(resume, "last"))
+  }
 
   # Validate required packages (msigdbr only needed for MSigDB mode)
   use_custom <- !is.null(gene_sets) || !is.null(deg_df)
@@ -442,6 +519,7 @@ RunGSEA <- function(seurat_object,
     db_list_str <- paste(names(pathway_sets), collapse = ", ")
     .write_subdir_params(output_dir, list(
       date              = format(Sys.Date()),
+      function_call     = call_text,
       gsea_method       = "single-cell (Wilcoxon/presto + fgsea)",
       gsea_group_by     = group.by,
       gsea_split_by     = split.by,
@@ -612,6 +690,12 @@ RunGSEA <- function(seurat_object,
         all_pathways <- names(fgsea_sets)
         nes_mat      <- data.frame(pathway = all_pathways,
                                    stringsAsFactors = FALSE)
+        # padj accumulator (pathways x clusters), parallel to nes_mat, so the
+        # final heatmap can draw a significance star per pathway-per-cluster
+        # cell - each cluster is its own independent fgsea run and already has
+        # a padj for every pathway; it was previously computed but discarded.
+        padj_mat       <- data.frame(pathway = all_pathways,
+                                     stringsAsFactors = FALSE)
         lollipop_plots <- list()
 
         for (cl in clusters) {
@@ -642,6 +726,15 @@ RunGSEA <- function(seurat_object,
                   stringsAsFactors = FALSE
                 )
                 colnames(nes_col_df)[2] <- cl
+                if ("padj" %in% colnames(cached)) {
+                  padj_col_df <- data.frame(
+                    pathway = cached$pathway,
+                    padj    = suppressWarnings(as.numeric(cached$padj)),
+                    stringsAsFactors = FALSE
+                  )
+                  colnames(padj_col_df)[2] <- cl
+                  padj_mat <- dplyr::left_join(padj_mat, padj_col_df, by = "pathway")
+                }
                 nes_mat <- dplyr::left_join(nes_mat, nes_col_df,
                                             by = "pathway")
               }
@@ -733,11 +826,16 @@ RunGSEA <- function(seurat_object,
             }
           }
 
-          # Accumulate NES column
+          # Accumulate NES and padj columns (padj powers the heatmap stars)
           nes_col <- gsea_tidy |>
             dplyr::select(pathway, NES) |>
             dplyr::rename(!!cl := NES)
           nes_mat <- dplyr::left_join(nes_mat, nes_col, by = "pathway")
+
+          padj_col <- gsea_tidy |>
+            dplyr::select(pathway, padj) |>
+            dplyr::rename(!!cl := padj)
+          padj_mat <- dplyr::left_join(padj_mat, padj_col, by = "pathway")
         }
 
         # Build NES matrix and heatmaps.
@@ -755,6 +853,16 @@ RunGSEA <- function(seurat_object,
         nes_mat           <- nes_mat[, col_order, drop = FALSE]
         nes_mat[is.na(nes_mat)] <- 0
 
+        # Finalize padj_mat the same way, aligned to nes_mat's final row/col
+        # order. Missing cells default to 1 (non-significant) rather than 0.
+        padj_mat <- tryCatch({
+          pj <- as.matrix(padj_mat[, setdiff(colnames(padj_mat), "pathway"), drop = FALSE])
+          rownames(pj) <- pathway_names
+          pj <- pj[rownames(nes_mat), col_order, drop = FALSE]
+          pj[is.na(pj)] <- 1
+          pj
+        }, error = function(e) NULL)
+
         if (!is.null(db_dir) && ncol(nes_mat) > 0) {
 
           # Full heatmap - ComplexHeatmap with auto-sized PDF so pathway
@@ -766,7 +874,8 @@ RunGSEA <- function(seurat_object,
                    title          = paste(db_name, sp_safe, lab, "(NES)"),
                    filepath       = full_hm_path,
                    heatmap_params = heatmap_params,
-                   heatmap_colors = heatmap_colors)
+                   heatmap_colors = heatmap_colors,
+                   padj_mat       = padj_mat)
           .write_legend_sidecar(full_hm_path, paste0(
             "NES heatmap (all pathways) from GSEA using the ", db_name,
             " pathway database",
@@ -782,7 +891,10 @@ RunGSEA <- function(seurat_object,
             ". Pathways (rows) are hierarchically clustered by NES pattern; ",
             "columns are ", group.by, " groups tested one-vs-all via Wilcoxon rank-sum. ",
             "Blue = depleted (negative NES); red = enriched (positive NES). ",
-            "Color scale is symmetric around 0."
+            "Color scale is symmetric around 0.",
+            if (!is.null(padj_mat))
+              " Significance stars: * padj < 0.05, ** padj < 0.01, *** padj < 0.001 (per pathway, per group's one-vs-all test)."
+            else ""
           ))
 
           # Summary heatmap - top/bottom top_n per cluster.
@@ -795,9 +907,12 @@ RunGSEA <- function(seurat_object,
             summary_rows <- summary_rows[summary_rows %in% rownames(nes_mat)]
             sub_mat      <- nes_mat[summary_rows, , drop = FALSE]
             sub_mat[is.na(sub_mat)] <- 0
+            sub_padj     <- if (!is.null(padj_mat))
+              padj_mat[summary_rows, , drop = FALSE] else NULL
             if (nes.cutoff > 0) {
               keep         <- apply(abs(sub_mat), 1, max, na.rm = TRUE) >= nes.cutoff
               sub_mat      <- sub_mat[keep, , drop = FALSE]
+              if (!is.null(sub_padj)) sub_padj <- sub_padj[keep, , drop = FALSE]
             }
             if (nrow(sub_mat) > 0) {
               summary_hm_path <- file.path(db_dir,
@@ -805,6 +920,7 @@ RunGSEA <- function(seurat_object,
                                                   " ", lab, " top", top_n,
                                                   "-Heatmap.pdf"))
               .gsea_ht(sub_mat,
+                       padj_mat       = sub_padj,
                        title          = paste(db_name, sp_safe, lab,
                                               paste0("top & bottom ", top_n), "(NES)"),
                        filepath       = summary_hm_path,
@@ -830,7 +946,10 @@ RunGSEA <- function(seurat_object,
                          nes.cutoff, " across all groups")
                 else "",
                 ". Pathways are hierarchically clustered. ",
-                "Blue = depleted (negative NES); red = enriched (positive NES)."
+                "Blue = depleted (negative NES); red = enriched (positive NES).",
+                if (!is.null(sub_padj))
+                  " Significance stars: * padj < 0.05, ** padj < 0.01, *** padj < 0.001 (per pathway, per group's one-vs-all test)."
+                else ""
               ))
             }
           }

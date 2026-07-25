@@ -694,7 +694,7 @@ SetLevels <- function(x, levels, append_rest = TRUE) {
 InspectPlot <- function(p, title = NULL) {
 
   # ---- scSidekick composite objects (ggarrange / gtable) ----
-  # GenerateFeatureMaps, PlotGridUMAP etc. return assembled grids that are
+  # PlotFeaturePlots, PlotGridUMAP etc. return assembled grids that are
   # not pure ggplot objects. Check for the attached legend_text first.
   stored <- attr(p, "legend_text")
   if (!is.null(stored)) {
@@ -1263,4 +1263,193 @@ InspectPlot <- function(p, title = NULL) {
 
   list(width  = min(max_in, max(3, width_in)),
        height = min(max_in, max(3, height_in)))
+}
+
+
+# =============================================================================
+# Timestamped run directories + parameter-matched resume
+#
+# Shared by RunGSEA / RunGSEA_pseudobulk / RunSCssGSEA so that repeated calls
+# into the same `output_dir` (e.g. once without covariate correction, once
+# with) never collide: by default every call gets its OWN subfolder
+#   output_dir/<tag>[_<run_label>]_<YYYYMMDD-HHMMSS>/
+# and a small `run_fingerprint.json` recording the call-time arguments that
+# affect the actual computation (group.by, covariates, species, ... - NOT
+# cosmetic plotting params like heatmap_colors). This is deliberately a
+# separate, minimal file from the human-readable analysis_params.json (which
+# mixes in values only resolved partway through each function and is not a
+# safe/stable basis for an early resume decision).
+#
+# `resume` semantics:
+#   FALSE (default)     - always create a new timestamped folder
+#   TRUE                - scan for previous folders under `output_dir` whose
+#                         fingerprint matches the CURRENT call; 0 -> fall back
+#                         to a fresh folder; 1 -> reuse it; 2+ -> ask via
+#                         utils::menu() when interactive(), else stop() with
+#                         instructions (resume = "last", or resume_folder=).
+#   "last"              - same scan, but silently picks the most recent match
+#                         instead of asking.
+# `resume_folder`       - explicit override: reuse exactly this folder (a
+#                         bare name under output_dir, or a full path),
+#                         skipping all scanning/matching.
+# `timestamp = FALSE`   - legacy flat behavior: output_dir is used AS the run
+#                         directory, unchanged from the original behavior.
+# =============================================================================
+
+.nk_run_timestamp <- function() format(Sys.time(), "%Y%m%d-%H%M%S")
+
+# Regex matching this tag's timestamped folder names, with the timestamp
+# captured in group 1 so candidates can be sorted most-recent-first.
+.nk_run_dir_regex <- function(tag) {
+  paste0("^", tag, ".*_(\\d{8}-\\d{6})$")
+}
+
+.nk_new_run_dir <- function(output_dir, tag, run_label = NULL) {
+  lbl <- if (!is.null(run_label) && nzchar(run_label))
+    paste0("_", gsub("[^A-Za-z0-9._-]", "_", run_label)) else ""
+  dir_name <- paste0(tag, lbl, "_", .nk_run_timestamp())
+  run_dir  <- file.path(output_dir, dir_name)
+  dir.create(run_dir, recursive = TRUE, showWarnings = FALSE)
+  run_dir
+}
+
+# List existing <tag>_* folders under output_dir, most recent first.
+.nk_scan_run_dirs <- function(output_dir, tag) {
+  if (!dir.exists(output_dir)) return(character(0))
+  all_dirs <- list.dirs(output_dir, full.names = FALSE, recursive = FALSE)
+  rx       <- .nk_run_dir_regex(tag)
+  hits     <- all_dirs[grepl(rx, all_dirs, perl = TRUE)]
+  if (length(hits) == 0L) return(character(0))
+  ts <- sub(rx, "\\1", hits, perl = TRUE)
+  file.path(output_dir, hits[order(ts, decreasing = TRUE)])
+}
+
+.nk_write_run_fingerprint <- function(run_dir, params) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) return(invisible(NULL))
+  tryCatch(
+    jsonlite::write_json(params, file.path(run_dir, "run_fingerprint.json"),
+                         auto_unbox = TRUE, null = "null"),
+    error = function(e) NULL
+  )
+  invisible(NULL)
+}
+
+.nk_read_run_fingerprint <- function(run_dir) {
+  fp <- file.path(run_dir, "run_fingerprint.json")
+  if (!file.exists(fp) || !requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
+  tryCatch(jsonlite::read_json(fp, simplifyVector = TRUE), error = function(e) NULL)
+}
+
+# Canonical-string comparison so nested lists/vectors/NULLs compare sensibly
+# regardless of round-tripping through JSON.
+.nk_fingerprints_match <- function(a, b) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) return(FALSE)
+  canon <- function(x) {
+    if (is.list(x) && !is.null(names(x))) x <- x[sort(names(x))]
+    tryCatch(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null"),
+             error = function(e) NA_character_)
+  }
+  identical(as.character(canon(a)), as.character(canon(b)))
+}
+
+# Main orchestrator. Returns a list(dir = <path>, resumed = <logical>,
+# fingerprint = <params actually in effect>). `tag` identifies the calling
+# function (e.g. "RunGSEA_pseudobulk"); `current_params` is a named list of
+# the call's computation-affecting arguments (raw, as passed by the user -
+# built the SAME way on every call so fingerprints compare like for like).
+.nk_resolve_run_dir <- function(output_dir, tag, run_label = NULL,
+                                timestamp = TRUE, resume = FALSE,
+                                resume_folder = NULL, current_params = list()) {
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  if (!isTRUE(timestamp) && is.null(resume_folder) && identical(resume, FALSE)) {
+    # Legacy flat mode: output_dir IS the run directory.
+    .nk_write_run_fingerprint(output_dir, current_params)
+    return(list(dir = output_dir, resumed = FALSE, fingerprint = current_params))
+  }
+
+  # Explicit override - skip all scanning/matching.
+  if (!is.null(resume_folder)) {
+    run_dir <- if (dir.exists(resume_folder)) resume_folder
+               else file.path(output_dir, resume_folder)
+    if (!dir.exists(run_dir))
+      stop("resume_folder '", resume_folder, "' does not exist (looked for it ",
+           "directly and under '", output_dir, "').")
+    message("scSidekick: Resuming explicitly requested folder: ", run_dir)
+    return(list(dir = run_dir, resumed = TRUE,
+               fingerprint = .nk_read_run_fingerprint(run_dir) %||% current_params))
+  }
+
+  if (isTRUE(resume) || identical(resume, "last")) {
+    candidates <- .nk_scan_run_dirs(output_dir, tag)
+    matches <- Filter(function(d) {
+      fp <- .nk_read_run_fingerprint(d)
+      !is.null(fp) && .nk_fingerprints_match(fp, current_params)
+    }, candidates)
+
+    if (length(matches) == 0L) {
+      message("scSidekick: resume requested but no previous '", tag,
+              "' run with matching parameters was found under '", output_dir,
+              "' - starting a fresh timestamped run.")
+    } else if (length(matches) == 1L) {
+      message("scSidekick: Resuming matching previous run: ", matches[[1]])
+      return(list(dir = matches[[1]], resumed = TRUE,
+                 fingerprint = .nk_read_run_fingerprint(matches[[1]])))
+    } else if (identical(resume, "last")) {
+      message("scSidekick: ", length(matches), " previous runs match these ",
+              "parameters; resume = \"last\" -> using the most recent: ",
+              matches[[1]])
+      return(list(dir = matches[[1]], resumed = TRUE,
+                 fingerprint = .nk_read_run_fingerprint(matches[[1]])))
+    } else if (interactive()) {
+      ts <- sub(".*_(\\d{8}-\\d{6})$", "\\1", basename(matches))
+      choice <- utils::menu(
+        choices = c(paste0(ts, "  (", basename(matches), ")"), "Start a new run instead"),
+        title = paste0("We found ", length(matches), " folders for ", tag,
+                       " timestamped ", paste(ts, collapse = ", "),
+                       " with matching parameters - which one to resume?")
+      )
+      if (choice >= 1L && choice <= length(matches)) {
+        message("scSidekick: Resuming: ", matches[[choice]])
+        return(list(dir = matches[[choice]], resumed = TRUE,
+                   fingerprint = .nk_read_run_fingerprint(matches[[choice]])))
+      }
+      message("scSidekick: Starting a fresh timestamped run instead.")
+    } else {
+      stop(
+        "resume = TRUE matched ", length(matches), " previous '", tag, "' runs ",
+        "with the same parameters, and this session is not interactive so ",
+        "scSidekick cannot ask which one to use:\n  ",
+        paste(matches, collapse = "\n  "),
+        "\nRe-run with resume = \"last\" to use the most recent automatically, ",
+        "or resume_folder = \"<one of the paths above>\" to pick one explicitly."
+      )
+    }
+  }
+
+  # Fresh run (default path, and the fallback from every branch above).
+  run_dir <- .nk_new_run_dir(output_dir, tag, run_label)
+  .nk_write_run_fingerprint(run_dir, current_params)
+  list(dir = run_dir, resumed = FALSE, fingerprint = current_params)
+}
+
+
+# =============================================================================
+# .nk_call_text()
+# Captures the exact call a pathway-analysis function was invoked with (as the
+# user literally typed it - unevaluated argument expressions, not the objects
+# they refer to) and deparses it to a single-line string for the methods JSON,
+# e.g. "RunGSEA_pseudobulk(seurat_object = obj, contrast.by = \"groups\", ...)".
+# Because match.call() captures the CALL EXPRESSION rather than evaluating
+# arguments, a large object passed by variable name (seurat_object = MyObj)
+# appears only as its symbol "MyObj" - never serialized into the JSON.
+# `mc` must be match.call() captured in the caller's own frame (calling it
+# from inside this helper would capture the wrong call).
+# =============================================================================
+.nk_call_text <- function(mc, fn_name) {
+  tryCatch({
+    mc[[1]] <- as.name(fn_name)
+    txt <- paste(deparse(mc, width.cutoff = 500L), collapse = " ")
+    gsub("[ \t]+", " ", txt)
+  }, error = function(e) NULL)
 }

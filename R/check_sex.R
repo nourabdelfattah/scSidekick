@@ -88,7 +88,7 @@
   #    (e.g. XIST visible only in Female panel, DDX3Y only in Male panel).
   if (has_redux && length(genes_in_panel) > 0) {
     tryCatch(
-      GenerateFeatureMaps(
+      PlotFeaturePlots(
         seurat_object,
         features    = genes_in_panel,
         split.by    = if (has_sex_col) sex_col else NULL,

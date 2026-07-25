@@ -21,9 +21,11 @@ RunSCssGSEA(
   deg_top_n = 20,
   gene_set_library = NULL,
   gene_set_subcategory = NULL,
+  pathway_sets = NULL,
   search_terms = NULL,
   species = "Homo sapiens",
   method = "gsva",
+  assay = "RNA",
   downsample = NULL,
   min.size = 5,
   ssgsea.norm = TRUE,
@@ -34,7 +36,9 @@ RunSCssGSEA(
   fit = "ANOVA",
   sig_group_by = NULL,
   p_cutoff = 0.05,
+  use.padj = TRUE,
   show_only_significant = TRUE,
+  pathways = NULL,
   group_colors = NULL,
   split_colors = NULL,
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
@@ -44,6 +48,8 @@ RunSCssGSEA(
   add_pvalues = TRUE,
   add_to_object = FALSE,
   output_dir,
+  resume_folder = NULL,
+  timestamp = TRUE,
   object_name = "Analysis",
   subset_name = "",
   caffeinate = FALSE
@@ -72,7 +78,9 @@ cell barcodes directly.}
 cell barcodes when \code{subset_by = NULL}.}
 
 \item{gene_sets}{Named list of gene vectors (Mode 1). \code{NULL} if using another
-mode.}
+mode. When \code{search_terms} is also supplied, it filters these custom names
+too (matching \code{\link[=RunGSEA]{RunGSEA()}}/\code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}} behavior) rather than
+being silently ignored.}
 
 \item{deg_df}{Data frame of DEG results (Mode 2). \code{NULL} otherwise.
 Compatible with standard outputs from \code{\link[presto:wilcoxauc]{presto::wilcoxauc()}}, edgeR, or any
@@ -99,8 +107,9 @@ pre-filtering. Default \code{0.05}.}
 \item{deg_top_n}{Integer. Top N genes per group (by \code{deg_fc_column}) to include
 in each gene set. Default \code{20}.}
 
-\item{gene_set_library}{Character or \code{NULL}. MSigDB collection code (Mode 3
-or 4). Common options:
+\item{gene_set_library}{Character or \code{NULL}. MSigDB collection code for a
+\emph{single} collection (Mode 3 or 4). Ignored when \code{pathway_sets} is
+supplied. Common options:
 \itemize{
 \item \code{"H"} - Hallmark (50 coherent biological processes)
 \item \code{"C2"} - Curated: canonical pathways (combine with
@@ -112,10 +121,22 @@ or 4). Common options:
 \item \code{"C7"} - Immunologic signatures (IMMUNESIGDB)
 \item \code{"C8"} - Cell-type signatures
 }
-\code{NULL} fetches all collections (slow; use with \code{search_terms}).}
+\code{NULL} (and \code{pathway_sets} also \code{NULL}) fetches all collections (slow;
+use with \code{search_terms}).}
 
-\item{gene_set_subcategory}{Character or \code{NULL}. MSigDB sub-collection code.
+\item{gene_set_subcategory}{Character or \code{NULL}. MSigDB sub-collection code,
+paired with \code{gene_set_library}. Ignored when \code{pathway_sets} is supplied.
 Default \code{NULL} (entire collection).}
+
+\item{pathway_sets}{Named list or \code{NULL}. Test \strong{multiple} MSigDB
+collections at once - the same argument and format \code{\link[=RunGSEA]{RunGSEA()}} and
+\code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}} use, e.g.
+\code{list(Hallmark = list(category = "H"), KEGG = list(category = "C2",
+  subcategory = "CP:KEGG"))}. All listed collections are fetched and pooled
+into a single set of gene sets (RunSCssGSEA always scores everything into
+one heatmap/boxplot set, unlike RunGSEA's one-heatmap-per-database
+output). When supplied, this takes priority over \code{gene_set_library} /
+\code{gene_set_subcategory}. \code{NULL} (default) uses those two instead.}
 
 \item{search_terms}{Search filter applied to MSigDB gene-set names (case-
 insensitive, regex). Accepts two forms:
@@ -143,6 +164,11 @@ mouse datasets. See \code{msigdbr::msigdbr_species()} for all supported species.
 package's ssGSEA algorithm; \code{"ucell"} uses the UCell package's rank-based
 U statistic, which is faster and memory-efficient for large datasets but
 does not produce normalized enrichment scores.}
+
+\item{assay}{Character. Seurat assay to pull normalized (\code{"data"} layer)
+expression from. Default \code{"RNA"}. BPCells/sketch-aware: pass \code{"sketch"}
+to score a Seurat v5 sketch-subsampled assay for large datasets instead
+of the full \code{"RNA"} assay.}
 
 \item{downsample}{Integer or \code{NULL}. Maximum cells per \code{group.by} identity
 to use for scoring. ssGSEA is \eqn{O(n_{\text{cells}})} - downsampling to
@@ -182,13 +208,26 @@ Override when your display grouping (\code{group.by}) differs from your
 statistical grouping (e.g. display by fine cell type, test by broad
 disease category).}
 
-\item{p_cutoff}{Numeric. BH-adjusted p-value threshold for selecting
-pathways to display in the heatmap. Default \code{0.05}.}
+\item{p_cutoff}{Numeric. Significance threshold for selecting pathways to
+display in the heatmap - compared against BH-adjusted or raw p-value
+depending on \code{use.padj}. Default \code{0.05}.}
+
+\item{use.padj}{Logical. When \code{TRUE} (default), \code{p_cutoff} is compared
+against the BH-adjusted p-value (\code{p_adj}). Set to \code{FALSE} to use the raw
+p-value instead -- useful when many pathways make BH correction too
+aggressive and real signals drop out. Affects pathway selection for the
+heatmap and the significance wording in legend text.}
 
 \item{show_only_significant}{Logical. If \code{TRUE}, heatmap shows only
-pathways with \code{p_adj < p_cutoff}. Falls back to top 30 by statistic if no
-pathways pass the threshold. If \code{FALSE}, all pathways are shown. Default
-\code{TRUE}.}
+pathways passing \code{p_cutoff} (see \code{use.padj}). Falls back to top 30 by
+statistic if no pathways pass the threshold. If \code{FALSE}, all pathways are
+shown. Ignored when \code{pathways} is supplied. Default \code{TRUE}.}
+
+\item{pathways}{Character vector or \code{NULL}. Force these specific pathway
+names into the heatmap/boxplots regardless of significance, bypassing the
+\code{p_cutoff} filter entirely (e.g. a pathway of interest that didn't clear
+the threshold). Names not found among the tested gene sets are dropped
+with a warning. Default \code{NULL} (use the significance-based selection).}
 
 \item{group_colors}{Named character vector of colors for \code{group.by} levels.
 \code{NULL} (default) auto-generates colors from the Nour palette.}
@@ -226,9 +265,11 @@ recommended. Examples:
 boxplot pages showing per-cell score distributions across \code{group.by}
 groups (and split by \code{split.by} if set).}
 
-\item{add_pvalues}{Logical. If \code{TRUE} (default), add BH-adjusted p-value
-brackets to boxplots using \code{ggpubr::stat_compare_means()}. Requires
-\code{add_boxplots = TRUE}.}
+\item{add_pvalues}{Logical. If \code{TRUE} (default), add pairwise t-test
+p-value brackets to boxplots using \code{ggpubr::stat_compare_means()}.
+These are raw (unadjusted) p-values for each displayed pair - not
+BH-corrected, and unrelated to the \code{use.padj}/\code{p_cutoff} pathway-selection
+threshold above. Requires \code{add_boxplots = TRUE}.}
 
 \item{add_to_object}{Logical. If \code{FALSE} (default), returns the enrichment
 scores data frame invisibly and does not modify the Seurat object (scores

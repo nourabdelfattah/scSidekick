@@ -42,7 +42,8 @@ GroupHeatmap(
   output_dir = NULL,
   object_name = "",
   subset_name = "",
-  file_name = NULL
+  file_name = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -139,7 +140,9 @@ Default \code{FALSE}.}
 \item{auto_draw}{Logical.  Render automatically after building. Default
 \code{TRUE}.}
 
-\item{legend_side}{Where to place the legend.  Default \code{"right"}.}
+\item{legend_side}{Where to place the legends.  Default \code{"right"}.
+Moves both the heatmap color legend and the annotation legends (row-split
+modules, top annotations) to the same side.}
 
 \item{width}{Heatmap body width, as a \code{grid::unit} \emph{or} a bare
 numeric (interpreted as inches).  When left at the default and
@@ -173,6 +176,10 @@ back to the \code{subset_name} stored by \code{\link{PrepObject}}.}
 saved PDF. \code{NULL} (default) auto-deduces the name from
 \code{object_name}, \code{subset_name}, the \code{features} variable name,
 and the \code{group.by} / \code{column_split_by} variables.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
 Invisibly, a named list:

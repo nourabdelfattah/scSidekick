@@ -15,7 +15,7 @@ true unit of replication and avoids the inflated degrees of freedom that
 arise from cell-level comparisons.
 Optionally also computes per-patient pathway activity scores (ssGSEA via
 GSVA) and tests them across groups, producing boxplots and heatmaps
-alongside the GSEA results."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+alongside the GSEA results."><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -23,7 +23,7 @@ alongside the GSEA results."><meta property="og:image" content="https://nourabde
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -128,6 +128,7 @@ alongside the GSEA results.</p>
 <span>  min.samples.per.group <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>  run.ssgsea <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssgsea.use.padj <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  gsea.use.padj <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  top_n_heatmap <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>  top_n_ssgsea <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>  nes.cutoff <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -136,6 +137,8 @@ alongside the GSEA results.</p>
 <span>    row_names_max_width <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">15</span>, <span class="st">"cm"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  heatmap_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resume <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  resume_folder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  save.rds <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  redo_plots <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  caffeinate <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -191,9 +194,11 @@ calling the function multiple times. Default <code>NULL</code>.</p></dd>
 
 <dt id="arg-run-label">run_label<a class="anchor" aria-label="anchor" href="#arg-run-label"></a></dt>
 <dd><p>Character or <code>NULL</code>. Short label appended to output
-filenames and plot titles to distinguish this run from others saved to the
-same <code>output_dir</code>. Set automatically when <code>subset.by</code> is used; otherwise
-leave <code>NULL</code> unless you need a custom tag.</p></dd>
+filenames, plot titles, AND (when <code>timestamp = TRUE</code>) the run's
+subfolder name, to distinguish this run from others saved to the same
+<code>output_dir</code> (e.g. <code>run_label = "with_age_covariate"</code>). Set automatically
+when <code>subset.by</code> is used; otherwise leave <code>NULL</code> unless you need a custom
+tag.</p></dd>
 
 
 <dt id="arg-pseudobulk">pseudobulk<a class="anchor" aria-label="anchor" href="#arg-pseudobulk"></a></dt>
@@ -341,6 +346,13 @@ selection for heatmaps, boxplot panel selection, and significance bracket
 thresholds. Default <code>TRUE</code>.</p></dd>
 
 
+<dt id="arg-gsea-use-padj">gsea.use.padj<a class="anchor" aria-label="anchor" href="#arg-gsea-use-padj"></a></dt>
+<dd><p>Logical. Same choice as <code>ssgsea.use.padj</code>, but for the
+main fgsea NES heatmaps: which column (<code>padj</code> vs. raw <code>pval</code>) drives the
+significance stars (<code>*</code> / <code>**</code> / <code>***</code>) drawn in each pathway x cell-type
+(or pathway x contrast, for the summary heatmap) cell. Default <code>TRUE</code>.</p></dd>
+
+
 <dt id="arg-top-n-heatmap">top_n_heatmap<a class="anchor" aria-label="anchor" href="#arg-top-n-heatmap"></a></dt>
 <dd><p>Integer. Number of pathways shown in the NES heatmap
 per contrast/database combination, selected by maximum |NES| across cell
@@ -391,10 +403,46 @@ Examples:</p><ul><li><p><strong>Classic RdBu:</strong>
 
 
 <dt id="arg-resume">resume<a class="anchor" aria-label="anchor" href="#arg-resume"></a></dt>
-<dd><p>Logical. Skip cell types whose GSEA CSV files already exist in
-<code>output_dir</code> (from a previous partial run). Useful when a long run crashed
-mid-way. Cell types with any missing output are rerun; already-complete
-ones are skipped with a message. Default <code>FALSE</code>.</p></dd>
+<dd><p>Logical or <code>"last"</code>. Controls both WHICH subfolder this call
+uses and whether cached computation is reused:</p><dl><dt><code>FALSE</code> (default)</dt>
+<dd><p>Always start a fresh, new timestamped
+subfolder (see <code>timestamp</code>).</p></dd>
+
+<dt><code>TRUE</code></dt>
+<dd><p>Scan <code>output_dir</code> for previous
+<code>RunGSEA_pseudobulk_*</code> subfolders whose call-time parameters
+(<code>group.by</code>, <code>sample.by</code>, <code>contrast.by</code>, <code>covariates</code>, gene sets,
+etc. - NOT purely cosmetic ones like <code>heatmap_colors</code>) match this
+call exactly. Zero matches falls back to a fresh subfolder; one match
+resumes it (skipping recomputation the same way <code>pseudobulk</code> reuse
+already does); several matches prompt interactively
+(<code><a href="https://rdrr.io/r/utils/menu.html" class="external-link">utils::menu()</a></code>) when the session is interactive, or <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code> with
+instructions otherwise.</p></dd>
+
+<dt><code>"last"</code></dt>
+<dd><p>Same scan, but silently resumes the most recent match
+instead of asking.</p></dd>
+
+
+</dl><p>Within a resumed subfolder, cell types whose GSEA CSV files already exist
+are additionally skipped (as before) so a crashed run can continue.</p></dd>
+
+
+<dt id="arg-resume-folder">resume_folder<a class="anchor" aria-label="anchor" href="#arg-resume-folder"></a></dt>
+<dd><p>Character or <code>NULL</code>. Explicitly resume this exact
+subfolder (a bare folder name under <code>output_dir</code>, or a full path),
+skipping the scan/match described under <code>resume</code>. Useful in scripts where
+you already know which previous run to continue.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code> (default), every fresh call gets its
+own subfolder named <code>RunGSEA_pseudobulk[_run_label]_&lt;YYYYMMDD-HHMMSS&gt;</code>
+under <code>output_dir</code>, so re-running with different settings (e.g. with vs.
+without <code>covariates</code>) into the same <code>output_dir</code> never overwrites a
+previous run's files or methods JSON. Set <code>FALSE</code> to use <code>output_dir</code>
+directly (legacy behavior) - in that mode you are responsible for giving
+different configurations different <code>output_dir</code> values yourself.</p></dd>
 
 
 <dt id="arg-save-rds">save.rds<a class="anchor" aria-label="anchor" href="#arg-save-rds"></a></dt>

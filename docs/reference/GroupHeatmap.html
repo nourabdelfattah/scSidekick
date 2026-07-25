@@ -27,7 +27,7 @@ combinations are shown
 Column annotation - one color bar per group.by
 variable (analogous to ComplexHeatmap's multi-bar top annotation)
 
-"><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"></head><body>
+"><meta property="og:image" content="https://nourabdelfattah.github.io/scSidekick/logo.png"><meta name="google-site-verification" content="1BPiVwkAWfh16zVe_maMmtISLNt87GpPgpPoT60zuLw"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -35,7 +35,7 @@ variable (analogous to ComplexHeatmap's multi-bar top annotation)
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -147,7 +147,8 @@ variable (analogous to ComplexHeatmap's multi-bar top annotation)</p></li>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  file_name <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -299,7 +300,9 @@ Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-legend-side">legend_side<a class="anchor" aria-label="anchor" href="#arg-legend-side"></a></dt>
-<dd><p>Where to place the legend.  Default <code>"right"</code>.</p></dd>
+<dd><p>Where to place the legends.  Default <code>"right"</code>.
+Moves both the heatmap color legend and the annotation legends (row-split
+modules, top annotations) to the same side.</p></dd>
 
 
 <dt id="arg-width">width<a class="anchor" aria-label="anchor" href="#arg-width"></a></dt>
@@ -349,6 +352,12 @@ back to the <code>subset_name</code> stored by <code><a href="PrepObject.html">P
 saved PDF. <code>NULL</code> (default) auto-deduces the name from
 <code>object_name</code>, <code>subset_name</code>, the <code>features</code> variable name,
 and the <code>group.by</code> / <code>column_split_by</code> variables.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, append a
+<code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
