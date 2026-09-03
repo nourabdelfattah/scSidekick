@@ -320,6 +320,14 @@
 #'   or `"p.format"` (shows `p = 0.023`).
 #' @param hide_ns Logical. If `TRUE`, omit `ns` brackets entirely. Default
 #'   `FALSE` (shows `ns` in gray).
+#' @param file_name Character or `NULL`. Base name (no extension) for the
+#'   saved PDF. `NULL` (default) auto-deduces from `object_name`,
+#'   `subset_name`, the gene, `split.by`, and `row.by`.
+#' @param width,height Numeric or `NULL`. Override the auto-calculated PDF
+#'   dimensions in inches. `NULL` (default) auto-sizes to fit the panel grid.
+#' @param timestamp Logical. When `TRUE`, append a `_YYYYMMDD-HHMMSS` stamp
+#'   to the saved file name so repeated runs are versioned instead of
+#'   overwriting the previous PDF. Default `FALSE`.
 #'
 #' @return Invisibly returns the last assembled plot when `output_dir = NULL`;
 #'   otherwise writes PDFs and returns `NULL` invisibly. When
@@ -359,7 +367,11 @@ PlotFeaturePlots <- function(seurat_object,
                                  comparisons   = NULL,
                                  group_colors  = NULL,
                                  label_format  = "p.signif",
-                                 hide_ns       = FALSE) {
+                                 hide_ns       = FALSE,
+                                 file_name     = NULL,
+                                 width         = NULL,
+                                 height        = NULL,
+                                 timestamp     = FALSE) {
 
   if (!layout_method %in% c("auto", "metadata"))
     stop("layout_method must be 'auto' or 'metadata'.")
@@ -407,7 +419,11 @@ PlotFeaturePlots <- function(seurat_object,
         comparisons   = comparisons,
         group_colors  = group_colors,
         label_format  = label_format,
-        hide_ns       = hide_ns
+        hide_ns       = hide_ns,
+        file_name     = file_name,
+        width         = width,
+        height        = height,
+        timestamp     = timestamp
       )
     })
     return(invisible(results))
@@ -830,19 +846,19 @@ PlotFeaturePlots <- function(seurat_object,
     }
 
     if (do_join) {
-      # join_plots: defer saving/printing until every gene's panel is built
+      # join_plots: defer saving/printing until every gene's panel is built.
+      # NOTE: width/height (if the user passed them) apply to the COMBINED
+      # figure at the join site below, not each panel here.
       attr(CustomPlot, "nk_pdf_dims") <- c(pdf_w, pdf_h)
       join_collect[[gene]] <- CustomPlot
     } else if (!is.null(output_dir)) {
-      fname     <- file.path(
-        output_dir,
-        paste0(gene,
-               if (!is.null(split.by)) paste0("_", split.by) else "",
-               " featuremap ",
-               object_name,
-               if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
-               ".pdf")
+      fbase <- .nk_resolve_pdf_name(
+        file_name, c(object_name, subset_name, gene, split.by, row.by, "featuremap"),
+        timestamp
       )
+      fname <- file.path(output_dir, paste0(fbase, ".pdf"))
+      pdf_w <- width  %||% pdf_w
+      pdf_h <- height %||% pdf_h
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       if (isTRUE(repel) && !is.null(centroid_df)) {
         .safe_print_repel(CustomPlot)
@@ -884,15 +900,17 @@ PlotFeaturePlots <- function(seurat_object,
     )
 
     one_dim <- attr(join_collect[[1]], "nk_pdf_dims") %||% c(12, 6)
-    pdf_w   <- ncol_j * one_dim[1]
-    pdf_h   <- nrow_j * one_dim[2]
+    pdf_w   <- width  %||% (ncol_j * one_dim[1])
+    pdf_h   <- height %||% (nrow_j * one_dim[2])
 
     if (!is.null(output_dir)) {
-      fname <- file.path(output_dir,
-                         paste0(paste(features, collapse = "-"),
-                                " FeatureMaps ", object_name,
-                                if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
-                                ".pdf"))
+      fbase <- .nk_resolve_pdf_name(
+        file_name,
+        c(object_name, subset_name, split.by, row.by,
+          paste(features, collapse = "-"), "FeatureMaps"),
+        timestamp
+      )
+      fname <- file.path(output_dir, paste0(fbase, ".pdf"))
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       print(combined)
       grDevices::dev.off()

@@ -1,0 +1,285 @@
+---
+title: "scSidekick - AskSidekick(): the AI Documentation Assistant"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{AskSidekick - AI Documentation Assistant}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  eval    = FALSE,   # every call here hits a live API and needs a key -
+                      # nothing in this vignette is meant to run during
+                      # R CMD build/check.
+  message = FALSE,
+  warning = FALSE
+)
+options(cli.width = 80)
+```
+
+## Overview
+
+`AskSidekick()` is a small, self-contained help assistant for scSidekick
+itself. Instead of digging through `?FunctionName` or the vignette index,
+you can just ask:
+
+```r
+library(scSidekick)
+AskSidekick("Which function do I use to split a UMAP by two variables at once?")
+```
+
+It answers four kinds of questions particularly well:
+
+1. **"How do I recreate this figure?"** - point it at a saved PDF or a
+   screenshot with `image_path` and it reads off the plot type and axis/legend
+   labels, matches the file's own path against how scSidekick names its
+   outputs, and proposes the call that likely made it.
+2. **"Which column in my object is Age?"** - pass your `seurat_object` and it
+   reads the real `meta.data` column names (and any colors already saved by
+   `PrepObject()`) instead of guessing from a generic naming convention.
+3. **"How do I change these colors?"** - grounded answers about `PrepObject()`,
+   `custom_colors`, `GetColors()`, etc., pulled from the actual installed
+   documentation rather than a fixed FAQ that can drift out of date.
+4. **"Which covariates should I adjust for?"** - general how-to questions about
+   any exported function, answered from that function's real man page.
+
+Every answer is grounded in **your installed copy's own documentation** - man
+pages plus vignette sources - so it never quotes an argument name or default
+that doesn't actually exist in the version you have installed.
+
+---
+
+## Setup
+
+`AskSidekick()` uses the [ellmer](https://ellmer.tidyverse.org/) package to
+talk to a large language model. `ellmer` is a `Suggests`-only dependency -
+scSidekick loads and works normally without it - so install it once:
+
+```r
+install.packages("ellmer")
+```
+
+By default `AskSidekick()` talks to Google Gemini, which has a genuinely free
+tier (no credit card required). Get a key at
+<https://aistudio.google.com/apikey>, then add one line to `~/.Renviron`
+(`usethis::edit_r_environ()` opens it for you) and restart R:
+
+```
+GEMINI_API_KEY=your_key_here
+```
+
+That's the whole setup. No account tier to choose, no billing to configure.
+
+---
+
+## 1. A plain question
+
+No Seurat object needed for a general "how do I..." question:
+
+```r
+AskSidekick("How do I split a UMAP by donor and color by cell type in the same figure?")
+```
+
+```
+Use PlotDimPlots() with `group.by` for color and `split.by` for the panel split:
+
+scSidekick::PlotDimPlots(seurat_object,
+  group.by = "cell_type",
+  split.by = "donor")
+```
+
+Each call is independent - `AskSidekick()` doesn't remember earlier questions
+in the same session. That's deliberate: Gemini's free tier has a fairly tight
+per-minute token budget, and re-sending a growing conversation history would
+burn through it in one or two calls. Ask one self-contained question at a
+time.
+
+---
+
+## 2. Passing your own object: "which column is Age?"
+
+Supply `seurat_object` and the assistant sees your actual `meta.data` column
+names (and any colors already registered via `PrepObject()`) instead of
+guessing from common naming conventions:
+
+```r
+AskSidekick("Which metadata column represents the donor's age?",
+            seurat_object = SeuratObj)
+```
+
+```
+Looking at SeuratObj's meta.data, "Age.at.Death" (numeric) is the column that
+represents age:
+
+scSidekick::PlotFeature(SeuratObj, features = "Age.at.Death",
+  group.by = "Diagnosis")
+```
+
+Notice the reply uses `SeuratObj` - your own variable's name - in the code
+snippet, not a generic placeholder like `seurat_obj`.
+
+---
+
+## 3. Recreating a figure from an image
+
+Point `image_path` at a saved PDF or a screenshot of a figure someone sent
+you, and `AskSidekick()` reads off the plot type, axis/legend labels, and the
+file's own path (scSidekick's output folders and filenames are deterministic,
+not just cosmetic - e.g. only `RunSCssGSEA()` creates a folder starting `"SC
+ssGSEA "`) to identify the function that most likely made it:
+
+```r
+AskSidekick(image_path = "Figures/bmcite_celltype.l1_donor_GroupHeatmap.pdf",
+            seurat_object = SeuratObj)
+```
+
+```
+The filename matches GroupHeatmap()'s own naming convention (<object>_<group
+.by>_<split.by>_GroupHeatmap.pdf). Based on the visible row/column labels:
+
+scSidekick::GroupHeatmap(SeuratObj,
+  group.by        = "celltype.l1",
+  column_split_by = "donor")
+```
+
+You can add your own question alongside the image if you want something more
+specific than "recreate this":
+
+```r
+AskSidekick("What are the top marker genes labeled on this heatmap?",
+            image_path = "Figures/markers_heatmap.pdf")
+```
+
+### `same_dataset`: is this figure actually from this object?
+
+When you pass both `image_path` and `seurat_object`, `same_dataset` tells the
+assistant how confident to be about matching the figure's grouping variables
+to your object's real columns:
+
+- **`same_dataset = TRUE`** - "this figure was made from this exact object."
+  The assistant is told an exact column match *must* exist for every
+  grouping/coloring variable shown, and to search carefully among
+  similar-but-not-identical columns (`Cluster` vs. `seurat_clusters` vs.
+  `Assignment`) rather than settling for the first plausible name.
+- **`same_dataset = FALSE`** (or the default `NA`) - the figure may be from a
+  different dataset, an earlier package version, or a collaborator's file.
+  The assistant gives its best estimate and says explicitly that it's an
+  estimate, rather than implying a confirmed match.
+
+```r
+AskSidekick(image_path    = "Figures/old_project_umap.pdf",
+            seurat_object = SeuratObj,
+            same_dataset  = TRUE)
+```
+
+Either way, after the model replies, `AskSidekick()` independently
+double-checks anything that looks like a gene list (`c("Cd3e", "Cd8a", ...)`)
+against `rownames(SeuratObj)` and anything that looks like a metadata column
+(`group.by = "..."`, `stat.by = "..."`, etc.) against
+`colnames(SeuratObj@meta.data)` - deterministically, not by asking the model
+to grade its own work. If either check comes back thin (e.g. a species
+mismatch between Title-case mouse genes and ALL-CAPS human genes), a
+**"Heads up"** note is appended to the reply automatically, telling you
+exactly which names didn't match and the closest real alternatives.
+
+---
+
+## 4. The first call after install (or after an update)
+
+The assistant's documentation context - man pages plus vignette sources - is
+built from your **installed** copy of scSidekick and cached under
+`tools::R_user_dir("scSidekick", "cache")`, keyed by package version. The very
+first `AskSidekick()` call after installing or updating the package rebuilds
+that cache automatically:
+
+```
+scSidekick: setting up AskSidekick() for the first time with this package
+version (v1.2.0) - hang on, this can take a minute or two. It only happens
+once; every call after this is instant.
+scSidekick: ready (120 documentation chunks cached).
+```
+
+Every call after that reuses the cache silently - no bundled asset to ship
+with the package, and no manual "rebuild the docs" step on release day.
+
+If you're actively developing scSidekick itself (editing a man page or
+vignette without bumping the version number), force a rebuild directly:
+
+```r
+RebuildSidekickContext()
+```
+
+---
+
+## 5. Model fallback
+
+Google Gemini's free tier gives each model its own separate daily quota
+(RPD), and the allowance varies a lot by model - "Flash Lite" models
+typically get a much larger daily allowance than flagship Flash models on the
+same account (check <https://aistudio.google.com/rate-limit> for yours).
+`AskSidekick()` tries the models in `models` (a "Flash Lite" model first, by
+default) and automatically moves to the next one on a quota or server error,
+rather than making you wait out a 429:
+
+```
+scSidekick bot: gemini-3.5-flash-lite unavailable right now (RESOURCE_EXHAUSTED),
+trying the next model...
+scSidekick bot: answered using gemini-3.1-flash-lite (earlier model(s) were
+over today's quota).
+```
+
+That fallback is always printed, never silent. Pass your own `models` vector
+to reorder or restrict which models are tried:
+
+```r
+AskSidekick("...", models = c("gemini-2.5-flash"))
+```
+
+### Using a different provider entirely
+
+`AskSidekick()` is built on [ellmer](https://ellmer.tidyverse.org/), which is
+provider-agnostic - Gemini's free tier is simply a convenient default that
+doesn't require billing setup. There's no built-in argument to swap providers
+today, but because the whole assistant is under 700 lines in
+`R/ask_sidekick.R`, pointing it at Anthropic, OpenAI, or a local Ollama model
+instead is a matter of swapping the single `ellmer::chat_google_gemini(...)`
+call for `ellmer::chat_anthropic(...)`, `ellmer::chat_openai(...)`, or
+`ellmer::chat_ollama(...)` - see the `ellmer` documentation for each
+provider's exact arguments.
+
+---
+
+## Parameter reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `question` | character | `NULL` | What you want to ask. Optional when `image_path` is supplied. |
+| `seurat_object` | Seurat object | `NULL` | Gives the assistant your real `meta.data` columns and any `PrepObject()`-saved colors; also enables the post-reply gene/column match checks. |
+| `image_path` | character | `NULL` | Path to a PNG/JPEG/PDF figure to read and reverse-engineer. |
+| `same_dataset` | logical | `NA` | `TRUE` = demand an exact metadata-column match (the figure is confirmed to be from `seurat_object`); `FALSE`/`NA` = best estimate, flagged as such. |
+| `models` | character vector | Flash Lite + flagship Flash mix | Gemini models to try in order; automatic fallback on quota/server errors. |
+| `rebuild_context` | logical | `FALSE` | Force a documentation-cache rebuild before asking. Rarely needed - see `RebuildSidekickContext()`. |
+
+---
+
+## See also
+
+- `RebuildSidekickContext()` - force a documentation-cache rebuild
+- Vignette 01: Getting Started - `PrepObject()` is what `AskSidekick()` reads
+  columns and colors from when you pass a `seurat_object`
+- Vignette 12: Reporting & Utilities - the rest of scSidekick's
+  reproducibility layer (`.legend` sidecars, `ExtractMethods()`, the session
+  logger)
+
+---
+
+## Session info
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

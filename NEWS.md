@@ -1,3 +1,67 @@
+# scSidekick 1.2.0
+
+## AI assistant
+
+- New `AskSidekick()` - a documentation-grounded help assistant for
+  scSidekick itself ("which function do I need", "which column is Age?",
+  "how do I recreate this figure?"). Reads a screenshot or saved PDF, matches
+  the file's own path against each function's characteristic output naming
+  (deterministic, not a style guess), and checks any gene/column names it
+  proposes against the actual object afterward - a `same_dataset` argument
+  controls how strict that check is. Backend is Google Gemini's free tier via
+  `ellmer` (`Suggests` only); its documentation context is built from your
+  installed copy on first use and cached by version, so it never quotes a
+  stale signature and needs no bundled asset or manual release-day rebuild.
+- New `RebuildSidekickContext()` forces that cache to rebuild - rarely
+  needed outside active scSidekick development.
+
+## Visualization
+
+- Consistent `split.by`/`row.by` faceting, `file_name`/`width`/`height`/
+  `timestamp` PDF-saving controls, and auto-generated-filename correctness
+  (every grouping/splitting variable in the call is now reflected in the
+  default file name) across `PlotTrajectory()`, `PlotDimPlots()`,
+  `PlotFeaturePlots()`, `PlotSpatialFeaturePlots()`, `PlotSpatialDimPlots()`,
+  `PlotMasterMaps()`, `PlotComposition()`, `PlotPieUMAP()`, `PlotVolcano()`,
+  `PlotGSEAEnrichment()`, `PlotEnrichment()`, `PlotMultiFeature()`,
+  `PlotPathwayButterfly()`, `PlotFeature()`, `PlotMetaSummary()`,
+  `PlotCorrelation()`, `RunGSEA()`, and `RunGSEA_pseudobulk()` - previously
+  present on some of these and missing from others.
+- `PlotTrajectory()` gains `split.by`/`row.by` (previously the only plotting
+  function without them) and `number_labels`, matching `PlotDimPlots()`.
+- `PlotPseudotime()` redesigned: `plot.type = c("density", "ridge")` replaces
+  the old behavior where `split.by` silently did nothing to the density
+  panel and instead bolted on an unrelated second ridge plot. `split.by`/
+  `row.by` now facet either style into real column/row panels, the same way
+  as every other scSidekick plotting function.
+- `PlotFeatureTrend()` gains `split.by`/`row.by`, and `group.by` now colors
+  the trend by default (falling back only when `color.by` is set), matching
+  every other scSidekick function's convention - `groups` still restricts
+  which cells are plotted regardless of which variable ends up coloring the
+  plot.
+
+## Bug fixes
+
+- `PlotDimPlots()`: centroid labels were always numeric regardless of
+  `number_labels`, even when `number_labels = FALSE`.
+- `PlotMetaSummary()`: `row_variable` was missing from the auto-generated
+  file name, so a row-stratified run could silently overwrite an
+  unstratified one in the same `output_dir`.
+- `PlotFeatureTrend()`'s own documentation contradicted itself - the
+  description implied `group.by` colored the trend, while its `@param` entry
+  said it only restricted cells - and the donor-level aggregation step only
+  checked for a literal `color.by`, which would have silently dropped the
+  color grouping once `group.by` became a valid coloring fallback.
+
+## Documentation
+
+- New vignette: *AskSidekick - AI Documentation Assistant*.
+- `example_workflow.Rmd` is now a real package vignette (it was missing
+  `VignetteIndexEntry`/`VignetteEngine`/`VignetteEncoding` and used
+  `html_notebook` instead of `rmarkdown::html_vignette`, so it never built
+  or appeared in `browseVignettes()` despite showing up on the pkgdown site).
+
+
 # scSidekick 1.1.0
 
 ## Pathway analysis
@@ -77,9 +141,6 @@
   names, and a stray `man/.gitignore` had excluded 3 of the 4 doc pages
   from git entirely.
 
-## Site
-
-- Added a Google Search Console verification tag to the pkgdown site config.
 
 # scSidekick 1.0.0
 

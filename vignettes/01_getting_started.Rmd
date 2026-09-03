@@ -390,6 +390,11 @@ create_analysis_pptx(output_dir = "./Figures", object_name = "MyProject")
 - Vignette 12: Reporting & Utilities - the reproducibility layer in full:
   `ExtractMethods()`, the auto-written `.legend` sidecars, the session logger,
   `create_analysis_pptx()`, and the `Nour_pal()` / `Nour_cols()` palette utilities
+- Vignette 21: `AskSidekick()` - an AI assistant that already knows this
+  vignette and every function's real arguments, and can read your object's
+  actual metadata columns and saved colors when you're not sure which one to use
+- Example workflow: a full worked project end to end, from raw 10x data to a
+  slide deck, using the settings this vignette introduces
 
 ---
 

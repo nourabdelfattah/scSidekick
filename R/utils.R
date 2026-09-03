@@ -1453,3 +1453,41 @@ InspectPlot <- function(p, title = NULL) {
     gsub("[ \t]+", " ", txt)
   }, error = function(e) NULL)
 }
+
+
+# =============================================================================
+# .nk_resolve_pdf_name()
+#
+# Single, shared place for "what filename does this saved PDF get" - so
+# file_name / timestamp / auto-naming that includes split.by, row.by, etc.
+# behaves IDENTICALLY across every plotting function instead of each one
+# re-implementing slightly different paste()+gsub() logic inline.
+#
+#   file_name  - the user's explicit override (NULL/"" means auto-deduce)
+#   auto_parts - character vector of name components to auto-deduce from, IN
+#                ORDER (e.g. c(object_name, subset_name, group.by, split.by,
+#                row.by, "SlingshotTrajectory", style)). NULL/NA/"" elements
+#                are dropped automatically, so callers can pass e.g.
+#                split.by even when it's NULL without an if/else at the call
+#                site. Callers are responsible for including whichever of
+#                their own arguments (split.by, row.by, group.by, ...) should
+#                actually be reflected in the auto name - this helper doesn't
+#                know which arguments a given function has.
+#   timestamp  - append "_YYYYMMDD-HHMMSS" when TRUE, so repeated runs are
+#                versioned instead of silently overwriting the previous PDF.
+#
+# Returns the sanitized file-name STEM (no directory, no ".pdf" extension) -
+# callers still do their own file.path(output_dir, paste0(stem, ".pdf")).
+# =============================================================================
+.nk_resolve_pdf_name <- function(file_name, auto_parts, timestamp = FALSE) {
+  base <- if (!is.null(file_name) && nzchar(file_name)) {
+    file_name
+  } else {
+    parts <- auto_parts[!is.na(auto_parts) & nzchar(auto_parts)]
+    paste(parts, collapse = "_")
+  }
+  fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+  if (isTRUE(timestamp))
+    fname <- paste0(fname, "_", format(Sys.time(), "%Y%m%d-%H%M%S"))
+  fname
+}

@@ -8,6 +8,8 @@ PlotTrajectory(
   seurat_object,
   reduction = "umap",
   group.by = NULL,
+  split.by = NULL,
+  row.by = NULL,
   lineages = NULL,
   style = c("straight", "curves"),
   colors = NULL,
@@ -17,6 +19,7 @@ PlotTrajectory(
   label_lineages = TRUE,
   arrow = TRUE,
   label = TRUE,
+  number_labels = FALSE,
   legend.side = "bottom",
   legend_nrow = 2,
   output_dir = NULL,
@@ -24,7 +27,8 @@ PlotTrajectory(
   subset_name = "",
   file_name = NULL,
   width = NULL,
-  height = NULL
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -36,6 +40,18 @@ PlotTrajectory(
 \item{group.by}{Character or \code{NULL}. Metadata column for point color.
 \code{NULL} (default) uses the \code{cluster.by} stored by
 \code{\link{RunSlingshot}}.}
+
+\item{split.by}{Character or \code{NULL}. Metadata column for columns in a
+multi-panel grid (e.g. one panel per sample/condition). \code{NULL}
+(default) walks up to the \code{split.by} stored by
+\code{\link{PrepObject}}; a single panel is drawn when neither this nor
+\code{row.by} is set. Each panel reuses the same fitted Slingshot model -
+only which cells are drawn differs - and the whole grid shares one
+legend, matching \code{\link{PlotDimPlots}}.}
+
+\item{row.by}{Character or \code{NULL}. Metadata column for rows in the
+grid, combined with \code{split.by} for a two-way facet. \code{NULL}
+(default; no row faceting).}
 
 \item{lineages}{Integer/character vector or \code{NULL}. Which lineages to
 draw (e.g. \code{c(1, 2)} or \code{c("Lineage1", "Lineage2")}).
@@ -65,6 +81,14 @@ when only one lineage is drawn.}
 
 \item{label}{Logical. Label cluster centroids. Default \code{TRUE}.}
 
+\item{number_labels}{Logical. When \code{TRUE}, both the legend and (if
+\code{label = TRUE}) the centroid labels use a zero-padded index (e.g.,
+legend "01. CellType", centroid "01") instead of the actual cluster
+name, matching \code{\link{PlotDimPlots}}'s convention. Useful when
+there are many clusters or the names are too long to label directly on
+the plot. Default \code{FALSE} (legend and centroid labels show the
+real cluster name, unnumbered).}
+
 \item{legend.side}{Character. Legend position, matching
 \code{\link{PlotDimPlots}}: \code{"bottom"} (default), \code{"top"},
 \code{"left"}, or \code{"right"}.}
@@ -85,10 +109,16 @@ two functions' output comparable side by side.}
 the saved PDF. \code{NULL} auto-deduces.}
 
 \item{width, height}{Numeric or \code{NULL}. Saved PDF dimensions in
-inches. \code{NULL} (default) uses a fixed 6 x 5.5 in panel.}
+inches. \code{NULL} (default) uses a fixed 6 x 5.5 in panel (scaled up
+per grid panel when \code{split.by}/\code{row.by} is set).}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
-A \code{ggplot} object (invisibly, if saved).
+A \code{ggplot} (or, when \code{split.by}/\code{row.by} is set, a
+\code{patchwork}) object, invisibly if saved.
 }
 \description{
 Draws a standard cluster DimPlot with the Slingshot trajectory overlaid,

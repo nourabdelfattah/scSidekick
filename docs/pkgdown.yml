@@ -22,8 +22,9 @@ articles:
   18_cnmf: 18_cnmf.html
   19_ura: 19_ura.html
   20_pseudotime: 20_pseudotime.html
+  21_ask_sidekick: 21_ask_sidekick.html
   example_workflow: example_workflow.html
-last_built: 2026-07-25T05:22Z
+last_built: 2026-09-02T21:16Z
 urls:
   reference: https://nourabdelfattah.github.io/scSidekick/reference
   article: https://nourabdelfattah.github.io/scSidekick/articles

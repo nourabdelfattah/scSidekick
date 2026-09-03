@@ -15,7 +15,7 @@ mean z-scored enrichment per group."><meta property="og:image" content="https://
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,6 +54,7 @@ mean z-scored enrichment per group."><meta property="og:image" content="https://
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -456,7 +457,13 @@ enrichment scores (cells × gene sets) with additional columns for
 <code>group.by</code> and <code>split.by</code> identity.</p>
 <p>If <code>add_to_object = TRUE</code>: invisibly returns the Seurat object with one
 metadata column per gene set.</p>
-<p><strong>Files saved to <code>output_dir</code>:</strong></p><ul><li><p><code>&lt;prefix&gt; ssGSEA_scores.csv</code> - per-cell enrichment scores + group
+<p><strong>Files saved to <code>output_dir</code>:</strong> written into a dedicated subfolder named
+<code>SC ssGSEA &lt;gene-set label&gt;</code> (e.g. <code>SC ssGSEA STAT3</code>, <code>SC ssGSEA custom</code>) -
+this subfolder name is how to recognize a figure was made by
+<code>RunSCssGSEA()</code> specifically (not <code><a href="RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code>'s own
+<code>run.ssgsea = TRUE</code> sub-step, which does not use this naming convention -
+see <code><a href="RunGSEA_pseudobulk.html">RunGSEA_pseudobulk()</a></code>) when working backward from a saved file without
+its <code>analysis_params.json</code>.</p><ul><li><p><code>&lt;prefix&gt; ssGSEA_scores.csv</code> - per-cell enrichment scores + group
 labels</p></li>
 <li><p><code>&lt;prefix&gt; ssGSEA_significance.csv</code> - per-pathway significance
 (pooled across all cells)</p></li>

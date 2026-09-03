@@ -44,7 +44,10 @@
 #' @param output_dir Character or `NULL`. Directory to save the PDF. Walks up
 #'   from `PrepObject()` settings when `NULL`.
 #' @param file_name Character or `NULL`. Base filename (no extension). Auto-
-#'   deduced from `object_name`, `subset_name`, and column names when `NULL`.
+#'   deduced from `object_name`, `subset_name`, and column names when `NULL`,
+#'   always ending in `"TrendLabeled"` - a saved file ending in that suffix
+#'   was made by this function, useful for working backward from a saved PDF
+#'   without its `analysis_params.json`.
 #' @param object_name Character. Prefix for the auto-deduced filename.
 #' @param subset_name Character. Second prefix component.
 #' @param nrow,ncol Integer or `NULL`. Number of rows/columns for the panel

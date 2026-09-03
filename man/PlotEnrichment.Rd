@@ -19,7 +19,11 @@ PlotEnrichment(
   max_term_length = 50,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -62,6 +66,19 @@ Default \code{50}.}
 \item{object_name}{Label prefix for output file names.}
 
 \item{subset_name}{Optional subset label.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. \code{NULL} (default) auto-deduces from
+\code{object_name}, \code{subset_name}, and \code{plot_type}.}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated
+PDF dimensions in inches. \code{NULL} (default) auto-sizes to the
+number of terms shown.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+are versioned instead of overwriting the previous PDF. Default
+\code{FALSE}.}
 }
 \value{
 A \code{ggplot2} or \code{patchwork} object.

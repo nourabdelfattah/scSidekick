@@ -112,14 +112,18 @@ PlotCorrelation(cor_sc,
   label_n   = 6)
 ```
 
-Save to PDF (a `.legend` sidecar is written automatically):
+Save to PDF (a `.legend` sidecar is written automatically). `width`/`height`
+override the auto-calculated PDF size, and `timestamp = TRUE` appends a
+`_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are
+versioned instead of overwritten:
 
 ```{r plot-cor-save, eval=FALSE}
 PlotCorrelation(cor_sc,
   n_pos      = 20,
   n_neg      = 20,
   output_dir = "./Figures",
-  file_name  = "STAT1_coexpression")
+  file_name  = "STAT1_coexpression",
+  timestamp  = TRUE)
 ```
 
 ---

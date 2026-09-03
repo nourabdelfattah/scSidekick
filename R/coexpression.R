@@ -425,6 +425,13 @@ SplitByGene <- function(seurat_object,
 #'   auto-selects: `n_compare_groups` when `compare.by` was used, else 3.
 #' @param output_dir Character or `NULL`. Directory to save a PDF.
 #' @param file_name Character or `NULL`. PDF base name.
+#' @param width Numeric or `NULL`. Override the auto-calculated PDF width in
+#'   inches. `NULL` (default) sizes automatically from `n_col_out`.
+#' @param height Numeric or `NULL`. Override the auto-calculated PDF height in
+#'   inches. `NULL` (default) sizes automatically from the number of panel rows.
+#' @param timestamp Logical. When `TRUE`, append a `_YYYYMMDD-HHMMSS` stamp to
+#'   the saved file name so repeated runs are versioned instead of overwriting
+#'   the previous PDF. Default `FALSE`.
 #'
 #' @return A patchwork object (invisibly when saved).
 #' @seealso [CorrelateGene()]
@@ -438,7 +445,10 @@ PlotCorrelation <- function(cor_result,
                              r_cutoff    = NULL,
                              ncol        = NULL,
                              output_dir  = NULL,
-                             file_name   = NULL) {
+                             file_name   = NULL,
+                             width       = NULL,
+                             height      = NULL,
+                             timestamp   = FALSE) {
 
   df <- cor_result
   if (!is.null(cell.type))
@@ -556,22 +566,22 @@ PlotCorrelation <- function(cor_result,
 
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    fname <- if (!is.null(file_name) && nzchar(file_name)) file_name else {
-      parts <- c(
+    fname <- .nk_resolve_pdf_name(
+      file_name,
+      auto_parts = c(
         "CorrelateGene",
         unique(df_plot$goi)[1],
         unique(df_plot$level)[1],
         unique(df_plot$method)[1],
         if (has_compare) paste(sort(unique(df_plot$compare_group)), collapse = "_vs_") else NULL
-      )
-      paste(parts, collapse = "_")
-    }
-    fpath <- file.path(output_dir,
-                       paste0(gsub("[^A-Za-z0-9._-]", "_", fname), ".pdf"))
+      ),
+      timestamp = timestamp
+    )
+    fpath <- file.path(output_dir, paste0(fname, ".pdf"))
     n_row_out <- ceiling(n_panels / n_col_out)
     ggplot2::ggsave(fpath, combined,
-                    width     = n_col_out * 5.0,
-                    height    = n_row_out * 4.8 + 0.8,
+                    width     = width  %||% (n_col_out * 5.0),
+                    height    = height %||% (n_row_out * 4.8 + 0.8),
                     limitsize = FALSE)
     message("scSidekick: Saved to ", fpath)
 

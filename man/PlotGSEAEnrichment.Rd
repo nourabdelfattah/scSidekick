@@ -20,7 +20,11 @@ PlotGSEAEnrichment(
   ncol = 1,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -74,6 +78,22 @@ Default \code{1}.}
 \item{object_name}{Label prefix for output file names.}
 
 \item{subset_name}{Optional subset label.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. Only applies in \strong{direct mode}, which saves one
+combined PDF; \strong{RunGSEA directory mode} can save several PDFs per
+call (one per pathway x label combination) so an explicit override
+isn't applied there. \code{NULL} (default) auto-deduces from
+\code{object_name} and \code{subset_name}.}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated
+PDF dimensions in inches. \code{NULL} (default) auto-sizes to the
+pathway grid.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to every saved file name so repeated runs
+are versioned instead of overwriting the previous PDF(s). Default
+\code{FALSE}.}
 }
 \value{
 \emph{Direct mode:} a single \code{patchwork} object.

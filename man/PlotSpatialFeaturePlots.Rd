@@ -16,6 +16,7 @@ PlotSpatialFeaturePlots(
   size_override = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
+  na.value = "transparent",
   calcptsizesc = 100,
   legend.side = "right",
   legend.direction = "vertical",
@@ -24,7 +25,13 @@ PlotSpatialFeaturePlots(
   join_ncol = NULL,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  image.alpha = 0.5,
+  alpha = 1,
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 
 GenerateSpatialFeatureMaps(
@@ -38,6 +45,7 @@ GenerateSpatialFeatureMaps(
   size_override = NULL,
   colors = c("#053061", "#2166AC", "#D1E5F0", "#FDDBC7", "#F4A582", "#D6604D", "#B2182B",
     "#67001F"),
+  na.value = "transparent",
   calcptsizesc = 100,
   legend.side = "right",
   legend.direction = "vertical",
@@ -46,7 +54,13 @@ GenerateSpatialFeatureMaps(
   join_ncol = NULL,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  image.alpha = 0.5,
+  alpha = 1,
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -100,6 +114,19 @@ last plot when \code{NULL}.}
 
 \item{subset_name}{Character. Optional second label appended to PDF
 filenames after \code{object_name}. Default \code{""}.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. \code{NULL} (default) auto-deduces from
+\code{object_name}, \code{subset_name}, \code{row.by}, and the feature
+name(s).}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated
+PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+image grid and legend.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
 Invisibly returns the last plot when \code{output_dir = NULL}. When

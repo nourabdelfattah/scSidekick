@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -211,6 +212,21 @@ summarize a large patient cohort (e.g. Braak / APOE / CERAD by sex):</p>
 <p>The same function call handles a 30 k-cell demo and a 1.8 M-cell,
 150-column clinical atlas - it just collapses to the unit you ask
 for.</p>
+<p>When <code>output_dir</code> is set, the auto-built file name
+reflects every grouping variable in the call - including
+<code>row_variable</code> - so a <code>Sex</code>-stratified run never
+overwrites the unstratified one. <code>file_name</code> overrides the
+auto-built name outright, and <code>timestamp = TRUE</code> appends a
+<code>_YYYYMMDD-HHMMSS</code> stamp instead, so repeated runs are
+versioned rather than overwritten:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMetaSummary.html">PlotMetaSummary</a></span><span class="op">(</span><span class="va">md</span>,</span>
+<span>  id_column     <span class="op">=</span> <span class="st">"Donor.ID"</span>,</span>
+<span>  variables     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Braak"</span>, <span class="st">"APOE.Genotype"</span>, <span class="st">"CERAD.score"</span><span class="op">)</span>,</span>
+<span>  fill_variable <span class="op">=</span> <span class="st">"Cognitive.Status"</span>,</span>
+<span>  row_variable  <span class="op">=</span> <span class="st">"Sex"</span>,</span>
+<span>  output_dir    <span class="op">=</span> <span class="st">"./Figures"</span>,</span>
+<span>  timestamp     <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -225,7 +241,7 @@ complementary “at a glance” graphics.</p>
 </h3>
 <p>Alluvial plots show how cells flow between two or more categorical
 axes - great for “which donors contribute to which cell types”.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotAlluvial.html">PlotAlluvial</a></span><span class="op">(</span><span class="va">md</span>,</span>
 <span>  axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"donor"</span>, <span class="st">"celltype.l1"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="13_metadata_composition_files/figure-html/alluvial-1.png" width="768"></p>
@@ -236,7 +252,7 @@ axes - great for “which donors contribute to which cell types”.</p>
 </h3>
 <p>A polar/“rose” chart of composition per group - a compact alternative
 to stacked bars.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotRose.html">PlotRose</a></span><span class="op">(</span><span class="va">md</span>,</span>
 <span>  stat.by <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"donor"</span><span class="op">)</span></span></code></pre></div>
@@ -250,7 +266,7 @@ to stacked bars.</p>
 categoricals (here, which cell types appear in which donors).
 <code><a href="../reference/PlotChord.html">PlotChord()</a></code> uses <strong>circlize</strong> under the
 hood.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotChord.html">PlotChord</a></span><span class="op">(</span><span class="va">md</span>,</span>
 <span>  var1 <span class="op">=</span> <span class="st">"donor"</span>,</span>
 <span>  var2 <span class="op">=</span> <span class="st">"celltype.l1"</span><span class="op">)</span></span></code></pre></div>
@@ -265,7 +281,7 @@ hood.</p>
 counts in the centre, a wheel of wedges around it. (Shown as a template;
 it needs study/patient columns that <code>bmcite</code> doesn’t
 carry.)</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotAtlasWheel.html">PlotAtlasWheel</a></span><span class="op">(</span><span class="va">meta</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"CellType"</span>,</span>
 <span>  study_by   <span class="op">=</span> <span class="st">"Study"</span>,</span>
@@ -291,7 +307,7 @@ for summarizing massive objects</li>
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.3.1 (2023-06-16)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20 (64-bit)</span></span>
@@ -311,12 +327,12 @@ for summarizing massive objects</li>
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">##  [1] ggforce_0.4.2             ggplot2_3.5.2            </span></span>
+<span><span class="co">##  [1] ggforce_0.4.2             ggplot2_4.0.3            </span></span>
 <span><span class="co">##  [3] stxBrain.SeuratData_0.1.2 pbmc3k.SeuratData_3.1.4  </span></span>
 <span><span class="co">##  [5] panc8.SeuratData_3.0.2    ifnb.SeuratData_3.1.0    </span></span>
 <span><span class="co">##  [7] bmcite.SeuratData_0.3.0   SeuratData_0.2.2         </span></span>
 <span><span class="co">##  [9] Seurat_5.2.1              SeuratObject_5.1.0       </span></span>
-<span><span class="co">## [11] sp_2.1-3                  scSidekick_1.1.0         </span></span>
+<span><span class="co">## [11] sp_2.1-3                  scSidekick_1.2.0         </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
 <span><span class="co">##   [1] RColorBrewer_1.1-3     shape_1.4.6.1          rstudioapi_0.16.0     </span></span>
@@ -336,32 +352,32 @@ for summarizing massive objects</li>
 <span><span class="co">##  [43] irlba_2.3.5.1          textshaping_0.3.7      labeling_0.4.3        </span></span>
 <span><span class="co">##  [46] progressr_0.14.0       spatstat.sparse_3.0-3  httr_1.4.7            </span></span>
 <span><span class="co">##  [49] polyclip_1.10-6        abind_1.4-8            compiler_4.3.1        </span></span>
-<span><span class="co">##  [52] withr_3.0.2            fastDummies_1.7.3      highr_0.10            </span></span>
-<span><span class="co">##  [55] MASS_7.3-60.0.1        rappdirs_0.3.3         tools_4.3.1           </span></span>
-<span><span class="co">##  [58] lmtest_0.9-40          otel_0.2.0             httpuv_1.6.16         </span></span>
-<span><span class="co">##  [61] future.apply_1.11.2    goftest_1.2-3          glue_1.8.0            </span></span>
-<span><span class="co">##  [64] nlme_3.1-164           promises_1.5.0         grid_4.3.1            </span></span>
-<span><span class="co">##  [67] Rtsne_0.17             cluster_2.1.6          reshape2_1.4.4        </span></span>
-<span><span class="co">##  [70] generics_0.1.4         gtable_0.3.6           spatstat.data_3.0-4   </span></span>
-<span><span class="co">##  [73] tidyr_1.3.1            data.table_1.15.4      utf8_1.2.6            </span></span>
-<span><span class="co">##  [76] spatstat.geom_3.2-9    RcppAnnoy_0.0.22       ggrepel_0.9.6         </span></span>
-<span><span class="co">##  [79] RANN_2.6.1             pillar_1.11.0          stringr_1.5.1         </span></span>
-<span><span class="co">##  [82] spam_2.10-0            RcppHNSW_0.6.0         later_1.4.2           </span></span>
-<span><span class="co">##  [85] circlize_0.4.16        splines_4.3.1          tweenr_2.0.3          </span></span>
-<span><span class="co">##  [88] dplyr_1.1.4            lattice_0.22-6         survival_3.5-8        </span></span>
-<span><span class="co">##  [91] deldir_2.0-4           tidyselect_1.2.1       miniUI_0.1.1.1        </span></span>
-<span><span class="co">##  [94] pbapply_1.7-2          knitr_1.45             gridExtra_2.3         </span></span>
-<span><span class="co">##  [97] scattermore_1.2        xfun_0.52              matrixStats_1.2.0     </span></span>
-<span><span class="co">## [100] stringi_1.8.7          lazyeval_0.2.2         yaml_2.3.10           </span></span>
-<span><span class="co">## [103] evaluate_0.23          codetools_0.2-20       tibble_3.3.0          </span></span>
-<span><span class="co">## [106] cli_3.6.5              uwot_0.1.16            xtable_1.8-4          </span></span>
-<span><span class="co">## [109] reticulate_1.42.0      systemfonts_1.0.6      jquerylib_0.1.4       </span></span>
-<span><span class="co">## [112] dichromat_2.0-0.1      Rcpp_1.1.0             globals_0.16.3        </span></span>
-<span><span class="co">## [115] spatstat.random_3.2-3  png_0.1-8              parallel_4.3.1        </span></span>
-<span><span class="co">## [118] pkgdown_2.1.3          dotCall64_1.1-1        listenv_0.9.1         </span></span>
-<span><span class="co">## [121] viridisLite_0.4.2      scales_1.4.0           ggridges_0.5.6        </span></span>
-<span><span class="co">## [124] purrr_1.0.4            crayon_1.5.2           rlang_1.1.6           </span></span>
-<span><span class="co">## [127] cowplot_1.2.0.9000</span></span></code></pre>
+<span><span class="co">##  [52] withr_3.0.2            S7_0.2.0               fastDummies_1.7.3     </span></span>
+<span><span class="co">##  [55] highr_0.10             MASS_7.3-60.0.1        rappdirs_0.3.3        </span></span>
+<span><span class="co">##  [58] tools_4.3.1            lmtest_0.9-40          otel_0.2.0            </span></span>
+<span><span class="co">##  [61] httpuv_1.6.16          future.apply_1.11.2    goftest_1.2-3         </span></span>
+<span><span class="co">##  [64] glue_1.8.0             nlme_3.1-164           promises_1.5.0        </span></span>
+<span><span class="co">##  [67] grid_4.3.1             Rtsne_0.17             cluster_2.1.6         </span></span>
+<span><span class="co">##  [70] reshape2_1.4.4         generics_0.1.4         gtable_0.3.6          </span></span>
+<span><span class="co">##  [73] spatstat.data_3.0-4    tidyr_1.3.1            data.table_1.15.4     </span></span>
+<span><span class="co">##  [76] utf8_1.2.6             spatstat.geom_3.2-9    RcppAnnoy_0.0.22      </span></span>
+<span><span class="co">##  [79] ggrepel_0.9.6          RANN_2.6.1             pillar_1.11.0         </span></span>
+<span><span class="co">##  [82] stringr_1.5.1          spam_2.10-0            RcppHNSW_0.6.0        </span></span>
+<span><span class="co">##  [85] later_1.4.2            circlize_0.4.16        splines_4.3.1         </span></span>
+<span><span class="co">##  [88] tweenr_2.0.3           dplyr_1.1.4            lattice_0.22-6        </span></span>
+<span><span class="co">##  [91] survival_3.5-8         deldir_2.0-4           tidyselect_1.2.1      </span></span>
+<span><span class="co">##  [94] miniUI_0.1.1.1         pbapply_1.7-2          knitr_1.45            </span></span>
+<span><span class="co">##  [97] gridExtra_2.3          scattermore_1.2        xfun_0.52             </span></span>
+<span><span class="co">## [100] matrixStats_1.2.0      stringi_1.8.7          lazyeval_0.2.2        </span></span>
+<span><span class="co">## [103] yaml_2.3.10            evaluate_0.23          codetools_0.2-20      </span></span>
+<span><span class="co">## [106] tibble_3.3.0           cli_3.6.5              uwot_0.1.16           </span></span>
+<span><span class="co">## [109] xtable_1.8-4           reticulate_1.42.0      systemfonts_1.3.2     </span></span>
+<span><span class="co">## [112] jquerylib_0.1.4        dichromat_2.0-0.1      Rcpp_1.1.0            </span></span>
+<span><span class="co">## [115] globals_0.16.3         spatstat.random_3.2-3  png_0.1-8             </span></span>
+<span><span class="co">## [118] parallel_4.3.1         pkgdown_2.1.3          dotCall64_1.1-1       </span></span>
+<span><span class="co">## [121] listenv_0.9.1          viridisLite_0.4.2      scales_1.4.0          </span></span>
+<span><span class="co">## [124] ggridges_0.5.6         purrr_1.0.4            crayon_1.5.2          </span></span>
+<span><span class="co">## [127] rlang_1.1.6            cowplot_1.2.0.9000</span></span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

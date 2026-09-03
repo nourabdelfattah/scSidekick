@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -179,7 +180,7 @@ populations that also happen to be in this dataset
 <span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/RunUMAP.html" class="external-link">RunUMAP</a></span><span class="op">(</span><span class="va">panc8</span>, reduction <span class="op">=</span> <span class="st">"harmony"</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">panc8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PrepObject.html">PrepObject</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
-<span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"celltype"</span>, <span class="st">"dataset"</span><span class="op">)</span>,</span>
+<span>  variables   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"celltype"</span>, <span class="st">"dataset"</span>, <span class="st">"tech"</span><span class="op">)</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"celltype"</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">"panc8"</span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -268,6 +269,35 @@ doesn’t.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotTrajectory.html">PlotTrajectory</a></span><span class="op">(</span><span class="va">panc8</span>, reduction <span class="op">=</span> <span class="st">"harmony"</span>, style <span class="op">=</span> <span class="st">"curves"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="20_pseudotime_files/figure-html/traj-curves-1.png" width="768"></p>
+</div>
+<div class="section level3">
+<h3 id="splitting-and-faceting">Splitting and faceting<a class="anchor" aria-label="anchor" href="#splitting-and-faceting"></a>
+</h3>
+<p>Like every other scSidekick plotting function,
+<code><a href="../reference/PlotTrajectory.html">PlotTrajectory()</a></code> accepts <code>split.by</code> (and
+<code>row.by</code>, for a two-way grid) - each panel is drawn from an
+independent subset of the object, so the trajectory overlay and cluster
+centroids are recomputed per panel rather than reusing the pooled fit’s
+positions. Here, one panel per sequencing technology checks whether the
+overlay looks consistent across platforms rather than being driven by
+one of them:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotTrajectory.html">PlotTrajectory</a></span><span class="op">(</span><span class="va">panc8</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, style <span class="op">=</span> <span class="st">"straight"</span>,</span>
+<span>  split.by <span class="op">=</span> <span class="st">"tech"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="20_pseudotime_files/figure-html/traj-split-1.png" width="1344"></p>
+</div>
+<div class="section level3">
+<h3 id="numbered-labels">Numbered labels<a class="anchor" aria-label="anchor" href="#numbered-labels"></a>
+</h3>
+<p><code>number_labels = TRUE</code> swaps the legend and centroid
+labels for short numeric codes (<code>1</code>, <code>2</code>, …)
+instead of full level names - handy once names get long enough to crowd
+a legend, or when you’d rather label panels by number in a figure and
+spell out the key separately in a caption:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotTrajectory.html">PlotTrajectory</a></span><span class="op">(</span><span class="va">panc8</span>, reduction <span class="op">=</span> <span class="st">"umap"</span>, style <span class="op">=</span> <span class="st">"straight"</span>,</span>
+<span>  number_labels <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p><img src="20_pseudotime_files/figure-html/traj-numbered-1.png" width="768"></p>
 <hr>
 </div>
 </div>
@@ -275,15 +305,28 @@ doesn’t.</p>
 <h2 id="plotpseudotime---distribution-across-cell-types">4. <code>PlotPseudotime()</code> - distribution across cell
 types<a class="anchor" aria-label="anchor" href="#plotpseudotime---distribution-across-cell-types"></a>
 </h2>
-<p>Density + rug plot of pseudotime per cell type (with peak labels),
-plus an optional ridge plot split by a second variable - here,
-<code>dataset</code>, to check whether the pseudotime ordering holds up
-across technologies.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p><code>plot.type = "density"</code> (default) draws a density + rug
+plot of pseudotime per cell type, with peak labels marking each level’s
+modal pseudotime:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotPseudotime.html">PlotPseudotime</a></span><span class="op">(</span><span class="va">panc8</span>, pseudotime.by <span class="op">=</span> <span class="st">"Slingshot_Pseudotime_1"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="20_pseudotime_files/figure-html/plot-pseudotime-1.png" width="576"></p>
+<p><code>plot.type = "ridge"</code> shows the same distributions as
+ridges instead:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotPseudotime.html">PlotPseudotime</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
 <span>  pseudotime.by <span class="op">=</span> <span class="st">"Slingshot_Pseudotime_1"</span>,</span>
-<span>  split.by      <span class="op">=</span> <span class="st">"dataset"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="20_pseudotime_files/figure-html/plot-pseudotime-1.png" width="1152"></p>
+<span>  plot.type     <span class="op">=</span> <span class="st">"ridge"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="20_pseudotime_files/figure-html/plot-pseudotime-ridge-1.png" width="576"></p>
+<p><code>split.by</code> (and <code>row.by</code>, for a two-way grid)
+facets either style into column/row panels - here, one panel per
+sequencing technology, to check whether the pseudotime ordering holds up
+across platforms:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotPseudotime.html">PlotPseudotime</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  pseudotime.by <span class="op">=</span> <span class="st">"Slingshot_Pseudotime_1"</span>,</span>
+<span>  split.by      <span class="op">=</span> <span class="st">"tech"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="20_pseudotime_files/figure-html/plot-pseudotime-split-1.png" width="1344"></p>
 <hr>
 </div>
 <div class="section level2">
@@ -295,7 +338,7 @@ pseudotime<a class="anchor" aria-label="anchor" href="#plotfeaturetrend---hormon
 <code>SST</code> (somatostatin, delta), and <code>PPY</code> (pancreatic
 polypeptide, gamma). Coloring by <code>dataset</code> shows whether each
 technology traces a similar expression trend along pseudotime.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotFeatureTrend.html">PlotFeatureTrend</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
 <span>  pseudotime.by <span class="op">=</span> <span class="st">"Slingshot_Pseudotime_1"</span>,</span>
 <span>  features      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"GCG"</span>, <span class="st">"INS"</span>, <span class="st">"SST"</span>, <span class="st">"PPY"</span><span class="op">)</span>,</span>
@@ -315,6 +358,19 @@ usages, QC metrics, …), and extraction goes through the same
 assay/version-safe path
 (<code>.nk_feature_matrix()</code>/<code>.get_layer_data()</code>) as
 every other feature-plotting function in the package.</p>
+<p>When <code>color.by</code> is left <code>NULL</code>, it falls back
+to <code>group.by</code> for coloring - matching the rest of the
+package’s default - while <code>group.by</code> still doubles as a
+cell-subset filter (paired with <code>groups</code>) regardless of which
+variable ends up coloring the plot.
+<code>split.by</code>/<code>row.by</code> facet the whole thing into
+column/row panels, one independent trend fit per panel:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotFeatureTrend.html">PlotFeatureTrend</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
+<span>  pseudotime.by <span class="op">=</span> <span class="st">"Slingshot_Pseudotime_1"</span>,</span>
+<span>  features      <span class="op">=</span> <span class="st">"INS"</span>,</span>
+<span>  group.by      <span class="op">=</span> <span class="st">"celltype"</span>,</span>
+<span>  split.by      <span class="op">=</span> <span class="st">"tech"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -329,7 +385,7 @@ ridge and a <code>facet.by</code> panel split, which
 one panel per technology, to see whether <code>INS</code> (insulin)
 distinguishes <code>beta</code> cells consistently across all eight
 technologies.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotFeatureDistribution.html">PlotFeatureDistribution</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
 <span>  feature  <span class="op">=</span> <span class="st">"INS"</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"celltype"</span>,</span>
@@ -353,11 +409,16 @@ rest of the package: pass <code>output_dir</code> (or store one with
 automatically alongside the PDF, describing cell counts, the trajectory
 rooting, and what’s plotted - so a figure never travels without its own
 methods description.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotTrajectory.html">PlotTrajectory</a></span><span class="op">(</span><span class="va">panc8</span>,</span>
 <span>  reduction  <span class="op">=</span> <span class="st">"umap"</span>,</span>
 <span>  style      <span class="op">=</span> <span class="st">"straight"</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="st">"./Figures"</span><span class="op">)</span></span></code></pre></div>
+<p><code>file_name</code>, <code>width</code>, and <code>height</code>
+override the auto-built name and auto-calculated PDF size when you need
+one; <code>timestamp = TRUE</code> appends a
+<code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name so repeated
+runs are versioned instead of overwriting the previous PDF.</p>
 <p><code><a href="../reference/RunSlingshot.html">RunSlingshot()</a></code> additionally writes
 <code>analysis_params.json</code> documenting the fit itself (reduction,
 dims used, root cluster, lineages found) whenever
@@ -383,7 +444,7 @@ type</li>
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.3.1 (2023-06-16)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20 (64-bit)</span></span>
@@ -408,7 +469,7 @@ type</li>
 <span><span class="co">##  [5] panc8.SeuratData_3.0.2    ifnb.SeuratData_3.1.0    </span></span>
 <span><span class="co">##  [7] bmcite.SeuratData_0.3.0   SeuratData_0.2.2         </span></span>
 <span><span class="co">##  [9] Seurat_5.2.1              SeuratObject_5.1.0       </span></span>
-<span><span class="co">## [11] sp_2.1-3                  scSidekick_1.1.0         </span></span>
+<span><span class="co">## [11] sp_2.1-3                  scSidekick_1.2.0         </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
 <span><span class="co">##   [1] RColorBrewer_1.1-3          rstudioapi_0.16.0          </span></span>
@@ -441,50 +502,50 @@ type</li>
 <span><span class="co">##  [55] spatstat.sparse_3.0-3       mgcv_1.9-1                 </span></span>
 <span><span class="co">##  [57] httr_1.4.7                  polyclip_1.10-6            </span></span>
 <span><span class="co">##  [59] abind_1.4-8                 compiler_4.3.1             </span></span>
-<span><span class="co">##  [61] withr_3.0.2                 fastDummies_1.7.3          </span></span>
-<span><span class="co">##  [63] highr_0.10                  MASS_7.3-60.0.1            </span></span>
-<span><span class="co">##  [65] DelayedArray_0.28.0         rappdirs_0.3.3             </span></span>
-<span><span class="co">##  [67] tools_4.3.1                 lmtest_0.9-40              </span></span>
-<span><span class="co">##  [69] otel_0.2.0                  httpuv_1.6.16              </span></span>
-<span><span class="co">##  [71] future.apply_1.11.2         goftest_1.2-3              </span></span>
-<span><span class="co">##  [73] glue_1.8.0                  nlme_3.1-164               </span></span>
-<span><span class="co">##  [75] promises_1.5.0              grid_4.3.1                 </span></span>
-<span><span class="co">##  [77] TrajectoryUtils_1.10.1      Rtsne_0.17                 </span></span>
-<span><span class="co">##  [79] cluster_2.1.6               reshape2_1.4.4             </span></span>
-<span><span class="co">##  [81] generics_0.1.4              gtable_0.3.6               </span></span>
-<span><span class="co">##  [83] spatstat.data_3.0-4         tidyr_1.3.1                </span></span>
-<span><span class="co">##  [85] data.table_1.15.4           XVector_0.42.0             </span></span>
-<span><span class="co">##  [87] BiocGenerics_0.48.1         spatstat.geom_3.2-9        </span></span>
-<span><span class="co">##  [89] RcppAnnoy_0.0.22            ggrepel_0.9.6              </span></span>
-<span><span class="co">##  [91] RANN_2.6.1                  pillar_1.11.0              </span></span>
-<span><span class="co">##  [93] stringr_1.5.1               spam_2.10-0                </span></span>
-<span><span class="co">##  [95] RcppHNSW_0.6.0              later_1.4.2                </span></span>
-<span><span class="co">##  [97] splines_4.3.1               dplyr_1.1.4                </span></span>
-<span><span class="co">##  [99] lattice_0.22-6              survival_3.5-8             </span></span>
-<span><span class="co">## [101] deldir_2.0-4                tidyselect_1.2.1           </span></span>
-<span><span class="co">## [103] SingleCellExperiment_1.24.0 miniUI_0.1.1.1             </span></span>
-<span><span class="co">## [105] pbapply_1.7-2               knitr_1.45                 </span></span>
-<span><span class="co">## [107] gridExtra_2.3               IRanges_2.36.0             </span></span>
-<span><span class="co">## [109] SummarizedExperiment_1.32.0 scattermore_1.2            </span></span>
-<span><span class="co">## [111] stats4_4.3.1                RhpcBLASctl_0.23-42        </span></span>
-<span><span class="co">## [113] xfun_0.52                   Biobase_2.62.0             </span></span>
-<span><span class="co">## [115] matrixStats_1.2.0           stringi_1.8.7              </span></span>
-<span><span class="co">## [117] lazyeval_0.2.2              yaml_2.3.10                </span></span>
-<span><span class="co">## [119] evaluate_0.23               codetools_0.2-20           </span></span>
-<span><span class="co">## [121] tibble_3.3.0                cli_3.6.5                  </span></span>
-<span><span class="co">## [123] uwot_0.1.16                 xtable_1.8-4               </span></span>
-<span><span class="co">## [125] reticulate_1.42.0           systemfonts_1.0.6          </span></span>
-<span><span class="co">## [127] jquerylib_0.1.4             GenomeInfoDb_1.38.8        </span></span>
-<span><span class="co">## [129] dichromat_2.0-0.1           globals_0.16.3             </span></span>
-<span><span class="co">## [131] spatstat.random_3.2-3       png_0.1-8                  </span></span>
-<span><span class="co">## [133] parallel_4.3.1              pkgdown_2.1.3              </span></span>
-<span><span class="co">## [135] ggplot2_3.5.2               dotCall64_1.1-1            </span></span>
-<span><span class="co">## [137] sparseMatrixStats_1.14.0    bitops_1.0-7               </span></span>
-<span><span class="co">## [139] slingshot_2.10.0            listenv_0.9.1              </span></span>
-<span><span class="co">## [141] viridisLite_0.4.2           scales_1.4.0               </span></span>
-<span><span class="co">## [143] ggridges_0.5.6              purrr_1.0.4                </span></span>
-<span><span class="co">## [145] crayon_1.5.2                rlang_1.1.6                </span></span>
-<span><span class="co">## [147] cowplot_1.2.0.9000</span></span></code></pre>
+<span><span class="co">##  [61] withr_3.0.2                 S7_0.2.0                   </span></span>
+<span><span class="co">##  [63] fastDummies_1.7.3           highr_0.10                 </span></span>
+<span><span class="co">##  [65] MASS_7.3-60.0.1             DelayedArray_0.28.0        </span></span>
+<span><span class="co">##  [67] rappdirs_0.3.3              tools_4.3.1                </span></span>
+<span><span class="co">##  [69] lmtest_0.9-40               otel_0.2.0                 </span></span>
+<span><span class="co">##  [71] httpuv_1.6.16               future.apply_1.11.2        </span></span>
+<span><span class="co">##  [73] goftest_1.2-3               glue_1.8.0                 </span></span>
+<span><span class="co">##  [75] nlme_3.1-164                promises_1.5.0             </span></span>
+<span><span class="co">##  [77] grid_4.3.1                  TrajectoryUtils_1.10.1     </span></span>
+<span><span class="co">##  [79] Rtsne_0.17                  cluster_2.1.6              </span></span>
+<span><span class="co">##  [81] reshape2_1.4.4              generics_0.1.4             </span></span>
+<span><span class="co">##  [83] gtable_0.3.6                spatstat.data_3.0-4        </span></span>
+<span><span class="co">##  [85] tidyr_1.3.1                 data.table_1.15.4          </span></span>
+<span><span class="co">##  [87] XVector_0.42.0              BiocGenerics_0.48.1        </span></span>
+<span><span class="co">##  [89] spatstat.geom_3.2-9         RcppAnnoy_0.0.22           </span></span>
+<span><span class="co">##  [91] ggrepel_0.9.6               RANN_2.6.1                 </span></span>
+<span><span class="co">##  [93] pillar_1.11.0               stringr_1.5.1              </span></span>
+<span><span class="co">##  [95] spam_2.10-0                 RcppHNSW_0.6.0             </span></span>
+<span><span class="co">##  [97] later_1.4.2                 splines_4.3.1              </span></span>
+<span><span class="co">##  [99] dplyr_1.1.4                 lattice_0.22-6             </span></span>
+<span><span class="co">## [101] survival_3.5-8              deldir_2.0-4               </span></span>
+<span><span class="co">## [103] tidyselect_1.2.1            SingleCellExperiment_1.24.0</span></span>
+<span><span class="co">## [105] miniUI_0.1.1.1              pbapply_1.7-2              </span></span>
+<span><span class="co">## [107] knitr_1.45                  gridExtra_2.3              </span></span>
+<span><span class="co">## [109] IRanges_2.36.0              SummarizedExperiment_1.32.0</span></span>
+<span><span class="co">## [111] scattermore_1.2             stats4_4.3.1               </span></span>
+<span><span class="co">## [113] RhpcBLASctl_0.23-42         xfun_0.52                  </span></span>
+<span><span class="co">## [115] Biobase_2.62.0              matrixStats_1.2.0          </span></span>
+<span><span class="co">## [117] stringi_1.8.7               lazyeval_0.2.2             </span></span>
+<span><span class="co">## [119] yaml_2.3.10                 evaluate_0.23              </span></span>
+<span><span class="co">## [121] codetools_0.2-20            tibble_3.3.0               </span></span>
+<span><span class="co">## [123] cli_3.6.5                   uwot_0.1.16                </span></span>
+<span><span class="co">## [125] xtable_1.8-4                reticulate_1.42.0          </span></span>
+<span><span class="co">## [127] systemfonts_1.3.2           jquerylib_0.1.4            </span></span>
+<span><span class="co">## [129] GenomeInfoDb_1.38.8         dichromat_2.0-0.1          </span></span>
+<span><span class="co">## [131] globals_0.16.3              spatstat.random_3.2-3      </span></span>
+<span><span class="co">## [133] png_0.1-8                   parallel_4.3.1             </span></span>
+<span><span class="co">## [135] pkgdown_2.1.3               ggplot2_4.0.3              </span></span>
+<span><span class="co">## [137] dotCall64_1.1-1             sparseMatrixStats_1.14.0   </span></span>
+<span><span class="co">## [139] bitops_1.0-7                slingshot_2.10.0           </span></span>
+<span><span class="co">## [141] listenv_0.9.1               viridisLite_0.4.2          </span></span>
+<span><span class="co">## [143] scales_1.4.0                ggridges_0.5.6             </span></span>
+<span><span class="co">## [145] purrr_1.0.4                 crayon_1.5.2               </span></span>
+<span><span class="co">## [147] rlang_1.1.6                 cowplot_1.2.0.9000</span></span></code></pre>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

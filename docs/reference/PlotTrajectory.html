@@ -39,7 +39,7 @@ function stops rather than draw a misleading overlay.
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -78,6 +78,7 @@ function stops rather than draw a misleading overlay.
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -119,6 +120,8 @@ function stops rather than draw a misleading overlay.</p></li>
 <span>  <span class="va">seurat_object</span>,</span>
 <span>  reduction <span class="op">=</span> <span class="st">"umap"</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  split.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  row.by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lineages <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  style <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"straight"</span>, <span class="st">"curves"</span><span class="op">)</span>,</span>
 <span>  colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -128,6 +131,7 @@ function stops rather than draw a misleading overlay.</p></li>
 <span>  label_lineages <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  arrow <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  label <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  number_labels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  legend.side <span class="op">=</span> <span class="st">"bottom"</span>,</span>
 <span>  legend_nrow <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -135,7 +139,8 @@ function stops rather than draw a misleading overlay.</p></li>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  width <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  height <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  height <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -156,6 +161,22 @@ function stops rather than draw a misleading overlay.</p></li>
 <dd><p>Character or <code>NULL</code>. Metadata column for point color.
 <code>NULL</code> (default) uses the <code>cluster.by</code> stored by
 <code><a href="RunSlingshot.html">RunSlingshot</a></code>.</p></dd>
+
+
+<dt id="arg-split-by">split.by<a class="anchor" aria-label="anchor" href="#arg-split-by"></a></dt>
+<dd><p>Character or <code>NULL</code>. Metadata column for columns in a
+multi-panel grid (e.g. one panel per sample/condition). <code>NULL</code>
+(default) walks up to the <code>split.by</code> stored by
+<code><a href="PrepObject.html">PrepObject</a></code>; a single panel is drawn when neither this nor
+<code>row.by</code> is set. Each panel reuses the same fitted Slingshot model -
+only which cells are drawn differs - and the whole grid shares one
+legend, matching <code><a href="PlotDimPlots.html">PlotDimPlots</a></code>.</p></dd>
+
+
+<dt id="arg-row-by">row.by<a class="anchor" aria-label="anchor" href="#arg-row-by"></a></dt>
+<dd><p>Character or <code>NULL</code>. Metadata column for rows in the
+grid, combined with <code>split.by</code> for a two-way facet. <code>NULL</code>
+(default; no row faceting).</p></dd>
 
 
 <dt id="arg-lineages">lineages<a class="anchor" aria-label="anchor" href="#arg-lineages"></a></dt>
@@ -204,6 +225,16 @@ when only one lineage is drawn.</p></dd>
 <dd><p>Logical. Label cluster centroids. Default <code>TRUE</code>.</p></dd>
 
 
+<dt id="arg-number-labels">number_labels<a class="anchor" aria-label="anchor" href="#arg-number-labels"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, both the legend and (if
+<code>label = TRUE</code>) the centroid labels use a zero-padded index (e.g.,
+legend "01. CellType", centroid "01") instead of the actual cluster
+name, matching <code><a href="PlotDimPlots.html">PlotDimPlots</a></code>'s convention. Useful when
+there are many clusters or the names are too long to label directly on
+the plot. Default <code>FALSE</code> (legend and centroid labels show the
+real cluster name, unnumbered).</p></dd>
+
+
 <dt id="arg-legend-side">legend.side<a class="anchor" aria-label="anchor" href="#arg-legend-side"></a></dt>
 <dd><p>Character. Legend position, matching
 <code><a href="PlotDimPlots.html">PlotDimPlots</a></code>: <code>"bottom"</code> (default), <code>"top"</code>,
@@ -235,12 +266,20 @@ the saved PDF. <code>NULL</code> auto-deduces.</p></dd>
 
 <dt id="arg-width-height">width, height<a class="anchor" aria-label="anchor" href="#arg-width-height"></a></dt>
 <dd><p>Numeric or <code>NULL</code>. Saved PDF dimensions in
-inches. <code>NULL</code> (default) uses a fixed 6 x 5.5 in panel.</p></dd>
+inches. <code>NULL</code> (default) uses a fixed 6 x 5.5 in panel (scaled up
+per grid panel when <code>split.by</code>/<code>row.by</code> is set).</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, append a
+<code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>ggplot</code> object (invisibly, if saved).</p>
+    <p>A <code>ggplot</code> (or, when <code>split.by</code>/<code>row.by</code> is set, a
+<code>patchwork</code>) object, invisibly if saved.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

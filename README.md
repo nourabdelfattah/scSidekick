@@ -37,7 +37,7 @@ are not alternatives to those packages but additions targeted at gaps they leave
 
 ```r
 # install.packages("devtools")
-devtools::install_github("nourabdelfattah/scSidekick")
+devtools::install_github("nourabdelfattah/scSidekick", build_vignettes = TRUE)
 ```
 
 ---
@@ -523,3 +523,5 @@ Full vignettes and function reference at
 | [18](https://nourabdelfattah.github.io/scSidekick/articles/18_cnmf.html) | Gene expression programs (cNMF) |
 | [19](https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html) | Upstream regulator analysis (URA) |
 | [20](https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html) | Pseudotime & trajectory analysis (Slingshot) |
+| [21](https://nourabdelfattah.github.io/scSidekick/articles/21_ask_sidekick.html) | `AskSidekick()` - AI documentation assistant |
+| [Example](https://nourabdelfattah.github.io/scSidekick/articles/example_workflow.html) | Full worked example - a real multi-sample scRNA-seq project end to end |

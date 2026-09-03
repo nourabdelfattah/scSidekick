@@ -26,6 +26,7 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/articles/18_cnmf.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/articles/19_ura.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/articles/20_pseudotime.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/articles/21_ask_sidekick.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/articles/example_workflow.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/articles/index.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/authors.html</loc></url>
@@ -33,6 +34,7 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/news/index.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/AddClinicalMeta.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/AnnotateFeatures.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/AskSidekick.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/AssignCellTypes.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/CellTypeAssignmentHelper.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/ChartBuilder.html</loc></url>
@@ -95,6 +97,7 @@
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PlotVolcano.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/PrepObject.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/RankCellChatPathways.html</loc></url>
+<url><loc>https://nourabdelfattah.github.io/scSidekick/reference/RebuildSidekickContext.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/RenameCellTypeInCC.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/RenameClusters.html</loc></url>
 <url><loc>https://nourabdelfattah.github.io/scSidekick/reference/RunCNMF.html</loc></url>

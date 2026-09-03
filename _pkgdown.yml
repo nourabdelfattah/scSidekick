@@ -77,6 +77,8 @@ navbar:
       - text: Reporting
       - text: 12 - Reporting & Utilities
         href: articles/12_reporting_utilities.html
+      - text: 21 - AskSidekick (AI Assistant)
+        href: articles/21_ask_sidekick.html
       - text: ─────────────────
       - text: Examples
       - text: Full scRNA-seq Workflow
@@ -242,6 +244,11 @@ reference:
   - log_figure_legend
   - theme_NourMin
   - roundUpNice
+- title: AI Assistant
+  desc: A lightweight, documentation-grounded AI assistant for navigating scSidekick
+  contents:
+  - AskSidekick
+  - RebuildSidekickContext
 - title: Session Logger
   desc: Passive R session logging and summarization
   contents:
@@ -280,7 +287,9 @@ articles:
   - 20_pseudotime
 - title: Reporting
   navbar: Reporting
-  contents: 12_reporting_utilities
+  contents:
+  - 12_reporting_utilities
+  - 21_ask_sidekick
 - title: Examples
   navbar: Examples
   contents:

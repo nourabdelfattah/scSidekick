@@ -135,6 +135,22 @@ PlotMetaSummary(md,
 The same function call handles a 30 k-cell demo and a 1.8 M-cell, 150-column
 clinical atlas - it just collapses to the unit you ask for.
 
+When `output_dir` is set, the auto-built file name reflects every grouping
+variable in the call - including `row_variable` - so a `Sex`-stratified run
+never overwrites the unstratified one. `file_name` overrides the auto-built
+name outright, and `timestamp = TRUE` appends a `_YYYYMMDD-HHMMSS` stamp
+instead, so repeated runs are versioned rather than overwritten:
+
+```{r meta-timestamp, eval=FALSE}
+PlotMetaSummary(md,
+  id_column     = "Donor.ID",
+  variables     = c("Braak", "APOE.Genotype", "CERAD.score"),
+  fill_variable = "Cognitive.Status",
+  row_variable  = "Sex",
+  output_dir    = "./Figures",
+  timestamp     = TRUE)
+```
+
 ---
 
 ## 3. Composition chart family

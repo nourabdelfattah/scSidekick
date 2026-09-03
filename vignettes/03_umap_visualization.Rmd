@@ -200,12 +200,15 @@ PlotDimPlots(bmcite,
 | `row.by` | character | `NULL` | Variable that creates rows |
 | `show_trend` | logical | `FALSE` | Append stacked-bar trend panel |
 | `show_labels` | logical | `FALSE` | Overlay group labels at centroids |
+| `number_labels` | logical | `FALSE` | Use short numeric codes instead of full level names in the legend and centroid labels |
 | `colors` | named character | `NULL` | Override palette |
 | `reduction` | character | `"umap"` | Reduction to plot |
 | `pt.size` | numeric | `0.1` | Point size |
 | `trend_width` | numeric | `1` | Relative width of the trend panel |
 | `split.col.levels` | character vector | `NULL` | Explicit column ordering |
 | `output_dir` | character | `NULL` | Directory for saving figures |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 | `object_name` | character | `""` | Label used in saved filenames |
 | `subset_name` | character | `""` | Sub-label used in saved filenames |
 

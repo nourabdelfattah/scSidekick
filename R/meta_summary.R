@@ -712,6 +712,9 @@ SummarizeMetadata <- function(data,
 #'       expected counts >= 5 (categorical); otherwise non-parametric.}
 #'     \item{\code{"none"}}{No statistics added.}
 #'   }
+#' @param timestamp Logical.  When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF.  Default \code{FALSE}.
 #'
 #' @return When only the plot is requested (default), a \code{ggplot2} object.
 #'   When \code{return_data} or \code{return_flextable} are \code{TRUE}, a
@@ -765,7 +768,8 @@ PlotMetaSummary <- function(data,
                              separate_tables    = FALSE,
                              stats.method       = c("nonparametric", "parametric", "auto", "none"),
                              pdf.width          = NULL,
-                             pdf.height         = NULL) {
+                             pdf.height         = NULL,
+                             timestamp          = FALSE) {
 
   count_unit   <- match.arg(count_unit)
   stats.method <- match.arg(stats.method)
@@ -1137,20 +1141,19 @@ PlotMetaSummary <- function(data,
       pdf_w        <- pdf.width %||% (sum(pmax(n_x_ticks * 0.35, 1.5)) + 2.5)
     }
 
-    if (!is.null(file_name) && nzchar(file_name)) {
-      base <- file_name
-    } else {
-      parts <- c(
+    fname <- .nk_resolve_pdf_name(
+      file_name,
+      auto_parts = c(
         if (nchar(object_name) > 0) object_name,
         if (!is.null(fill_variable)) fill_variable,
         paste(variables, collapse = "_"),
+        row_variable,
         if (!is.null(column_variable)) column_variable,
         if (percent) "Pct",
         "MetaSummary"
-      )
-      base <- paste(parts, collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+      ),
+      timestamp = timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
 
     grDevices::pdf(fpath, width = pdf_w, height = pdf_h)

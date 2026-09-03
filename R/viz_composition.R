@@ -43,6 +43,17 @@
 #' @param output_dir Directory to save a PDF. \code{NULL} = no save.
 #' @param object_name Label prefix for output file names.
 #' @param subset_name Optional subset label.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, \code{group.by}, and
+#'   \code{split.by}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+#'   panel(s).
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #'
 #' @return A \code{ggplot2} or \code{patchwork} object.
 #'
@@ -58,7 +69,11 @@ PlotComposition <- function(
     split_colors = NULL,
     output_dir   = NULL,
     object_name  = "",
-    subset_name  = ""
+    subset_name  = "",
+    file_name    = NULL,
+    width        = NULL,
+    height       = NULL,
+    timestamp    = FALSE
 ) {
   plot_type <- match.arg(plot_type, c("percent", "stacked", "dodged"))
   meta      <- seurat_object@meta.data
@@ -161,13 +176,14 @@ PlotComposition <- function(
                                     size = 2.5, color = "white", fontface = "bold")
 
   if (!isTRUE(both_panels)) {
-    .save_plot(p1, output_dir, object_name, subset_name,
+    saved_path <- .save_plot(p1, output_dir, object_name, subset_name,
                filename = "composition.pdf",
-               w = max(3, n_grp * 0.5 + 2), h = 5)
+               w = max(3, n_grp * 0.5 + 2), h = 5,
+               extra_parts = c(group.by, split.by), file_name = file_name,
+               width = width, height = height, timestamp = timestamp)
     if (!is.null(output_dir)) {
-      pfx  <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0], collapse = "_")
       .write_legend_sidecar(
-        file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", "composition.pdf")),
+        saved_path,
         paste0(
           plot_type, " bar chart of ", comp_ctx$n_obs, " ", comp_ctx$unit,
           if (!is.null(comp_ctx$n_donors))
@@ -204,13 +220,14 @@ PlotComposition <- function(
 
   out_plot <- patchwork::wrap_plots(p1, p2, nrow = 1)
 
-  .save_plot(out_plot, output_dir, object_name, subset_name,
+  saved_path <- .save_plot(out_plot, output_dir, object_name, subset_name,
              filename = "composition.pdf",
-             w = max(6, (n_grp + n_spl) * 0.45 + 4), h = 5)
+             w = max(6, (n_grp + n_spl) * 0.45 + 4), h = 5,
+             extra_parts = c(group.by, split.by), file_name = file_name,
+             width = width, height = height, timestamp = timestamp)
   if (!is.null(output_dir)) {
-    pfx  <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0], collapse = "_")
     .write_legend_sidecar(
-      file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", "composition.pdf")),
+      saved_path,
       paste0(
         "Two-panel ", plot_type, " bar chart of ", comp_ctx$n_obs, " ", comp_ctx$unit,
         if (!is.null(comp_ctx$n_donors))
@@ -231,16 +248,25 @@ PlotComposition <- function(
 
 
 # ── Shared save helper ───────────────────────────────────────────────────────
-.save_plot <- function(p, output_dir, object_name, subset_name, filename, w, h) {
+.save_plot <- function(p, output_dir, object_name, subset_name, filename, w, h,
+                       extra_parts = NULL, file_name = NULL, width = NULL,
+                       height = NULL, timestamp = FALSE) {
   if (is.null(output_dir)) return(invisible(NULL))
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-  pfx  <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0],
-                collapse = "_")
-  path <- file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", filename))
-  pdf(path, width = w, height = h)
+  # filename arrives as "<thing>.pdf" - strip the extension so it can be
+  # combined with object_name/subset_name/extra_parts through the shared
+  # auto-naming helper (file_name/timestamp behave the same as every other
+  # plotting function's save step).
+  base_stem <- sub("\\.pdf$", "", filename)
+  fname <- .nk_resolve_pdf_name(
+    file_name, c(object_name, subset_name, extra_parts, base_stem), timestamp
+  )
+  path <- file.path(output_dir, paste0(fname, ".pdf"))
+  pdf(path, width = width %||% w, height = height %||% h)
   print(p)
   grDevices::dev.off()
   message("Saved: ", basename(path))
+  path
 }
 
 
@@ -277,6 +303,17 @@ PlotComposition <- function(
 #' @param output_dir Directory to save a PDF. \code{NULL} = no save.
 #' @param object_name Label prefix for output file names.
 #' @param subset_name Optional subset label.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, \code{group.by}, and
+#'   \code{split.by}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) uses a fixed 7 x 6 in
+#'   panel.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #'
 #' @return A \code{ggplot2} object.
 #'
@@ -295,7 +332,11 @@ PlotPieUMAP <- function(
     label_size   = 3,
     output_dir   = NULL,
     object_name  = "",
-    subset_name  = ""
+    subset_name  = "",
+    file_name    = NULL,
+    width        = NULL,
+    height       = NULL,
+    timestamp    = FALSE
 ) {
   if (!requireNamespace("ggforce", quietly = TRUE))
     stop("Package 'ggforce' is required for PlotPieUMAP.\n",
@@ -436,14 +477,13 @@ PlotPieUMAP <- function(
     }
   }
 
-  .save_plot(p, output_dir, object_name, subset_name,
+  saved_path <- .save_plot(p, output_dir, object_name, subset_name,
              filename = paste0("PieUMAP_", group.by, "_by_", split.by, ".pdf"),
-             w = 7, h = 6)
+             w = 7, h = 6, file_name = file_name, width = width, height = height,
+             timestamp = timestamp)
   if (!is.null(output_dir)) {
-    pfx      <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0], collapse = "_")
-    pie_file <- paste0("PieUMAP_", group.by, "_by_", split.by, ".pdf")
     .write_legend_sidecar(
-      file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "", pie_file)),
+      saved_path,
       paste0(
         toupper(reduction), " of ", pie_ctx$n_obs, " ", pie_ctx$unit,
         if (!is.null(pie_ctx$n_donors))

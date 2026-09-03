@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -172,6 +173,14 @@ will appear consistently across all spatial figures.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## scSidekick: Set `donor.by` in PrepObject() to include sample counts in figure legends and methods text.</span></span></code></pre>
+<pre><code><span><span class="co">## Warning: `aes_string()` was deprecated in ggplot2 3.0.0.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Please use tidy evaluation idioms with `aes()`.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> See also `vignette("ggplot2-in-packages")` for more information.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The deprecated feature was likely used in the <span style="color: #0000BB;">Seurat</span> package.</span></span>
+<span><span class="co">##   Please report the issue at <span style="color: #0000BB; font-style: italic;">&lt;https://github.com/satijalab/seurat/issues&gt;</span>.</span></span>
+<span><span class="co">## <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
+<span><span class="co">## <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
+<span><span class="co">## <span style="color: #555555;">generated.</span></span></span></code></pre>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
 <p><img src="07_spatial_files/figure-html/spatial-dim-basic-1.png" width="720"></p>
 <p>Each spot on the tissue section is colored by its cluster assignment.
@@ -184,7 +193,7 @@ maps colors to cluster numbers. The palette comes from
 </h3>
 <p>Passing a vector to <code>group.by</code> produces one spatial map
 per variable.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seurat_clusters"</span>, <span class="st">"Celltypes"</span><span class="op">)</span>,join_plots <span class="op">=</span> <span class="cn">T</span>,legendnrow <span class="op">=</span> <span class="fl">2</span>,<span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
@@ -200,7 +209,7 @@ one showing which spots are annotated WT vs KO.</p>
 <code>uniform_size = TRUE</code> to use a fixed, equal size for all
 spots - useful for comparing two sections where spot density
 differs.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by     <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  uniform_size <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -214,7 +223,7 @@ differs.</p>
 stack multiple spatial maps vertically, one row per level of
 <code>row_var</code>. Useful when you have multiple tissue sections or
 ROIs stored in the same object.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#Lets first generate an object where you have multiple conditions/replicates</span></span>
 <span><span class="va">brain</span><span class="op">$</span><span class="va">rep</span><span class="op">=</span><span class="fl">1</span></span>
 <span><span class="va">brain2</span><span class="op">=</span><span class="va">brain</span></span>
@@ -232,12 +241,12 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 <div class="section level3">
 <h3 id="colors-from-prepobject-vs-custom">5. Colors from <code>PrepObject</code> vs custom<a class="anchor" aria-label="anchor" href="#colors-from-prepobject-vs-custom"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Colors from PrepObject (default)</span></span>
 <span><span class="va">p1</span><span class="op">=</span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Override with a custom palette</span></span>
 <span><span class="va">my_cols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GetColors.html">GetColors</a></span><span class="op">(</span><span class="va">brain</span>, <span class="st">"seurat_clusters"</span><span class="op">)</span></span>
 <span><span class="va">my_cols</span><span class="op">[</span><span class="st">"0"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"#FF0000"</span>  <span class="co"># re-color cluster 0</span></span>
@@ -246,14 +255,14 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 <span>  group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  colors   <span class="op">=</span> <span class="va">my_cols</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Spatial DimMap: seurat_clusters - 1x2</span></span></code></pre>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p1</span><span class="op">+</span><span class="va">p2</span></span></code></pre></div>
 <p><img src="07_spatial_files/figure-html/spatial-dim-colors-1.png" width="1440"></p>
 </div>
 <div class="section level3">
 <h3 id="saving-to-disk">6. Saving to disk<a class="anchor" aria-label="anchor" href="#saving-to-disk"></a>
 </h3>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#to automatically save on disk set PrepObject(AutoSavePlots = T)</span></span>
 <span><span class="fu"><a href="../reference/PlotSpatialDimPlots.html">PlotSpatialDimPlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
@@ -269,7 +278,7 @@ would correspond to levels of <code>split.by</code> if provided.</p>
 <div class="section level3">
 <h3 id="basic-spatial-gene-expression">1. Basic spatial gene expression<a class="anchor" aria-label="anchor" href="#basic-spatial-gene-expression"></a>
 </h3>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,join_plots <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span></code></pre></div>
 <p><img src="07_spatial_files/figure-html/spatial-feat-basic-1.png" width="1440"></p>
@@ -282,7 +291,7 @@ anatomical locations.</p>
 <div class="section level3">
 <h3 id="metadata-driven-layout">2. Metadata-driven layout<a class="anchor" aria-label="anchor" href="#metadata-driven-layout"></a>
 </h3>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">braindouble</span>,</span>
 <span>  features      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,</span>
 <span>  layout_method <span class="op">=</span> <span class="st">"metadata"</span>,</span>
@@ -296,7 +305,7 @@ occupies a distinct tissue section in the same object.</p>
 <div class="section level3">
 <h3 id="saving-to-disk-1">3. Saving to disk<a class="anchor" aria-label="anchor" href="#saving-to-disk-1"></a>
 </h3>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#to automatically save on disk set PrepObject(AutoSavePlots = T)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/PlotSpatialFeaturePlots.html">PlotSpatialFeaturePlots</a></span><span class="op">(</span><span class="va">brain</span>,</span>
@@ -321,7 +330,7 @@ figure or lab presentation.</p>
 <div class="section level3">
 <h3 id="basic-master-map">1. Basic master map<a class="anchor" aria-label="anchor" href="#basic-master-map"></a>
 </h3>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span><span class="op">)</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
@@ -336,7 +345,7 @@ expressed and which clusters drive that expression.</p>
 <div class="section level3">
 <h3 id="multiple-group-by">2. Multiple <code>group.by</code><a class="anchor" aria-label="anchor" href="#multiple-group-by"></a>
 </h3>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Hpca"</span>, <span class="st">"Ttr"</span><span class="op">)</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"seurat_clusters"</span>, <span class="st">"Celltypes"</span><span class="op">)</span>,</span>
@@ -348,7 +357,7 @@ you get 4 pages.</p>
 <div class="section level3">
 <h3 id="custom-gene-expression-color-scale">3. Custom gene expression color scale<a class="anchor" aria-label="anchor" href="#custom-gene-expression-color-scale"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/PlotMasterMaps.html">PlotMasterMaps</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  features    <span class="op">=</span> <span class="st">"Hpca"</span>,</span>
 <span>  group.by    <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
@@ -423,6 +432,19 @@ color. The default is grey -&gt; dark red.</p>
 <td><code>""</code></td>
 <td>Label used in filenames</td>
 </tr>
+<tr class="even">
+<td><code>file_name</code></td>
+<td>character</td>
+<td><code>NULL</code></td>
+<td>Override the auto-built saved file name</td>
+</tr>
+<tr class="odd">
+<td><code>timestamp</code></td>
+<td>logical</td>
+<td><code>FALSE</code></td>
+<td>Append a <code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name
+so repeated runs are versioned instead of overwritten</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -430,6 +452,12 @@ color. The default is grey -&gt; dark red.</p>
 <h2 id="parameter-reference---plotspatialfeatureplots">Parameter reference - <code>PlotSpatialFeaturePlots</code><a class="anchor" aria-label="anchor" href="#parameter-reference---plotspatialfeatureplots"></a>
 </h2>
 <table class="table">
+<colgroup>
+<col width="28%">
+<col width="15%">
+<col width="23%">
+<col width="33%">
+</colgroup>
 <thead><tr class="header">
 <th>Parameter</th>
 <th>Type</th>
@@ -474,6 +502,19 @@ color. The default is grey -&gt; dark red.</p>
 <td>character</td>
 <td><code>""</code></td>
 <td>Sub-label used in filenames</td>
+</tr>
+<tr class="odd">
+<td><code>file_name</code></td>
+<td>character</td>
+<td><code>NULL</code></td>
+<td>Override the auto-built saved file name</td>
+</tr>
+<tr class="even">
+<td><code>timestamp</code></td>
+<td>logical</td>
+<td><code>FALSE</code></td>
+<td>Append a <code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name
+so repeated runs are versioned instead of overwritten</td>
 </tr>
 </tbody>
 </table>
@@ -531,6 +572,19 @@ color. The default is grey -&gt; dark red.</p>
 <td><code>""</code></td>
 <td>Label used in filenames</td>
 </tr>
+<tr class="odd">
+<td><code>file_name</code></td>
+<td>character</td>
+<td><code>NULL</code></td>
+<td>Override the auto-built saved file name</td>
+</tr>
+<tr class="even">
+<td><code>timestamp</code></td>
+<td>logical</td>
+<td><code>FALSE</code></td>
+<td>Append a <code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name
+so repeated runs are versioned instead of overwritten</td>
+</tr>
 </tbody>
 </table>
 <hr>
@@ -551,7 +605,7 @@ expression on UMAP</li>
 <div class="section level2">
 <h2 id="session-info">Session Info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -490,6 +490,8 @@ head(res$All$scores)
 | `width` | numeric or `NULL` | `NULL` | PDF width (auto-sized when `NULL`) |
 | `height` | numeric or `NULL` | `NULL` | PDF height (auto-sized when `NULL`) |
 | `output_dir` | character or `NULL` | `NULL` | Save directory; `NULL` = print only |
+| `file_name` | character or `NULL` | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name(s) so repeated runs are versioned instead of overwritten |
 | `caffeinate` | logical | `FALSE` | Prevent system sleep |
 
 ---

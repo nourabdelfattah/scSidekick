@@ -268,6 +268,8 @@ PlotMasterMaps(brain,
 | `uniform_size` | logical | `FALSE` | Use equal spot size |
 | `output_dir` | character | `NULL` | Directory for saving |
 | `object_name` | character | `""` | Label used in filenames |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 
 ## Parameter reference - `PlotSpatialFeaturePlots`
 
@@ -279,6 +281,8 @@ PlotMasterMaps(brain,
 | `output_dir` | character | `NULL` | Directory for saving |
 | `object_name` | character | `""` | Label used in filenames |
 | `subset_name` | character | `""` | Sub-label used in filenames |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 
 ## Parameter reference - `PlotMasterMaps`
 
@@ -290,6 +294,8 @@ PlotMasterMaps(brain,
 | `gene_colors` | character (length 2) | `c("grey","darkred")` | Zero and max expression colors |
 | `output_dir` | character | required | Directory for saving |
 | `object_name` | character | `""` | Label used in filenames |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 
 ---
 

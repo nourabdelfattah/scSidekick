@@ -23,6 +23,11 @@ PlotMasterMaps(
   legend.direction = "vertical",
   output_dir = NULL,
   object_name = "",
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE,
   cluster_col = NULL,
   cluster_colors = NULL
 )
@@ -45,6 +50,11 @@ GenerateMasterGeneMaps(
   legend.direction = "vertical",
   output_dir = NULL,
   object_name = "",
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE,
   cluster_col = NULL,
   cluster_colors = NULL
 )
@@ -92,6 +102,21 @@ When \code{NULL} the plot is printed to the active device and returned
 invisibly. Walk-up from PrepObject applies when omitted entirely.}
 
 \item{object_name}{Character. Label for PDF filenames. Default \code{""}.}
+
+\item{subset_name}{Character. Optional second label appended to PDF
+filenames after \code{object_name}. Default \code{""}.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. \code{NULL} (default) auto-deduces from
+\code{object_name}, \code{subset_name}, the gene, and \code{group.by}.}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated
+PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+row grid and legend.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 
 \item{cluster_col}{Deprecated alias for \code{group.by}.}
 

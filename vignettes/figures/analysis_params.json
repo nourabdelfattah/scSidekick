@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-02",
+  "function_call": "RunGSEA(seurat_object = bmcite, group.by = \"celltype.l1\", split.by = NULL, output_dir = tempdir())",
+  "gsea_method": "single-cell (Wilcoxon/presto + fgsea)",
+  "gsea_group_by": "celltype.l1",
+  "gsea_assay": "RNA",
+  "gsea_min_cells": 20,
+  "gsea_databases": ["Hallmark", "KEGG", "Reactome", "WP"],
+  "gsea_species": "Homo sapiens",
+  "gsea_padj_thresh": 0.05,
+  "gsea_logfc_thresh": 0.1,
+  "gsea_top_n": 5,
+  "gsea_nes_cutoff": 1,
+  "gsea_methods_text": "Gene set enrichment analysis (GSEA) was performed using fgsea (Korotkevich et al., 2021) with Wilcoxon rank-sum AUC pre-ranking via presto (assay: 'RNA'). Differential expression was computed comparing celltype.l1 groups. Subsets with fewer than 20 cells were skipped. The following MSigDB gene-set collections were tested: Hallmark, KEGG, Reactome, WP. Gene sets with fewer than 10 members were excluded. Significance threshold: adjusted p < 0.05; minimum log-fold-change for DE pre-ranking: 0.1. Lollipop plots show the top/bottom 10 significant pathways per celltype.l1 group ranked by Normalized Enrichment Score (NES). Summary heatmaps show the union of the top & bottom 5 pathways per group, filtered to pathways with max |NES| >= 1 across all groups."
+}

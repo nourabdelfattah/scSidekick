@@ -56,6 +56,15 @@
 #'   plot is printed to the active graphics device.
 #' @param object_name Optional prefix used when building the output file name.
 #' @param subset_name Optional second prefix for the output file name.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, and the first few gene names.
+#' @param width,height Numeric or \code{NULL}. Override the saved PDF
+#'   dimensions in inches. \code{NULL} (default) uses a fixed 6 x 5 in panel.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #'
 #' @return A \code{ggplot} object (invisibly when \code{output_dir} is set).
 #'
@@ -81,7 +90,11 @@ PlotMultiFeature <- function(
     show_legend        = TRUE,
     output_dir         = NULL,
     object_name        = "",
-    subset_name        = ""
+    subset_name        = "",
+    file_name          = NULL,
+    width              = NULL,
+    height             = NULL,
+    timestamp          = FALSE
 ) {
 
   plot_mode <- match.arg(plot_mode)
@@ -292,15 +305,11 @@ PlotMultiFeature <- function(
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     gene_tag <- paste(features[seq_len(min(3L, length(features)))],
                       collapse = "_")
-    parts <- c(
-      if (nchar(object_name) > 0L) object_name,
-      if (nchar(subset_name) > 0L) subset_name,
-      "MultiFeature",
-      gene_tag
+    fname <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, "MultiFeature", gene_tag), timestamp
     )
-    fname <- gsub("[^A-Za-z0-9._-]", "_", paste(parts, collapse = "_"))
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
-    ggplot2::ggsave(fpath, plot = p, width = 6, height = 5)
+    ggplot2::ggsave(fpath, plot = p, width = width %||% 6, height = height %||% 5)
     message("scSidekick: Plot saved to ", fpath)
     return(invisible(p))
   }

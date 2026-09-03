@@ -88,7 +88,7 @@ panc8 <- RunHarmony(panc8, group.by.vars = "dataset", verbose = FALSE)
 panc8 <- RunUMAP(panc8, reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 panc8 <- PrepObject(panc8,
-  variables   = c("celltype", "dataset"),
+  variables   = c("celltype", "dataset", "tech"),
   group.by    = "celltype",
   object_name = "panc8")
 ```
@@ -172,18 +172,60 @@ wrong coordinate space if it doesn't.
 PlotTrajectory(panc8, reduction = "harmony", style = "curves")
 ```
 
+### Splitting and faceting
+
+Like every other scSidekick plotting function, `PlotTrajectory()` accepts
+`split.by` (and `row.by`, for a two-way grid) - each panel is drawn from an
+independent subset of the object, so the trajectory overlay and cluster
+centroids are recomputed per panel rather than reusing the pooled fit's
+positions. Here, one panel per sequencing technology checks whether the
+overlay looks consistent across platforms rather than being driven by one of
+them:
+
+```{r traj-split, eval=T, fig.width=14, fig.height=5}
+PlotTrajectory(panc8, reduction = "umap", style = "straight",
+  split.by = "tech")
+```
+
+### Numbered labels
+
+`number_labels = TRUE` swaps the legend and centroid labels for short numeric
+codes (`1`, `2`, ...) instead of full level names - handy once names get long
+enough to crowd a legend, or when you'd rather label panels by number in a
+figure and spell out the key separately in a caption:
+
+```{r traj-numbered, eval=T, fig.width=8, fig.height=7}
+PlotTrajectory(panc8, reduction = "umap", style = "straight",
+  number_labels = TRUE)
+```
+
 ---
 
 ## 4. `PlotPseudotime()` - distribution across cell types
 
-Density + rug plot of pseudotime per cell type (with peak labels), plus an
-optional ridge plot split by a second variable - here, `dataset`, to check
-whether the pseudotime ordering holds up across technologies.
+`plot.type = "density"` (default) draws a density + rug plot of pseudotime
+per cell type, with peak labels marking each level's modal pseudotime:
 
-```{r plot-pseudotime, eval=T, fig.width=12, fig.height=5}
+```{r plot-pseudotime, eval=T, fig.width=6, fig.height=5}
+PlotPseudotime(panc8, pseudotime.by = "Slingshot_Pseudotime_1")
+```
+
+`plot.type = "ridge"` shows the same distributions as ridges instead:
+
+```{r plot-pseudotime-ridge, eval=T, fig.width=6, fig.height=5}
 PlotPseudotime(panc8,
   pseudotime.by = "Slingshot_Pseudotime_1",
-  split.by      = "dataset")
+  plot.type     = "ridge")
+```
+
+`split.by` (and `row.by`, for a two-way grid) facets either style into
+column/row panels - here, one panel per sequencing technology, to check
+whether the pseudotime ordering holds up across platforms:
+
+```{r plot-pseudotime-split, eval=T, fig.width=14, fig.height=4}
+PlotPseudotime(panc8,
+  pseudotime.by = "Slingshot_Pseudotime_1",
+  split.by      = "tech")
 ```
 
 ---
@@ -214,6 +256,20 @@ draw a biological conclusion from a pseudotime trend.
 (module scores, cNMF usages, QC metrics, ...), and extraction goes through
 the same assay/version-safe path (`.nk_feature_matrix()`/`.get_layer_data()`)
 as every other feature-plotting function in the package.
+
+When `color.by` is left `NULL`, it falls back to `group.by` for coloring -
+matching the rest of the package's default - while `group.by` still doubles
+as a cell-subset filter (paired with `groups`) regardless of which variable
+ends up coloring the plot. `split.by`/`row.by` facet the whole thing into
+column/row panels, one independent trend fit per panel:
+
+```{r feature-trend-split, eval=T, fig.width=10, fig.height=8}
+PlotFeatureTrend(panc8,
+  pseudotime.by = "Slingshot_Pseudotime_1",
+  features      = "INS",
+  group.by      = "celltype",
+  split.by      = "tech")
+```
 
 ---
 
@@ -256,6 +312,11 @@ PlotTrajectory(panc8,
   style      = "straight",
   output_dir = "./Figures")
 ```
+
+`file_name`, `width`, and `height` override the auto-built name and
+auto-calculated PDF size when you need one; `timestamp = TRUE` appends a
+`_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned
+instead of overwriting the previous PDF.
 
 `RunSlingshot()` additionally writes `analysis_params.json` documenting the
 fit itself (reduction, dims used, root cluster, lineages found) whenever

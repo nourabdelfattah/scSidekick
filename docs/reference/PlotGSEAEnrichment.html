@@ -35,7 +35,7 @@ Rows = matched pathways (one 3-panel mountain stack per pathway)
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -74,6 +74,7 @@ Rows = matched pathways (one 3-panel mountain stack per pathway)
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -125,7 +126,11 @@ multiple pages when there are more groups than <code>max_cols</code></p></li>
 <span>  ncol <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  subset_name <span class="op">=</span> <span class="st">""</span></span>
+<span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  width <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  height <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -214,6 +219,28 @@ Default <code>1</code>.</p></dd>
 
 <dt id="arg-subset-name">subset_name<a class="anchor" aria-label="anchor" href="#arg-subset-name"></a></dt>
 <dd><p>Optional subset label.</p></dd>
+
+
+<dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
+<dd><p>Character or <code>NULL</code>. Base name (no extension) for
+the saved PDF. Only applies in <strong>direct mode</strong>, which saves one
+combined PDF; <strong>RunGSEA directory mode</strong> can save several PDFs per
+call (one per pathway x label combination) so an explicit override
+isn't applied there. <code>NULL</code> (default) auto-deduces from
+<code>object_name</code> and <code>subset_name</code>.</p></dd>
+
+
+<dt id="arg-width-height">width, height<a class="anchor" aria-label="anchor" href="#arg-width-height"></a></dt>
+<dd><p>Numeric or <code>NULL</code>. Override the auto-calculated
+PDF dimensions in inches. <code>NULL</code> (default) auto-sizes to the
+pathway grid.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, append a
+<code>_YYYYMMDD-HHMMSS</code> stamp to every saved file name so repeated runs
+are versioned instead of overwriting the previous PDF(s). Default
+<code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

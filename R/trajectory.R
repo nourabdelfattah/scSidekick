@@ -470,6 +470,16 @@ SlingshotLineages <- function(seurat_object) {
 #' @param group.by Character or \code{NULL}. Metadata column for point color.
 #'   \code{NULL} (default) uses the \code{cluster.by} stored by
 #'   \code{\link{RunSlingshot}}.
+#' @param split.by Character or \code{NULL}. Metadata column for columns in a
+#'   multi-panel grid (e.g. one panel per sample/condition). \code{NULL}
+#'   (default) walks up to the \code{split.by} stored by
+#'   \code{\link{PrepObject}}; a single panel is drawn when neither this nor
+#'   \code{row.by} is set. Each panel reuses the same fitted Slingshot model -
+#'   only which cells are drawn differs - and the whole grid shares one
+#'   legend, matching \code{\link{PlotDimPlots}}.
+#' @param row.by Character or \code{NULL}. Metadata column for rows in the
+#'   grid, combined with \code{split.by} for a two-way facet. \code{NULL}
+#'   (default; no row faceting).
 #' @param lineages Integer/character vector or \code{NULL}. Which lineages to
 #'   draw (e.g. \code{c(1, 2)} or \code{c("Lineage1", "Lineage2")}).
 #'   \code{NULL} (default) draws all.
@@ -489,6 +499,13 @@ SlingshotLineages <- function(seurat_object) {
 #'   \code{style = "curves"}, which is unordered per point). Default
 #'   \code{TRUE}.
 #' @param label Logical. Label cluster centroids. Default \code{TRUE}.
+#' @param number_labels Logical. When \code{TRUE}, both the legend and (if
+#'   \code{label = TRUE}) the centroid labels use a zero-padded index (e.g.,
+#'   legend "01. CellType", centroid "01") instead of the actual cluster
+#'   name, matching \code{\link{PlotDimPlots}}'s convention. Useful when
+#'   there are many clusters or the names are too long to label directly on
+#'   the plot. Default \code{FALSE} (legend and centroid labels show the
+#'   real cluster name, unnumbered).
 #' @param legend.side Character. Legend position, matching
 #'   \code{\link{PlotDimPlots}}: \code{"bottom"} (default), \code{"top"},
 #'   \code{"left"}, or \code{"right"}.
@@ -504,13 +521,20 @@ SlingshotLineages <- function(seurat_object) {
 #' @param file_name Character or \code{NULL}. Base name (no extension) for
 #'   the saved PDF. \code{NULL} auto-deduces.
 #' @param width,height Numeric or \code{NULL}. Saved PDF dimensions in
-#'   inches. \code{NULL} (default) uses a fixed 6 x 5.5 in panel.
+#'   inches. \code{NULL} (default) uses a fixed 6 x 5.5 in panel (scaled up
+#'   per grid panel when \code{split.by}/\code{row.by} is set).
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
-#' @return A \code{ggplot} object (invisibly, if saved).
+#' @return A \code{ggplot} (or, when \code{split.by}/\code{row.by} is set, a
+#'   \code{patchwork}) object, invisibly if saved.
 #' @export
 PlotTrajectory <- function(seurat_object,
                            reduction      = "umap",
                            group.by       = NULL,
+                           split.by       = NULL,
+                           row.by         = NULL,
                            lineages       = NULL,
                            style          = c("straight", "curves"),
                            colors         = NULL,
@@ -520,6 +544,7 @@ PlotTrajectory <- function(seurat_object,
                            label_lineages = TRUE,
                            arrow          = TRUE,
                            label          = TRUE,
+                           number_labels  = FALSE,
                            legend.side    = "bottom",
                            legend_nrow    = 2,
                            output_dir     = NULL,
@@ -527,7 +552,8 @@ PlotTrajectory <- function(seurat_object,
                            subset_name    = "",
                            file_name      = NULL,
                            width          = NULL,
-                           height         = NULL) {
+                           height         = NULL,
+                           timestamp      = FALSE) {
 
   style <- match.arg(style)
 
@@ -536,6 +562,7 @@ PlotTrajectory <- function(seurat_object,
     stop("No Slingshot results found on this object. Run RunSlingshot() first.")
 
   group.by <- group.by %||% sl$cluster.by
+  split.by <- split.by %||% .nk_setting(seurat_object, "split.by")
 
   if (identical(output_dir, NA_character_) || identical(output_dir, NA)) {
     output_dir <- NULL
@@ -545,6 +572,83 @@ PlotTrajectory <- function(seurat_object,
   }
   object_name <- if (nchar(object_name) > 0) object_name else
     .nk_setting(seurat_object, "object_name") %||% ""
+
+  # ── split.by / row.by: subset per combination, recurse, tile with patchwork ──
+  # Same idiom as PlotDimPlots()/GroupHeatmap(): @misc (including the fitted
+  # Slingshot model) survives Seurat's own cell-subsetting untouched, so each
+  # panel reuses the SAME fit - only which cells are drawn changes. Legends
+  # are collected once across the whole grid (patchwork guides = "collect")
+  # instead of repeating on every panel.
+  if (!is.null(split.by) || !is.null(row.by)) {
+    meta <- seurat_object@meta.data
+    col_lvls <- if (is.factor(meta[[split.by %||% group.by]]))
+      levels(meta[[split.by %||% group.by]]) else
+      sort(unique(as.character(meta[[split.by %||% group.by]])))
+    if (is.null(split.by)) col_lvls <- "__all__"
+    row_lvls <- if (is.null(row.by)) "__all__" else if (is.factor(meta[[row.by]]))
+      levels(meta[[row.by]]) else sort(unique(as.character(meta[[row.by]])))
+
+    combos <- expand.grid(row = row_lvls, col = col_lvls, stringsAsFactors = FALSE)
+    plots <- stats::setNames(vector("list", nrow(combos)),
+                             paste(combos$row, combos$col, sep = " | "))
+    for (i in seq_len(nrow(combos))) {
+      keep <- rep(TRUE, ncol(seurat_object))
+      if (!is.null(row.by))   keep <- keep & (as.character(meta[[row.by]]) == combos$row[i])
+      if (!is.null(split.by)) keep <- keep & (as.character(meta[[split.by]]) == combos$col[i])
+      sub_obj <- seurat_object[, keep]
+      panel_title <- paste(c(if (!is.null(row.by)) combos$row[i],
+                             if (!is.null(split.by)) combos$col[i]), collapse = " | ")
+      plots[[i]] <- if (sum(keep) == 0) patchwork::plot_spacer() else
+        PlotTrajectory(sub_obj, reduction = reduction, group.by = group.by,
+                      lineages = lineages, style = style, colors = colors,
+                      pt.size = pt.size, line.color = line.color,
+                      line.width = line.width, label_lineages = label_lineages,
+                      arrow = arrow, label = label, number_labels = number_labels,
+                      legend.side = legend.side,
+                      legend_nrow = legend_nrow, output_dir = NA) +
+        ggplot2::labs(title = panel_title)
+    }
+
+    # guides = "collect" alone (no trailing `&` re-theme) inherits legend
+    # position from the panels themselves, which already carry the correct
+    # legend.position from legend.side (set inside the recursive single-panel
+    # build below) - re-applying theme() via `&` here triggers a spurious
+    # "annotation$theme is not a valid theme" warning from a ggplot2/patchwork
+    # version interaction and isn't needed for the same result.
+    n_col <- length(col_lvls); n_row <- length(row_lvls)
+    combined <- patchwork::wrap_plots(plots, nrow = n_row, ncol = n_col,
+                                      guides = "collect")
+
+    if (!is.null(output_dir)) {
+      dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+      fname <- .nk_resolve_pdf_name(
+        file_name,
+        c(object_name, subset_name, split.by, row.by,
+          "SlingshotTrajectory", style),
+        timestamp
+      )
+      fpath <- file.path(output_dir, paste0(fname, ".pdf"))
+      pdf_w <- width  %||% (n_col * 6)
+      pdf_h <- height %||% (n_row * 5.5)
+
+      grDevices::pdf(fpath, width = pdf_w, height = pdf_h)
+      print(combined)
+      grDevices::dev.off()
+      message("scSidekick: Saved to ", fpath,
+              " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
+
+      ctx <- .nk_legend_context(seurat_object)
+      .write_legend_sidecar(fpath, paste0(
+        .nk_obs_sentence(ctx, reduction = reduction, group.by = group.by,
+                         split.by = split.by),
+        ". Slingshot trajectory overlaid (", style, " style)",
+        if (!is.null(row.by)) paste0(", rows split by ", row.by) else "",
+        ", arranged in a ", n_row, " x ", n_col, " grid with a single shared legend."
+      ))
+      return(invisible(combined))
+    }
+    return(combined)
+  }
 
   # Normalize requested lineage names to "Lineage<n>" strings
   lineages_keep <- if (is.null(lineages)) NULL else {
@@ -566,6 +670,21 @@ PlotTrajectory <- function(seurat_object,
   centers$cluster_id <- seq_len(nrow(centers))
 
   colors <- colors %||% .nk_colors(seurat_object, group.by)
+
+  # Numbering is strictly opt-in via number_labels, matching PlotDimPlots:
+  # legend and centroid labels show the real group name unless
+  # number_labels = TRUE, in which case both switch to a zero-padded index.
+  num_pad <- sprintf("%02d", seq_along(group_lvls))
+  legend_labels <- if (isTRUE(number_labels)) {
+    stats::setNames(paste0(num_pad, ". ", group_lvls), group_lvls)
+  } else {
+    stats::setNames(group_lvls, group_lvls)
+  }
+  num_lookup <- if (isTRUE(number_labels)) {
+    stats::setNames(num_pad, group_lvls)
+  } else {
+    stats::setNames(group_lvls, group_lvls)
+  }
 
   # Same visual grammar as PlotDimPlots: theme_classic(), no numeric tick
   # labels (UMAP/PCA coordinates are arbitrary), bordered panel with
@@ -594,7 +713,8 @@ PlotTrajectory <- function(seurat_object,
       legend.position  = lgd_pos,
       legend.direction = "horizontal"
     )
-  if (!is.null(colors)) p <- p + ggplot2::scale_color_manual(values = colors)
+  if (!is.null(colors))
+    p <- p + ggplot2::scale_color_manual(values = colors, labels = legend_labels)
 
   if (style == "straight") {
     if (is.null(sl$mst_df))
@@ -658,9 +778,10 @@ PlotTrajectory <- function(seurat_object,
   }
 
   if (isTRUE(label)) {
+    centers$LabelText <- num_lookup[as.character(centers$cluster)]
     p <- p + ggrepel::geom_label_repel(
       data = centers,
-      ggplot2::aes(x = x, y = y, label = cluster),
+      ggplot2::aes(x = x, y = y, label = LabelText),
       inherit.aes = FALSE, fontface = "bold", show.legend = FALSE
     )
   }
@@ -668,12 +789,9 @@ PlotTrajectory <- function(seurat_object,
   # ── Save or return ──────────────────────────────────────────────────────────
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    base <- if (!is.null(file_name) && nzchar(file_name)) file_name else {
-      paste(c(if (nchar(object_name) > 0) object_name,
-              if (nchar(subset_name) > 0) subset_name,
-              "SlingshotTrajectory", style), collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+    fname <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, "SlingshotTrajectory", style), timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
     n_ln <- length(unique(if (is.null(lineages_keep)) names(sl$lineages) else lineages_keep))
 
@@ -728,47 +846,67 @@ PlotTrajectory <- function(seurat_object,
 #' (\code{"Monocle3_Pseudotime"}), or any other pseudotime-like column,
 #' without re-implementing the same density/ridge plotting code per method.
 #'
-#' Produces a density + rug plot of pseudotime per \code{group.by} level, with
-#' peak labels, and optionally a ridge plot of the same values split/filled by
-#' a second variable (e.g. treatment response).
+#' Produces a density + rug plot (\code{plot.type = "density"}, default) or a
+#' ridge plot (\code{plot.type = "ridge"}) of pseudotime per \code{group.by}
+#' level, with peak labels for the density style. \code{split.by}/\code{row.by}
+#' facet either style into column/row panels, the same way as every other
+#' scSidekick plotting function.
 #'
 #' @param seurat_object A Seurat object.
 #' @param pseudotime.by Character. Numeric \code{meta.data} column holding a
 #'   pseudotime value (e.g. from \code{\link{RunSlingshot}}).
-#' @param group.by Character or \code{NULL}. Cluster/cell-type column for
-#'   color and the y-axis of the ridge plot. \code{NULL} (default) uses the
-#'   \code{cluster.by} stored by \code{\link{RunSlingshot}} when present.
-#' @param split.by Character or \code{NULL}. Secondary variable (e.g.
-#'   \code{"Response"}, \code{"Sample"}) used to fill the ridge plot.
-#'   \code{NULL} (default) skips the ridge panel.
+#' @param group.by Character or \code{NULL}. Cluster/cell-type column - colors
+#'   the density curves, or is the y-axis of the ridge plot. \code{NULL}
+#'   (default) uses the \code{cluster.by} stored by \code{\link{RunSlingshot}}
+#'   when present.
+#' @param split.by Character or \code{NULL}. Creates column facets - one panel
+#'   per level. \code{NULL} (default) = no column split.
+#' @param row.by Character or \code{NULL}. Creates row facets, the same way as
+#'   \code{split.by}. Combined with \code{split.by} produces a two-way grid.
+#'   \code{NULL} (default) = no row split.
+#' @param plot.type One of \code{"density"} (default: density + rug curves
+#'   per \code{group.by} level, with peak labels) or \code{"ridge"} (one ridge
+#'   per \code{group.by} level via \pkg{ggridges}).
+#' @param scales Character. Passed to \code{facet_wrap()}/\code{facet_grid()}
+#'   when \code{split.by}/\code{row.by} is set. Default \code{"fixed"}.
+#' @param ncol Integer or \code{NULL}. Facet columns when only \code{split.by}
+#'   is set. \code{NULL} auto-picks.
 #' @param colors Named color vector for \code{group.by}. \code{NULL}
 #'   auto-resolves from \code{\link{PrepObject}} or \code{Nour_pal}.
-#' @param split_colors Named color vector for \code{split.by}. \code{NULL}
-#'   auto-resolves the same way.
 #' @param output_dir Character or \code{NULL}. Directory to save a PDF.
 #'   \code{NULL} (default) walks up to the \code{output_dir} stored by
 #'   \code{\link{PrepObject}} (respecting \code{AutoSavePlots}); pass
 #'   \code{NA} to suppress entirely.
 #' @param object_name,subset_name Character. Output file-name prefixes.
 #' @param file_name Character or \code{NULL}. Base name (no extension) for
-#'   the saved PDF. \code{NULL} auto-deduces from \code{pseudotime.by}.
+#'   the saved PDF. \code{NULL} auto-deduces from \code{pseudotime.by},
+#'   \code{group.by}, \code{split.by}, and \code{row.by}.
 #' @param width,height Numeric or \code{NULL}. Saved PDF dimensions in
-#'   inches. \code{NULL} (default) auto-sizes to 1 or 2 panels.
+#'   inches. \code{NULL} (default) auto-sizes from the facet grid.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
-#' @return A \code{patchwork} (or single \code{ggplot}) object.
+#' @return A \code{ggplot} object.
 #' @export
 PlotPseudotime <- function(seurat_object,
                            pseudotime.by,
                            group.by     = NULL,
                            split.by     = NULL,
+                           row.by       = NULL,
+                           plot.type    = c("density", "ridge"),
+                           scales       = "fixed",
+                           ncol         = NULL,
                            colors       = NULL,
-                           split_colors = NULL,
                            output_dir   = NULL,
                            object_name  = "",
                            subset_name  = "",
                            file_name    = NULL,
                            width        = NULL,
-                           height       = NULL) {
+                           height       = NULL,
+                           timestamp    = FALSE) {
+
+  plot.type <- match.arg(plot.type)
 
   if (!pseudotime.by %in% colnames(seurat_object@meta.data))
     stop("'", pseudotime.by, "' not found in seurat_object@meta.data.")
@@ -776,6 +914,14 @@ PlotPseudotime <- function(seurat_object,
   group.by <- group.by %||% seurat_object@misc$slingshot$cluster.by %||%
     stop("'group.by' is required (no stored Slingshot cluster.by found). ",
          "Provide the cluster/cell-type metadata column directly.")
+
+  if (plot.type == "ridge" && !requireNamespace("ggridges", quietly = TRUE))
+    stop("Package 'ggridges' is required for plot.type = 'ridge'. Install ",
+         "with install.packages('ggridges'), or use plot.type = 'density'.")
+
+  for (v in c(split.by, row.by))
+    if (!v %in% colnames(seurat_object@meta.data))
+      stop("Column '", v, "' not found in metadata.")
 
   if (identical(output_dir, NA_character_) || identical(output_dir, NA)) {
     output_dir <- NULL
@@ -797,114 +943,127 @@ PlotPseudotime <- function(seurat_object,
 
   df <- data.frame(pseudo  = meta[[pseudotime.by]],
                    cluster = factor(as.character(group_col), levels = group_lvls))
+  if (!is.null(split.by)) {
+    split_col  <- meta[[split.by]]
+    split_lvls <- if (is.factor(split_col)) levels(split_col) else
+      sort(unique(as.character(split_col)))
+    df$Split <- factor(as.character(split_col), levels = split_lvls)
+  }
+  if (!is.null(row.by)) {
+    row_col  <- meta[[row.by]]
+    row_lvls <- if (is.factor(row_col)) levels(row_col) else
+      sort(unique(as.character(row_col)))
+    df$Row <- factor(as.character(row_col), levels = row_lvls)
+  }
   df <- df[!is.na(df$pseudo), ]
 
   colors <- colors %||% .nk_colors(seurat_object, group.by)
-
-  # ── Peak labels: one per cluster with enough points for a density estimate ─
-  label_data <- do.call(rbind, lapply(split(df, df$cluster), function(sub) {
-    if (nrow(sub) < 2) return(NULL)
-    d <- stats::density(sub$pseudo)
-    data.frame(cluster = sub$cluster[1],
-              x_peak  = d$x[which.max(d$y)],
-              y_peak  = max(d$y))
-  }))
 
   # theme_NourMin() is the package's canonical theme for statistical/
   # distribution plots (see coexpression.R, pseudobulk.R, meta_summary.R); it
   # blanks axis titles by default, so both are restored here since the
   # pseudotime column name and "Density"/group.by labels are the point.
-  p_density <- ggplot2::ggplot(df, ggplot2::aes(x = pseudo, fill = cluster)) +
-    ggplot2::geom_rug() +
-    ggplot2::geom_density(alpha = 0.9) +
-    ggplot2::labs(x = pseudotime.by, y = "Density", fill = group.by) +
-    theme_NourMin() +
+  base_theme <- theme_NourMin() +
     ggplot2::theme(
       axis.title.x = ggplot2::element_text(size = 11),
       axis.title.y = ggplot2::element_text(angle = 90, vjust = 0.5, size = 11),
+      strip.text   = ggplot2::element_text(face = "bold"),
       # theme_NourMin()'s default plot.margin has a NEGATIVE left value
       # (tuned for its default axis.title = element_blank()); since the axis
       # title is restored above, the margin must be too, or the rotated
       # y-axis title clips off the left edge of the page.
       plot.margin  = ggplot2::margin(t = 5, r = 5, b = 5, l = 10, unit = "mm")
     )
-  if (!is.null(colors)) p_density <- p_density + ggplot2::scale_fill_manual(values = colors)
-  if (!is.null(label_data) && nrow(label_data) > 0) {
-    p_density <- p_density + ggrepel::geom_label_repel(
-      data = label_data,
-      ggplot2::aes(x = x_peak, y = y_peak, label = cluster, fill = cluster),
-      inherit.aes = FALSE, color = "white", fontface = "bold",
-      nudge_y = 0.05, segment.color = "black", show.legend = FALSE
-    )
-  }
 
-  p_ridge <- NULL
-  if (!is.null(split.by)) {
-    if (!requireNamespace("ggridges", quietly = TRUE)) {
-      warning("Package 'ggridges' is not installed - skipping the ridge panel. ",
-              "Install with install.packages('ggridges') to enable it.")
-    } else {
-      split_col  <- meta[[split.by]]
-      split_lvls <- if (is.factor(split_col)) levels(split_col) else
-        sort(unique(as.character(split_col)))
+  if (plot.type == "density") {
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = pseudo, fill = cluster)) +
+      ggplot2::geom_rug() +
+      ggplot2::geom_density(alpha = 0.9) +
+      ggplot2::labs(x = pseudotime.by, y = "Density", fill = group.by) +
+      base_theme
+    if (!is.null(colors)) p <- p + ggplot2::scale_fill_manual(values = colors)
 
-      df2 <- data.frame(pseudo  = meta[[pseudotime.by]],
-                        cluster = factor(as.character(group_col), levels = group_lvls),
-                        split   = factor(as.character(split_col), levels = split_lvls))
-      df2 <- df2[!is.na(df2$pseudo), ]
-      split_colors <- split_colors %||% .nk_colors(seurat_object, split.by)
-
-      p_ridge <- ggplot2::ggplot(df2, ggplot2::aes(x = pseudo, y = cluster, fill = split)) +
-        ggridges::geom_density_ridges2(alpha = 0.7) +
-        ggplot2::labs(x = pseudotime.by, y = group.by, fill = split.by) +
-        theme_NourMin() +
-        ggplot2::theme(
-          axis.title.x = ggplot2::element_text(size = 11),
-          axis.title.y = ggplot2::element_text(angle = 90, vjust = 0.5, size = 11),
-          plot.margin  = ggplot2::margin(t = 5, r = 5, b = 5, l = 10, unit = "mm")
-        )
-      if (!is.null(split_colors))
-        p_ridge <- p_ridge + ggplot2::scale_fill_manual(values = split_colors)
+    # ── Peak labels: one per (cluster x facet cell) with enough points for a
+    # density estimate. Computed per facet combination so labels sit at each
+    # panel's own peak rather than the pooled distribution's.
+    facet_cols <- c("cluster", if (!is.null(split.by)) "Split",
+                    if (!is.null(row.by)) "Row")
+    label_data <- do.call(rbind, lapply(
+      split(df, df[facet_cols], drop = TRUE), function(sub) {
+        if (nrow(sub) < 2) return(NULL)
+        d <- stats::density(sub$pseudo)
+        cbind(sub[1, facet_cols, drop = FALSE],
+             x_peak = d$x[which.max(d$y)], y_peak = max(d$y))
+      }))
+    if (!is.null(label_data) && nrow(label_data) > 0) {
+      p <- p + ggrepel::geom_label_repel(
+        data = label_data,
+        ggplot2::aes(x = x_peak, y = y_peak, label = cluster, fill = cluster),
+        inherit.aes = FALSE, color = "white", fontface = "bold",
+        nudge_y = 0.05, segment.color = "black", show.legend = FALSE
+      )
     }
+  } else {
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = pseudo, y = cluster, fill = cluster)) +
+      ggridges::geom_density_ridges2(alpha = 0.7) +
+      ggplot2::labs(x = pseudotime.by, y = group.by, fill = group.by) +
+      base_theme
+    if (!is.null(colors)) p <- p + ggplot2::scale_fill_manual(values = colors)
   }
 
-  result <- if (!is.null(p_ridge))
-    patchwork::wrap_plots(list(p_density, p_ridge), ncol = 2)
-  else p_density
+  if (!is.null(split.by) && !is.null(row.by)) {
+    p <- p + ggplot2::facet_grid(rows = ggplot2::vars(Row),
+                                 cols = ggplot2::vars(Split), scales = scales)
+  } else if (!is.null(split.by)) {
+    p <- p + ggplot2::facet_wrap(~Split, ncol = ncol, scales = scales)
+  } else if (!is.null(row.by)) {
+    p <- p + ggplot2::facet_wrap(~Row, ncol = 1, scales = scales)
+  }
 
   # ── Save or return ──────────────────────────────────────────────────────────
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    base <- if (!is.null(file_name) && nzchar(file_name)) file_name else {
-      paste(c(if (nchar(object_name) > 0) object_name,
-              if (nchar(subset_name) > 0) subset_name,
-              pseudotime.by), collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+    fname <- .nk_resolve_pdf_name(
+      file_name,
+      auto_parts = c(if (nchar(object_name) > 0) object_name,
+                     if (nchar(subset_name) > 0) subset_name,
+                     pseudotime.by, group.by, split.by, row.by, plot.type),
+      timestamp = timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
-    pdf_w <- width %||% (if (!is.null(p_ridge)) 11 else 5.5)
-    pdf_h <- height %||% 5
+
+    n_split <- if (!is.null(split.by)) length(levels(df$Split)) else 1L
+    n_row   <- if (!is.null(row.by))   length(levels(df$Row))   else 1L
+    panel_w <- if (plot.type == "ridge") 4.5 else 4.0
+    panel_h <- if (plot.type == "ridge") max(length(group_lvls) * 0.5, 3) else 3.5
+    lgd_dims <- .cat_legend_dims(length(group_lvls), group_lvls, "vertical", 1)
+    pdf_w <- width  %||% (panel_w * n_split + lgd_dims[["w"]])
+    pdf_h <- height %||% max(panel_h * n_row, lgd_dims[["h"]])
 
     grDevices::pdf(fpath, width = pdf_w, height = pdf_h)
-    print(result)
+    print(p)
     grDevices::dev.off()
     message("scSidekick: Saved to ", fpath,
             " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
 
     ctx <- .nk_legend_context(seurat_object)
     .write_legend_sidecar(fpath, paste0(
-      .nk_obs_sentence(ctx, group.by = group.by,
-                      split.by = if (!is.null(p_ridge)) split.by else NULL),
-      ". Distribution of '", pseudotime.by, "' shown as a density + rug plot",
-      if (!is.null(p_ridge))
-        paste0(", alongside a ridge plot of the same values by ", group.by,
-              " filled by ", split.by) else "",
-      "; peak labels mark each ", group.by, " level's modal pseudotime."
+      .nk_obs_sentence(ctx, group.by = group.by, split.by = split.by, row.by = row.by),
+      ". Distribution of '", pseudotime.by, "' shown as a ",
+      if (plot.type == "ridge") "ridge plot" else "density + rug plot",
+      " per ", group.by, " level",
+      if (!is.null(split.by)) paste0(", split into columns by ", split.by) else "",
+      if (!is.null(row.by))   paste0(", split into rows by ", row.by) else "",
+      if (plot.type == "density")
+        paste0("; peak labels mark each ", group.by, " level's modal pseudotime",
+              if (!is.null(split.by) || !is.null(row.by)) " within its panel" else "",
+              ".")
+      else "."
     ))
-    return(invisible(result))
+    return(invisible(p))
   }
 
-  result
+  p
 }
 
 
@@ -912,13 +1071,14 @@ PlotPseudotime <- function(seurat_object,
 #'
 #' @description
 #' Smoothed expression (or any numeric feature) vs. pseudotime, one facet
-#' panel per feature, optionally colored by a grouping variable (e.g.
-#' \code{"Sample"}) to compare trends across replicates or conditions.
-#' Equivalent to a \code{geom_smooth()} + \code{facet_wrap(~Gene)} script run
-#' by hand, but feature extraction goes through the same assay/version-safe
-#' path as the rest of scSidekick (\code{.nk_feature_matrix()}, which is what
-#' every other feature-plotting function in the package uses): genes are
-#' pulled via the v5/BPCells/sketch-safe \code{.get_layer_data()}, and numeric
+#' panel per feature, colored by \code{group.by} by default (or by
+#' \code{color.by}, when that's set instead) to compare trends across
+#' replicates or conditions. Equivalent to a \code{geom_smooth()} +
+#' \code{facet_wrap(~Gene)} script run by hand, but feature extraction goes
+#' through the same assay/version-safe path as the rest of scSidekick
+#' (\code{.nk_feature_matrix()}, which is what every other feature-plotting
+#' function in the package uses): genes are pulled via the
+#' v5/BPCells/sketch-safe \code{.get_layer_data()}, and numeric
 #' \code{meta.data} columns (module scores, cNMF usages, QC metrics, other
 #' pseudotime columns, ...) are used directly - both are accepted
 #' interchangeably in \code{features}.
@@ -947,12 +1107,23 @@ PlotPseudotime <- function(seurat_object,
 #'   to \code{TRUE} when this is set. \code{NULL} (default) keeps cell-level.
 #' @param color.by Character or \code{NULL}. Metadata column to color the
 #'   smoothed trend lines by (e.g. \code{"Sample"}, to see whether replicates
-#'   agree). \code{NULL} (default) draws a single trend line per feature.
-#' @param group.by Character or \code{NULL}. Metadata column to restrict
-#'   cells by (e.g. plot the trend within one cluster only).
+#'   agree). \code{NULL} (default) falls back to \code{group.by} for coloring,
+#'   matching every other scSidekick plotting function's default; pass an
+#'   explicit \code{color.by} to color by something other than the variable
+#'   used to restrict cells.
+#' @param group.by Character or \code{NULL}. Metadata column that (1) colors
+#'   the trend lines when \code{color.by} is \code{NULL}, and (2), paired with
+#'   \code{groups}, restricts which cells are plotted (e.g. the trend within
+#'   one cluster only) regardless of which variable ends up coloring the plot.
 #' @param groups Character vector or \code{NULL}. Which level(s) of
 #'   \code{group.by} to keep. \code{NULL} (default, when \code{group.by} is
 #'   set) keeps all levels.
+#' @param split.by Character or \code{NULL}. Creates column facets - one
+#'   figure panel per level, each drawn from an independent subset of cells
+#'   (tiled with \pkg{patchwork}). \code{NULL} (default) = no column split.
+#' @param row.by Character or \code{NULL}. Creates row facets, the same way as
+#'   \code{split.by}. Combined with \code{split.by} produces a two-way grid.
+#'   \code{NULL} (default) = no row split.
 #' @param method Character. Smoothing method passed to
 #'   \code{ggplot2::geom_smooth()}. \code{"loess"} (default) fits a flexible,
 #'   non-parametric curve - appropriate when the relationship's shape is
@@ -968,8 +1139,9 @@ PlotPseudotime <- function(seurat_object,
 #'   direct way to test the relationship shown by the trend line without
 #'   routing through \code{\link{CorrelateGene}()}/\code{\link{PlotCorrelation}()},
 #'   which are built around a gene-vs-many-genes screen keyed on a Seurat
-#'   object rather than an arbitrary x/y pair. When \code{color.by} is set,
-#'   one annotation is shown per color group. Default \code{FALSE}.
+#'   object rather than an arbitrary x/y pair. When a color variable is in
+#'   effect (\code{color.by}, or \code{group.by} as its fallback), one
+#'   annotation is shown per color group. Default \code{FALSE}.
 #' @param cor_method Character. \code{"spearman"} (default; rank-based,
 #'   appropriate for monotonic but not necessarily linear relationships) or
 #'   \code{"pearson"} (linear correlation). Only used when \code{add_cor =
@@ -984,8 +1156,9 @@ PlotPseudotime <- function(seurat_object,
 #' @param scales Character. Passed to \code{facet_wrap()}. Default
 #'   \code{"free_y"} (expression ranges differ across genes).
 #' @param ncol Integer or \code{NULL}. Facet columns. \code{NULL} auto-picks.
-#' @param colors Named color vector for \code{color.by}. \code{NULL}
-#'   auto-resolves from \code{\link{PrepObject}} or \code{Nour_pal}.
+#' @param colors Named color vector for the coloring variable (\code{color.by}
+#'   or, when that's \code{NULL}, \code{group.by}). \code{NULL} auto-resolves
+#'   from \code{\link{PrepObject}} or \code{Nour_pal}.
 #' @param output_dir Character or \code{NULL}. Directory to save a PDF.
 #'   \code{NULL} (default) walks up to the \code{output_dir} stored by
 #'   \code{\link{PrepObject}} (respecting \code{AutoSavePlots}); pass
@@ -994,9 +1167,14 @@ PlotPseudotime <- function(seurat_object,
 #' @param file_name Character or \code{NULL}. Base name (no extension) for
 #'   the saved PDF. \code{NULL} auto-deduces.
 #' @param width,height Numeric or \code{NULL}. Saved PDF dimensions in
-#'   inches. \code{NULL} (default) auto-sizes from the number of facets.
+#'   inches. \code{NULL} (default) auto-sizes from the number of facets (or,
+#'   with \code{split.by}/\code{row.by}, from the panel grid).
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
-#' @return A \code{ggplot} object.
+#' @return A \code{ggplot} object, or (with \code{split.by}/\code{row.by}) a
+#'   \code{patchwork} object.
 #' @export
 PlotFeatureTrend <- function(seurat_object,
                              pseudotime.by,
@@ -1008,6 +1186,8 @@ PlotFeatureTrend <- function(seurat_object,
                              color.by    = NULL,
                              group.by    = NULL,
                              groups      = NULL,
+                             split.by    = NULL,
+                             row.by      = NULL,
                              method      = "loess",
                              se          = FALSE,
                              add_cor     = FALSE,
@@ -1023,12 +1203,103 @@ PlotFeatureTrend <- function(seurat_object,
                              subset_name = "",
                              file_name   = NULL,
                              width       = NULL,
-                             height      = NULL) {
+                             height      = NULL,
+                             timestamp   = FALSE) {
 
   cor_method <- match.arg(cor_method)
 
   if (!pseudotime.by %in% colnames(seurat_object@meta.data))
     stop("'", pseudotime.by, "' not found in seurat_object@meta.data.")
+
+  # ── split.by / row.by: subset-and-recurse per panel, tiled with patchwork ──
+  # (same pattern as PlotTrajectory()/PlotDimPlots() - each panel is drawn from
+  # an independent subset so its own trend/points reflect only that subset,
+  # not the pooled fit.)
+  if (!is.null(split.by) || !is.null(row.by)) {
+    meta0 <- seurat_object@meta.data
+    for (v in c(split.by, row.by))
+      if (!v %in% colnames(meta0))
+        stop("Column '", v, "' not found in metadata.")
+
+    split_lvls <- if (!is.null(split.by))
+      if (is.factor(meta0[[split.by]])) levels(meta0[[split.by]])
+      else sort(unique(as.character(meta0[[split.by]])))
+    else "__all__"
+    row_lvls <- if (!is.null(row.by))
+      if (is.factor(meta0[[row.by]])) levels(meta0[[row.by]])
+      else sort(unique(as.character(meta0[[row.by]])))
+    else "__all__"
+
+    combos <- expand.grid(row = row_lvls, split = split_lvls,
+                          stringsAsFactors = FALSE)
+    plots <- lapply(seq_len(nrow(combos)), function(i) {
+      keep <- rep(TRUE, nrow(meta0))
+      if (!is.null(split.by))
+        keep <- keep & as.character(meta0[[split.by]]) == combos$split[i]
+      if (!is.null(row.by))
+        keep <- keep & as.character(meta0[[row.by]]) == combos$row[i]
+      sub_obj <- seurat_object[, keep]
+      panel_title <- paste(c(
+        if (!is.null(split.by)) combos$split[i],
+        if (!is.null(row.by))   combos$row[i]
+      ), collapse = " | ")
+      PlotFeatureTrend(sub_obj,
+        pseudotime.by = pseudotime.by, features = features, assay = assay,
+        layer = layer, min_expr = min_expr, donor.by = donor.by,
+        color.by = color.by, group.by = group.by, groups = groups,
+        split.by = NULL, row.by = NULL, method = method, se = se,
+        add_cor = add_cor, cor_method = cor_method, show_points = show_points,
+        point_size = point_size, point_alpha = point_alpha, scales = scales,
+        ncol = ncol, colors = colors, output_dir = NA) +
+        ggplot2::labs(title = panel_title)
+    })
+
+    n_split <- length(split_lvls)
+    n_row   <- length(row_lvls)
+    combined <- patchwork::wrap_plots(plots, ncol = n_split, nrow = n_row,
+                                      guides = "collect")
+
+    if (identical(output_dir, NA_character_) || identical(output_dir, NA)) {
+      return(combined)
+    }
+    out_dir_resolved <- if (missing(output_dir) || is.null(output_dir)) {
+      if (.nk_autosave(seurat_object)) .nk_setting(seurat_object, "output_dir") else NULL
+    } else output_dir
+    obj_name_resolved <- if (nchar(object_name) > 0) object_name else
+      .nk_setting(seurat_object, "object_name") %||% ""
+
+    if (!is.null(out_dir_resolved)) {
+      dir.create(out_dir_resolved, recursive = TRUE, showWarnings = FALSE)
+      fname <- .nk_resolve_pdf_name(
+        file_name,
+        auto_parts = c(
+          if (nchar(obj_name_resolved) > 0) obj_name_resolved,
+          if (nchar(subset_name) > 0) subset_name,
+          pseudotime.by, color.by %||% group.by, split.by, row.by,
+          "FeatureTrend"
+        ),
+        timestamp = timestamp
+      )
+      fpath <- file.path(out_dir_resolved, paste0(fname, ".pdf"))
+      pdf_w <- width  %||% (n_split * 4)
+      pdf_h <- height %||% (n_row * 3.5)
+      grDevices::pdf(fpath, width = pdf_w, height = pdf_h)
+      print(combined)
+      grDevices::dev.off()
+      message("scSidekick: Saved to ", fpath,
+              " (", round(pdf_w, 1), " x ", round(pdf_h, 1), " in)")
+      ctx <- .nk_legend_context(seurat_object)
+      .write_legend_sidecar(fpath, paste0(
+        .nk_obs_sentence(ctx, group.by = color.by %||% group.by,
+                         split.by = split.by), ". Smoothed trend of ",
+        paste(features, collapse = ", "), " vs. '", pseudotime.by, "'",
+        if (!is.null(split.by)) paste0(", split into columns by ", split.by) else "",
+        if (!is.null(row.by))   paste0(", split into rows by ", row.by) else "",
+        "."
+      ))
+    }
+    return(invisible(combined))
+  }
 
   # Patient-level aggregation yields few points, so show them by default (unless
   # the caller explicitly set show_points).
@@ -1058,8 +1329,15 @@ PlotFeatureTrend <- function(seurat_object,
   wide <- data.frame(pseudo = meta[[pseudotime.by]], t(fm$mat),
                      check.names = FALSE, stringsAsFactors = FALSE)
 
-  if (!is.null(color.by)) {
-    color_col  <- meta[[color.by]]
+  # `color.by` explicitly names the coloring variable; when it's not set,
+  # fall back to `group.by` so this function's default behavior matches every
+  # other scSidekick plotting function (group.by drives color unless
+  # overridden). `groups` (paired with `group.by`, below) keeps working as a
+  # cell-subset filter regardless of which variable ends up coloring the plot.
+  effective_color_by <- color.by %||% group.by
+
+  if (!is.null(effective_color_by)) {
+    color_col  <- meta[[effective_color_by]]
     color_lvls <- if (is.factor(color_col)) levels(color_col) else
       sort(unique(as.character(color_col)))
     wide$.color <- factor(as.character(color_col), levels = color_lvls)
@@ -1101,7 +1379,7 @@ PlotFeatureTrend <- function(seurat_object,
   # are then drawn at donor level.
   if (!is.null(donor.by)) {
     grp_cols <- c(".donor", "Feature",
-                  if (!is.null(color.by)) ".color",
+                  if (!is.null(effective_color_by)) ".color",
                   if (!is.null(group.by)) ".group")
     long <- long |>
       dplyr::group_by(dplyr::across(dplyr::all_of(grp_cols))) |>
@@ -1114,7 +1392,7 @@ PlotFeatureTrend <- function(seurat_object,
   }
 
   aes_args <- list(x = quote(pseudo), y = quote(Expression))
-  if (!is.null(color.by)) aes_args$color <- quote(.color)
+  if (!is.null(effective_color_by)) aes_args$color <- quote(.color)
 
   p <- ggplot2::ggplot(long, do.call(ggplot2::aes, aes_args))
   # Optional raw points UNDER the trend. Besides showing individual
@@ -1131,12 +1409,12 @@ PlotFeatureTrend <- function(seurat_object,
   # through CorrelateGene()/PlotCorrelation(), which are built around gene x
   # many-genes screens keyed on a Seurat object, not an arbitrary x/y pair.
   # ggpubr::stat_cor() reads the same mapping as geom_smooth(), so it respects
-  # facet_wrap(~Feature) and color.by automatically (one annotation per color
-  # group, stacked, when color.by is set).
+  # facet_wrap(~Feature) and the color mapping automatically (one annotation
+  # per color group, stacked, when a color variable is in effect).
   if (isTRUE(add_cor))
     p <- p + ggpubr::stat_cor(method = cor_method, show.legend = FALSE)
   p <- p +
-    ggplot2::labs(x = pseudotime.by, y = "Expression", color = color.by) +
+    ggplot2::labs(x = pseudotime.by, y = "Expression", color = effective_color_by) +
     theme_NourMin() +
     ggplot2::theme(
       axis.title.x = ggplot2::element_text(size = 11),
@@ -1145,30 +1423,33 @@ PlotFeatureTrend <- function(seurat_object,
       plot.margin  = ggplot2::margin(t = 5, r = 5, b = 5, l = 10, unit = "mm")
     )
 
-  if (!is.null(color.by)) {
-    colors <- colors %||% .nk_colors(seurat_object, color.by)
+  if (!is.null(effective_color_by)) {
+    colors <- colors %||% .nk_colors(seurat_object, effective_color_by)
     if (!is.null(colors)) p <- p + ggplot2::scale_color_manual(values = colors)
   }
 
   # ── Save or return ──────────────────────────────────────────────────────────
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    base <- if (!is.null(file_name) && nzchar(file_name)) file_name else {
-      paste(c(if (nchar(object_name) > 0) object_name,
-              if (nchar(subset_name) > 0) subset_name,
-              pseudotime.by, "FeatureTrend"), collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+    fname <- .nk_resolve_pdf_name(
+      file_name,
+      auto_parts = c(
+        if (nchar(object_name) > 0) object_name,
+        if (nchar(subset_name) > 0) subset_name,
+        pseudotime.by, effective_color_by, "FeatureTrend"
+      ),
+      timestamp = timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
     n_feat <- length(fm$found)
     facet_ncol <- ncol %||% min(n_feat, 3)
     facet_nrow <- ceiling(n_feat / facet_ncol)
 
-    # Auto-size must budget space for the color.by legend (default right-hand
+    # Auto-size must budget space for the color legend (default right-hand
     # position) - it was previously left out entirely, so long labels/many
     # levels ran off the edge of the saved PDF instead of just being cramped.
     lgd_w <- 0; lgd_h <- 0
-    if (!is.null(color.by)) {
+    if (!is.null(effective_color_by)) {
       lgd_dims <- .cat_legend_dims(length(levels(wide$.color)), levels(wide$.color),
                                    "vertical", 1)
       lgd_w <- lgd_dims[["w"]]; lgd_h <- lgd_dims[["h"]]
@@ -1191,14 +1472,14 @@ PlotFeatureTrend <- function(seurat_object,
     unit_lbl   <- if (!is.null(donor.by)) "donors" else ctx$unit
 
     .write_legend_sidecar(fpath, paste0(
-      .nk_obs_sentence(ctx, group.by = color.by),
+      .nk_obs_sentence(ctx, group.by = effective_color_by),
       ". ", method_lbl, " trend of ", n_feat, " feature",
       if (n_feat != 1) "s" else "", " (", paste(fm$found, collapse = ", "),
       ") vs. '", pseudotime.by, "'",
       if (!is.null(group.by)) paste0(
         ", restricted to '", group.by, "' = ",
         paste(groups %||% "all levels", collapse = ", ")) else "",
-      if (!is.null(color.by)) paste0(", colored by ", color.by) else "",
+      if (!is.null(effective_color_by)) paste0(", colored by ", effective_color_by) else "",
       if (!is.null(donor.by)) paste0(
         ". Cells were aggregated to one point per ", donor.by,
         " (mean of both axes) before fitting, so the trend reflects ",
@@ -1215,7 +1496,7 @@ PlotFeatureTrend <- function(seurat_object,
       if (isTRUE(add_cor)) paste0(
         ". ", if (cor_method == "spearman") "Spearman's rho" else "Pearson's r",
         " and its p-value are annotated on each facet",
-        if (!is.null(color.by)) paste0(" (one per ", color.by, " level)") else "",
+        if (!is.null(effective_color_by)) paste0(" (one per ", effective_color_by, " level)") else "",
         ", computed directly from the plotted values")
       else "", "."
     ))

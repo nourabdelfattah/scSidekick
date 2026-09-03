@@ -45,14 +45,18 @@
 #' @param group.by Character. Metadata column for point color.
 #' @param split.by Character. Metadata column for columns (samples/conditions).
 #' @param row.by Character or \code{NULL}. Metadata column for rows.
-#' @param number_labels Logical. When \code{TRUE}, prefix each legend entry
-#'   and centroid label with a zero-padded index (e.g., "01. CellType").
-#'   Useful when there are many groups and alphanumeric ordering aids
-#'   interpretation. Default \code{FALSE}.
+#' @param number_labels Logical. When \code{TRUE}, both the legend and (if
+#'   \code{show_labels = TRUE}) the centroid labels use a zero-padded index
+#'   (e.g., legend "01. CellType", centroid "01") instead of the actual
+#'   group name - useful when there are many groups and alphanumeric
+#'   ordering aids interpretation, or the names are too long to label
+#'   directly on the plot. Default \code{FALSE} (legend and centroid labels
+#'   show the real group name, unnumbered).
 #' @param show_trend Logical. Add a stacked composition trend panel to the
 #'   left. Default \code{FALSE}.
-#' @param show_labels Logical. Overlay numbered cluster labels. Default
-#'   \code{FALSE}.
+#' @param show_labels Logical. Overlay a label at each cluster's centroid -
+#'   the group name by default, or a zero-padded index when
+#'   \code{number_labels = TRUE}. Default \code{FALSE}.
 #' @param label.by Character or \code{NULL}. Column for label centroids.
 #'   \code{NULL} → \code{group.by}.
 #' @param colors Named color vector. \code{NULL} auto-resolves from
@@ -83,7 +87,10 @@
 #' @param subset_name Character. Optional second prefix.
 #' @param file_name Character or \code{NULL}. Base name (no extension) for the
 #'   saved PDF. \code{NULL} (default) auto-deduces from \code{object_name},
-#'   \code{subset_name}, and \code{group.by}.
+#'   \code{subset_name}, \code{group.by}, \code{split.by}, and \code{row.by}.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #' @param join_plots Logical. When \code{group.by} has more than one variable,
 #'   combine the per-variable plots into a \emph{single} figure / PDF instead of
 #'   one file each. Default \code{FALSE}.
@@ -122,6 +129,7 @@ PlotDimPlots <- function(seurat_object,
                           object_name      = "",
                           subset_name      = "",
                           file_name        = NULL,
+                          timestamp        = FALSE,
                           ...) {
 
   # ── Walk-up PrepObject defaults ────────────────────────────────────────────
@@ -187,7 +195,8 @@ PlotDimPlots <- function(seurat_object,
         output_dir       = sub_dir,
         object_name      = object_name,
         subset_name      = subset_name,
-        file_name        = if (isTRUE(join_plots)) NULL else file_name
+        file_name        = if (isTRUE(join_plots)) NULL else file_name,
+        timestamp        = timestamp
       )
     })
     names(plots) <- group.by
@@ -208,11 +217,12 @@ PlotDimPlots <- function(seurat_object,
 
     if (!is.null(output_dir)) {
       dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-      base <- if (!is.null(file_name) && nzchar(file_name)) file_name else
-        paste(c(if (nchar(object_name) > 0) object_name,
-                if (nchar(subset_name) > 0) subset_name,
-                paste(group.by, collapse = "-"), "DimPlots"), collapse = "_")
-      fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+      fname <- .nk_resolve_pdf_name(
+        file_name,
+        c(object_name, subset_name, split.by, row.by,
+          paste(group.by, collapse = "-"), "DimPlots"),
+        timestamp
+      )
       fpath <- file.path(output_dir, paste0(fname, ".pdf"))
 
       # Per-plot footprint (same split.by/row.by for all) -> tile it.
@@ -289,17 +299,22 @@ PlotDimPlots <- function(seurat_object,
     )
   leg_title    <- if (is.na(legendtitle)) group.by else legendtitle
   num_pad      <- sprintf("%02d", seq_along(grp_lvls))
-  # number_labels: legend shows "01. Full Name"; centroid shows "01"
-  # default:       legend shows "1: Full Name";  centroid shows "1"
+  # Numbering is strictly opt-in via number_labels - it used to apply
+  # (unpadded) even when number_labels = FALSE, so show_labels = TRUE alone
+  # showed bare numbers ("1", "2", ...) at centroids instead of the actual
+  # cluster names, with no way to turn that off short of also hiding labels.
+  # number_labels = TRUE: legend shows "01. Full Name"; centroid shows "01".
+  # number_labels = FALSE (default): legend and centroids both show the
+  # actual cluster name, unnumbered.
   legend_labels <- if (number_labels) {
     stats::setNames(paste0(num_pad, ". ", grp_lvls), grp_lvls)
   } else {
-    stats::setNames(paste0(seq_along(grp_lvls), ": ", grp_lvls), grp_lvls)
+    stats::setNames(grp_lvls, grp_lvls)
   }
   num_lookup <- if (number_labels) {
     stats::setNames(num_pad, grp_lvls)        # "01", "02", … on centroids
   } else {
-    stats::setNames(seq_along(grp_lvls), grp_lvls)
+    stats::setNames(grp_lvls, grp_lvls)       # actual cluster name on centroids
   }
 
   # ── Centroids (only when show_labels = TRUE) ───────────────────────────────
@@ -574,18 +589,10 @@ PlotDimPlots <- function(seurat_object,
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-    # File name: file_name (verbatim) > object_subset_group.by_DimPlots
-    if (!is.null(file_name) && nzchar(file_name)) {
-      base <- file_name
-    } else {
-      parts <- c(
-        if (nchar(object_name) > 0) object_name,
-        if (nchar(subset_name) > 0) subset_name,
-        group.by, "DimPlots"
-      )
-      base <- paste(parts, collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+    fname <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, group.by, split.by, row.by, "DimPlots"),
+      timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
 
     grDevices::pdf(fpath, width = pdf_w, height = pdf_h)
@@ -606,7 +613,10 @@ PlotDimPlots <- function(seurat_object,
       if (legend.side %in% c("bottom", "top")) legend.side else "to the right",
       " of the panels",
       if (show_labels || number_labels)
-        "; cluster identities are marked with numeric labels keyed to the legend" else "",
+        paste0("; cluster identities are marked with ",
+              if (number_labels) "numeric labels keyed to the legend" else "name labels",
+              if (show_labels) "" else " in the legend only (show_labels = FALSE)")
+      else "",
       "."
     ))
     return(invisible(result))

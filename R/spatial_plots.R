@@ -145,6 +145,16 @@
 #' @param object_name Character. Label appended to PDF filenames. Default `""`.
 #' @param subset_name Character. Optional second label appended to PDF
 #'   filenames after \code{object_name}. Default `""`.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, \code{row.by}, and the feature
+#'   name(s).
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+#'   image grid and legend.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
 #' @return Invisibly returns the last plot when `output_dir = NULL`. When
 #'   `join_plots = TRUE`, invisibly returns the combined tiled figure.
@@ -160,7 +170,7 @@ PlotSpatialFeaturePlots <- function(seurat_object,
                                         colors         = c("#053061", "#2166AC",
                                                            "#D1E5F0", "#FDDBC7",
                                                            "#F4A582", "#D6604D",
-                                                           "#B2182B", "#67001F"),
+                                                           "#B2182B", "#67001F"),na.value = "transparent",
                                         calcptsizesc   = 100,
                                         legend.side    = "right",
                                         legend.direction = "vertical",
@@ -168,8 +178,12 @@ PlotSpatialFeaturePlots <- function(seurat_object,
                                         join_nrow      = NULL,
                                         join_ncol      = NULL,
                                         output_dir     = NULL,
-                                        object_name    = "",
-                                        subset_name    = "") {
+                                        object_name    = "",image.alpha = 0.5,alpha=1,
+                                        subset_name    = "",
+                                        file_name      = NULL,
+                                        width          = NULL,
+                                        height         = NULL,
+                                        timestamp      = FALSE) {
 
   if (!layout_method %in% c("auto", "metadata"))
     stop("layout_method must be 'auto' or 'metadata'.")
@@ -216,7 +230,7 @@ PlotSpatialFeaturePlots <- function(seurat_object,
       col_lim <- round(max(max_exp, 0.01), digits = 2)
       ggplot2::scale_fill_gradientn(colors = colors,
                                     limits = c(0, col_lim),
-                                    na.value = "transparent")
+                                    na.value = na.value )
     } else NULL
 
     plot_list <- list()
@@ -255,9 +269,9 @@ PlotSpatialFeaturePlots <- function(seurat_object,
       }
 
       p <- Seurat::SpatialFeaturePlot(
-        plot_obj, features = feat, images = img,
-        image.alpha = 0.5, pt.size.factor = pt_size,
-        crop = TRUE, alpha = c(1, 1)
+        plot_obj, features = feat, images = img,alpha=alpha,
+        image.alpha = image.alpha, pt.size.factor = pt_size,
+        crop = TRUE#, alpha = c(1, 1)
       ) +
         ggplot2::ggtitle(img) +
         ggplot2::theme(plot.title = ggplot2::element_text(
@@ -350,15 +364,20 @@ PlotSpatialFeaturePlots <- function(seurat_object,
     pdf_w <- attr(CustomPlot, "nk_pdf_dims")[1]
 
     if (do_join) {
-      # join_plots: defer saving/printing until every feature's panel is built
+      # join_plots: defer saving/printing until every feature's panel is built.
+      # NOTE: width/height (if the user passed them) apply to the COMBINED
+      # figure below, not each panel here - so nk_pdf_dims stays the natural,
+      # un-overridden per-panel size for the join-tiling math to use.
       attr(CustomPlot, "nk_pdf_dims") <- c(pdf_w, pdf_h)
       join_collect[[feat]] <- CustomPlot
     } else if (!is.null(output_dir)) {
-      fname <- file.path(output_dir,
-                         paste0(feat, " SpatialFeatureMap ",
-                                object_name,
-                                if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
-                                ".pdf"))
+      fbase <- .nk_resolve_pdf_name(
+        file_name, c(object_name, subset_name, row.by, feat, "SpatialFeatureMap"),
+        timestamp
+      )
+      fname <- file.path(output_dir, paste0(fbase, ".pdf"))
+      pdf_w <- width  %||% pdf_w
+      pdf_h <- height %||% pdf_h
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       print(CustomPlot)
       grDevices::dev.off()
@@ -405,15 +424,17 @@ PlotSpatialFeaturePlots <- function(seurat_object,
     )
 
     one_dim <- attr(join_collect[[1]], "nk_pdf_dims") %||% c(12, 6)
-    pdf_w   <- ncol_j * one_dim[1]
-    pdf_h   <- nrow_j * one_dim[2]
+    pdf_w   <- width  %||% (ncol_j * one_dim[1])
+    pdf_h   <- height %||% (nrow_j * one_dim[2])
 
     if (!is.null(output_dir)) {
-      fname <- file.path(output_dir,
-                         paste0(paste(features, collapse = "-"),
-                                " SpatialFeatureMaps ", object_name,
-                                if (nchar(subset_name) > 0) paste0(" ", subset_name) else "",
-                                ".pdf"))
+      fbase <- .nk_resolve_pdf_name(
+        file_name,
+        c(object_name, subset_name, row.by, paste(features, collapse = "-"),
+          "SpatialFeatureMaps"),
+        timestamp
+      )
+      fname <- file.path(output_dir, paste0(fbase, ".pdf"))
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       print(combined)
       grDevices::dev.off()
@@ -502,6 +523,18 @@ PlotSpatialFeaturePlots <- function(seurat_object,
 #' @param group.by Character vector. Preferred alias for \code{group_by_vars}.
 #' @param cluster_colors Named character vector. Deprecated alias for
 #'   \code{colors}.
+#' @param subset_name Character. Optional second label appended to PDF
+#'   filenames after \code{object_name}. Default \code{""}.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, \code{row.by}, and the grouping
+#'   variable(s).
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+#'   image grid and legend.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #'
 #' @return Invisibly returns the plot, or a named list of plots when
 #'   \code{join_plots = FALSE} and multiple variables are supplied.
@@ -530,7 +563,12 @@ PlotSpatialDimPlots <- function(seurat_object,
                                     alpha           = 1,
                                     object_name     = "",
                                     group.by        = NULL,
-                                    cluster_colors  = NULL) {
+                                    cluster_colors  = NULL,
+                                    subset_name     = "",
+                                    file_name       = NULL,
+                                    width           = NULL,
+                                    height          = NULL,
+                                    timestamp       = FALSE) {
 
   if (is.null(group_by_vars) && !is.null(group.by)) group_by_vars <- group.by
   if (!is.null(cluster_colors) && is.null(colors)) colors <- cluster_colors
@@ -614,13 +652,15 @@ PlotSpatialDimPlots <- function(seurat_object,
 
     if (!is.null(output_dir)) {
       one_dim <- attr(plots[[1]], "nk_pdf_dims") %||% c(12, 8)
-      pdf_w   <- ncol_j * one_dim[1]
-      pdf_h   <- nrow_j * one_dim[2]
-      fname   <- file.path(output_dir,
-                           paste0(paste(group_by_vars, collapse = "-"),
-                                  " SpatialDimMaps",
-                                  if (nchar(object_name) > 0) paste0(" ", object_name) else "",
-                                  ".pdf"))
+      pdf_w   <- width  %||% (ncol_j * one_dim[1])
+      pdf_h   <- height %||% (nrow_j * one_dim[2])
+      fbase   <- .nk_resolve_pdf_name(
+        file_name,
+        c(object_name, subset_name, row.by, paste(group_by_vars, collapse = "-"),
+          "SpatialDimMaps"),
+        timestamp
+      )
+      fname   <- file.path(output_dir, paste0(fbase, ".pdf"))
       grDevices::pdf(fname, width = pdf_w, height = pdf_h)
       print(combined)
       grDevices::dev.off()
@@ -819,12 +859,14 @@ PlotSpatialDimPlots <- function(seurat_object,
     CustomPlot <- .ggarrange_with_legend(inner_grid, PlotLegend, legend.side,
                                           grid_h_in, grid_w_in, legend_h_in, legend_w_in)
 
-  pdf_w <- attr(CustomPlot, "nk_pdf_dims")[1]
-  pdf_h <- attr(CustomPlot, "nk_pdf_dims")[2]
+  pdf_w <- width  %||% attr(CustomPlot, "nk_pdf_dims")[1]
+  pdf_h <- height %||% attr(CustomPlot, "nk_pdf_dims")[2]
 
   if (!is.null(output_dir)) {
-    fname <- file.path(output_dir,
-                       paste0(grp, " SpatialDimMap ", object_name, ".pdf"))
+    fbase <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, row.by, grp, "SpatialDimMap"), timestamp
+    )
+    fname <- file.path(output_dir, paste0(fbase, ".pdf"))
     grDevices::pdf(fname, width = pdf_w, height = pdf_h)
     print(CustomPlot)
     grDevices::dev.off()
@@ -892,6 +934,17 @@ PlotSpatialDimPlots <- function(seurat_object,
 #'   When \code{NULL} the plot is printed to the active device and returned
 #'   invisibly. Walk-up from PrepObject applies when omitted entirely.
 #' @param object_name Character. Label for PDF filenames. Default \code{""}.
+#' @param subset_name Character. Optional second label appended to PDF
+#'   filenames after \code{object_name}. Default \code{""}.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, the gene, and \code{group.by}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+#'   row grid and legend.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF. Default \code{FALSE}.
 #' @param cluster_col Deprecated alias for \code{group.by}.
 #' @param cluster_colors Deprecated alias for \code{colors}.
 #'
@@ -917,6 +970,11 @@ PlotMasterMaps <- function(seurat_object,
                                     legend.direction = "vertical",
                                     output_dir      = NULL,
                                     object_name     = "",
+                                    subset_name     = "",
+                                    file_name       = NULL,
+                                    width           = NULL,
+                                    height          = NULL,
+                                    timestamp       = FALSE,
                                     # deprecated aliases
                                     cluster_col     = NULL,
                                     cluster_colors  = NULL) {
@@ -952,7 +1010,12 @@ PlotMasterMaps <- function(seurat_object,
         legend.side      = legend.side,
         legend.direction = legend.direction,
         output_dir       = output_dir,
-        object_name      = object_name
+        object_name      = object_name,
+        subset_name      = subset_name,
+        file_name        = file_name,
+        width            = width,
+        height           = height,
+        timestamp        = timestamp
       )
     }
     return(invisible(NULL))
@@ -1111,9 +1174,13 @@ PlotMasterMaps <- function(seurat_object,
     )
 
     if (!is.null(output_dir)) {
-      fname <- file.path(output_dir,
-                         paste0(gene, "_", group.by,
-                                " Master Gene Map ", object_name, ".pdf"))
+      fbase <- .nk_resolve_pdf_name(
+        file_name, c(object_name, subset_name, gene, group.by, "Master Gene Map"),
+        timestamp
+      )
+      fname <- file.path(output_dir, paste0(fbase, ".pdf"))
+      pdf_w_val <- width  %||% pdf_w_val
+      pdf_h_val <- height %||% pdf_h_val
       grDevices::pdf(fname, width = pdf_w_val, height = pdf_h_val)
       print(final_plot)
       grDevices::dev.off()

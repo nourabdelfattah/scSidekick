@@ -235,6 +235,9 @@
 #' @param pdf_height Numeric or \code{NULL}.  Override the auto-calculated PDF
 #'   height in inches.  \code{NULL} (default) sizes automatically from the
 #'   number of row facets and features.
+#' @param timestamp Logical.  When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+#'   versioned instead of overwriting the previous PDF.  Default \code{FALSE}.
 #'
 #' @return When one feature is requested, a single \code{ggplot2} object.
 #'   When multiple features are requested, a \code{patchwork} combined plot.
@@ -286,7 +289,8 @@ PlotFeature <- function(data,
                          object_name  = "",
                          file_name    = NULL,
                          pdf_width    = NULL,
-                         pdf_height   = NULL) {
+                         pdf_height   = NULL,
+                         timestamp    = FALSE) {
 
   # Accept c("violin") or "violin" - take first element before match.arg
   if (length(plot_type) > 1L) plot_type <- plot_type[1L]
@@ -561,10 +565,9 @@ PlotFeature <- function(data,
 
     # An explicit file_name is used verbatim (no object_name/feature/group
     # prefixes); otherwise the name is auto-built from the plot's variables.
-    base <- if (!is.null(file_name) && nzchar(file_name)) {
-      file_name
-    } else {
-      paste(c(
+    fname <- .nk_resolve_pdf_name(
+      file_name,
+      auto_parts = c(
         if (nchar(object_name) > 0) object_name,
         paste(valid_features, collapse = "_"),
         group.by,
@@ -573,9 +576,9 @@ PlotFeature <- function(data,
         excl_tags,
         plot_type,
         "PlotFeature"
-      ), collapse = "_")
-    }
-    fname <- gsub("[^A-Za-z0-9._-]", "_", base)
+      ),
+      timestamp = timestamp
+    )
     fpath <- file.path(output_dir, paste0(fname, ".pdf"))
 
     grDevices::pdf(fpath, width = pdf_w, height = pdf_h)

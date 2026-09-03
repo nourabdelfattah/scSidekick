@@ -9,14 +9,18 @@ PlotPseudotime(
   pseudotime.by,
   group.by = NULL,
   split.by = NULL,
+  row.by = NULL,
+  plot.type = c("density", "ridge"),
+  scales = "fixed",
+  ncol = NULL,
   colors = NULL,
-  split_colors = NULL,
   output_dir = NULL,
   object_name = "",
   subset_name = "",
   file_name = NULL,
   width = NULL,
-  height = NULL
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -25,19 +29,30 @@ PlotPseudotime(
 \item{pseudotime.by}{Character. Numeric \code{meta.data} column holding a
 pseudotime value (e.g. from \code{\link{RunSlingshot}}).}
 
-\item{group.by}{Character or \code{NULL}. Cluster/cell-type column for
-color and the y-axis of the ridge plot. \code{NULL} (default) uses the
-\code{cluster.by} stored by \code{\link{RunSlingshot}} when present.}
+\item{group.by}{Character or \code{NULL}. Cluster/cell-type column - colors
+the density curves, or is the y-axis of the ridge plot. \code{NULL}
+(default) uses the \code{cluster.by} stored by \code{\link{RunSlingshot}}
+when present.}
 
-\item{split.by}{Character or \code{NULL}. Secondary variable (e.g.
-\code{"Response"}, \code{"Sample"}) used to fill the ridge plot.
-\code{NULL} (default) skips the ridge panel.}
+\item{split.by}{Character or \code{NULL}. Creates column facets - one panel
+per level. \code{NULL} (default) = no column split.}
+
+\item{row.by}{Character or \code{NULL}. Creates row facets, the same way as
+\code{split.by}. Combined with \code{split.by} produces a two-way grid.
+\code{NULL} (default) = no row split.}
+
+\item{plot.type}{One of \code{"density"} (default: density + rug curves
+per \code{group.by} level, with peak labels) or \code{"ridge"} (one ridge
+per \code{group.by} level via \pkg{ggridges}).}
+
+\item{scales}{Character. Passed to \code{facet_wrap()}/\code{facet_grid()}
+when \code{split.by}/\code{row.by} is set. Default \code{"fixed"}.}
+
+\item{ncol}{Integer or \code{NULL}. Facet columns when only \code{split.by}
+is set. \code{NULL} auto-picks.}
 
 \item{colors}{Named color vector for \code{group.by}. \code{NULL}
 auto-resolves from \code{\link{PrepObject}} or \code{Nour_pal}.}
-
-\item{split_colors}{Named color vector for \code{split.by}. \code{NULL}
-auto-resolves the same way.}
 
 \item{output_dir}{Character or \code{NULL}. Directory to save a PDF.
 \code{NULL} (default) walks up to the \code{output_dir} stored by
@@ -47,13 +62,18 @@ auto-resolves the same way.}
 \item{object_name, subset_name}{Character. Output file-name prefixes.}
 
 \item{file_name}{Character or \code{NULL}. Base name (no extension) for
-the saved PDF. \code{NULL} auto-deduces from \code{pseudotime.by}.}
+the saved PDF. \code{NULL} auto-deduces from \code{pseudotime.by},
+\code{group.by}, \code{split.by}, and \code{row.by}.}
 
 \item{width, height}{Numeric or \code{NULL}. Saved PDF dimensions in
-inches. \code{NULL} (default) auto-sizes to 1 or 2 panels.}
+inches. \code{NULL} (default) auto-sizes from the facet grid.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
-A \code{patchwork} (or single \code{ggplot}) object.
+A \code{ggplot} object.
 }
 \description{
 Engine-agnostic pseudotime panel: takes any numeric \code{meta.data}
@@ -62,7 +82,9 @@ column, so the same function plots a Slingshot lineage
 (\code{"Monocle3_Pseudotime"}), or any other pseudotime-like column,
 without re-implementing the same density/ridge plotting code per method.
 
-Produces a density + rug plot of pseudotime per \code{group.by} level, with
-peak labels, and optionally a ridge plot of the same values split/filled by
-a second variable (e.g. treatment response).
+Produces a density + rug plot (\code{plot.type = "density"}, default) or a
+ridge plot (\code{plot.type = "ridge"}) of pseudotime per \code{group.by}
+level, with peak labels for the density style. \code{split.by}/\code{row.by}
+facet either style into column/row panels, the same way as every other
+scSidekick plotting function.
 }

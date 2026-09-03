@@ -46,6 +46,8 @@ RunGSEA_pseudobulk(
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
   heatmap_colors = NULL,
+  width = NULL,
+  height = NULL,
   resume = FALSE,
   resume_folder = NULL,
   timestamp = TRUE,
@@ -243,6 +245,11 @@ Examples:
 \item \strong{Tighter scale for subtle signals:}
 \code{circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))}
 }}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated PDF
+dimensions (in inches) applied to every NES and ssGSEA heatmap this run
+saves. \code{NULL} (default) auto-sizes each heatmap from its own row/column
+count and label lengths.}
 
 \item{resume}{Logical or \code{"last"}. Controls both WHICH subfolder this call
 uses and whether cached computation is reused:

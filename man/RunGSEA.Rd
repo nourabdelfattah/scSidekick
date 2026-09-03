@@ -35,6 +35,8 @@ RunGSEA(
   heatmap_params = list(row_names_side = "left", show_row_dend = FALSE,
     row_names_max_width = grid::unit(15, "cm")),
   heatmap_colors = NULL,
+  width = NULL,
+  height = NULL,
   caffeinate = FALSE
 )
 }
@@ -222,6 +224,11 @@ custom function are used as-is (no auto-scaling). Examples:
 }
 Note: for NES heatmaps, diverging palettes (centered at 0) are
 semantically correct because 0 means "no enrichment".}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated PDF
+dimensions (in inches) applied to every NES heatmap this run saves.
+\code{NULL} (default) auto-sizes each heatmap from its own row/column count
+and label lengths.}
 
 \item{caffeinate}{Logical. If \code{TRUE}, prevents the Mac from sleeping during
 the run via \code{caffeinate}. Useful for long multi-database runs overnight.

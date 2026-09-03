@@ -14,7 +14,10 @@ PlotCorrelation(
   r_cutoff = NULL,
   ncol = NULL,
   output_dir = NULL,
-  file_name = NULL
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -37,6 +40,16 @@ auto-selects: \code{n_compare_groups} when \code{compare.by} was used, else 3.}
 \item{output_dir}{Character or \code{NULL}. Directory to save a PDF.}
 
 \item{file_name}{Character or \code{NULL}. PDF base name.}
+
+\item{width}{Numeric or \code{NULL}. Override the auto-calculated PDF width in
+inches. \code{NULL} (default) sizes automatically from \code{n_col_out}.}
+
+\item{height}{Numeric or \code{NULL}. Override the auto-calculated PDF height in
+inches. \code{NULL} (default) sizes automatically from the number of panel rows.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a \verb{_YYYYMMDD-HHMMSS} stamp to
+the saved file name so repeated runs are versioned instead of overwriting
+the previous PDF. Default \code{FALSE}.}
 
 \item{cell_type}{Character vector or \code{NULL}. Cell types to plot (all by
 default).}

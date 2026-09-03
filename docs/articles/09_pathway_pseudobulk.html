@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -522,6 +523,28 @@ pairwise</td>
 <td>logical</td>
 <td><code>FALSE</code></td>
 <td>Prevent system sleep during the run</td>
+</tr>
+<tr class="even">
+<td><code>width</code></td>
+<td>numeric or <code>NULL</code>
+</td>
+<td><code>NULL</code></td>
+<td>Override the auto-calculated heatmap PDF width in inches</td>
+</tr>
+<tr class="odd">
+<td><code>height</code></td>
+<td>numeric or <code>NULL</code>
+</td>
+<td><code>NULL</code></td>
+<td>Override the auto-calculated heatmap PDF height in inches</td>
+</tr>
+<tr class="even">
+<td><code>timestamp</code></td>
+<td>logical</td>
+<td><code>TRUE</code></td>
+<td>Write each run into its own timestamped subfolder under
+<code>output_dir</code>
+</td>
 </tr>
 </tbody>
 </table>

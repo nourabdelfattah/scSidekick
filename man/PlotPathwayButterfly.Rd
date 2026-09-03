@@ -33,6 +33,7 @@ PlotPathwayButterfly(
   width = NULL,
   height = NULL,
   file_name = NULL,
+  timestamp = FALSE,
   output_dir = NULL,
   caffeinate = FALSE
 )
@@ -123,6 +124,11 @@ Default: \code{8}.}
 
 \item{file_name}{Character or \code{NULL}.  Output file name (without
 directory).  Defaults to \code{"<object_name> pathway butterfly.pdf"}.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name(s) so repeated runs
+are versioned instead of overwriting the previous PDF. Default
+\code{FALSE}.}
 
 \item{output_dir}{Character or \code{NULL}.  Directory for saving the PDF.
 Falls back to the PrepObject output directory.  When \code{NULL}, the

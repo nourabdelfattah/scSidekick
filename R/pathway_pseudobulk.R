@@ -204,6 +204,10 @@
 #'     \item \strong{Tighter scale for subtle signals:}
 #'       `circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))`
 #'   }
+#' @param width,height Numeric or `NULL`. Override the auto-calculated PDF
+#'   dimensions (in inches) applied to every NES and ssGSEA heatmap this run
+#'   saves. `NULL` (default) auto-sizes each heatmap from its own row/column
+#'   count and label lengths.
 #' @param resume Logical or `"last"`. Controls both WHICH subfolder this call
 #'   uses and whether cached computation is reused:
 #'   \describe{
@@ -318,6 +322,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                                        show_row_dend       = FALSE,
                                                        row_names_max_width = grid::unit(15, "cm")),
                                heatmap_colors   = NULL,
+                               width            = NULL,
+                               height           = NULL,
                                resume           = FALSE,
                                resume_folder    = NULL,
                                timestamp        = TRUE,
@@ -549,7 +555,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           message("  NES heatmap: ", cn, " / ", db)
           .pb_nes_heatmap(sub, cn, db, db_dir, top_n_heatmap, heatmap_params,
                           heatmap_colors = heatmap_colors, run_label = run_label,
-                          ctx_str = pb_ctx_str, use.padj = gsea.use.padj)
+                          ctx_str = pb_ctx_str, use.padj = gsea.use.padj,
+                          width = width, height = height)
 
           for (ct in unique(sub$cell_type)) {
             fg <- sub[sub$cell_type == ct, , drop = FALSE]
@@ -574,7 +581,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
               heatmap_colors = heatmap_colors,
               run_label      = run_label,
               ctx_str        = pb_ctx_str,
-              use.padj       = gsea.use.padj)
+              use.padj       = gsea.use.padj,
+              width          = width,
+              height         = height)
           }
         }
       }
@@ -639,7 +648,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                           run_label       = run_label,
                           contrast_label  = contrast.by,
                           row_selection   = row_sel_r,
-                          ctx_str         = pb_ctx_str)
+                          ctx_str         = pb_ctx_str,
+                          width           = width,
+                          height          = height)
 
           if (!is.null(res_ct) && nrow(res_ct) > 0)
             .ssgsea_boxplot(sc, res_ct, s, db, ct, db_dir,
@@ -1037,7 +1048,8 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       if (!nrow(sub)) next
       .pb_nes_heatmap(sub, cn, db, file.path(output_dir, cn, db), top_n_heatmap, heatmap_params,
                       heatmap_colors = heatmap_colors, run_label = run_label,
-                      ctx_str = pb_ctx_str, use.padj = gsea.use.padj)
+                      ctx_str = pb_ctx_str, use.padj = gsea.use.padj,
+                      width = width, height = height)
     }
     ## ---- summary NES heatmap: pathways x contrasts, per cell type per db ----
     if (length(unique(gsea$contrast)) > 1L) {
@@ -1054,7 +1066,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
           heatmap_colors = heatmap_colors,
           run_label      = run_label,
           ctx_str        = pb_ctx_str,
-          use.padj       = gsea.use.padj)
+          use.padj       = gsea.use.padj,
+          width          = width,
+          height         = height)
       }
     }
   }
@@ -1070,7 +1084,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                     run_label      = run_label,
                                     use.padj       = ssgsea.use.padj,
                                     resume         = resume,
-                                    ctx_str        = pb_ctx_str)
+                                    ctx_str        = pb_ctx_str,
+                                    width          = width,
+                                    height         = height)
 
   if (save.rds) saveRDS(
     list(pseudobulk = agg, samples = samp, gsea = gsea, ssgsea = ssg, contrasts = contrasts),
@@ -1232,7 +1248,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
 #' @keywords internal
 .pb_nes_heatmap <- function(sub, cn, db, db_dir, top_n, heatmap_params = list(),
                             heatmap_colors = NULL, run_label = NULL, ctx_str = "",
-                            use.padj = TRUE) {
+                            use.padj = TRUE, width = NULL, height = NULL) {
   dir.create(db_dir, recursive = TRUE, showWarnings = FALSE)
 
   # Build NES and significance matrices (pathways × cell types). use.padj
@@ -1299,7 +1315,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
       list(cell_fun = cell_fn),   # add stars by default
       heatmap_params              # user can override cell_fun or anything else
     ),
-    heatmap_colors = heatmap_colors
+    heatmap_colors = heatmap_colors,
+    width          = width,
+    height         = height
   )
 
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
@@ -1326,7 +1344,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                                      heatmap_colors = NULL,
                                      run_label      = NULL,
                                      ctx_str        = "",
-                                     use.padj       = TRUE) {
+                                     use.padj       = TRUE,
+                                     width          = NULL,
+                                     height         = NULL) {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) return(invisible())
 
   sub <- gsea_db[gsea_db$cell_type == ct, , drop = FALSE]
@@ -1413,7 +1433,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
            row_names_max_width = grid::unit(15, "cm")),
       heatmap_params
     ),
-    heatmap_colors = heatmap_colors
+    heatmap_colors = heatmap_colors,
+    width          = width,
+    height         = height
   )
 
   if (exists(".write_legend_sidecar")) .write_legend_sidecar(fp, paste0(
@@ -1437,7 +1459,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                        run_label      = NULL,
                        use.padj       = TRUE,
                        resume         = FALSE,
-                       ctx_str        = "") {
+                       ctx_str        = "",
+                       width          = NULL,
+                       height         = NULL) {
 
   # Resolve group_colors once so the heatmap and boxplot always use identical
   # colors regardless of which helper is called first or whether the user
@@ -1577,7 +1601,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                       heatmap_colors  = heatmap_colors,
                       run_label       = run_label,
                       row_selection   = row_sel,
-                      ctx_str         = ctx_str)
+                      ctx_str         = ctx_str,
+                      width           = width,
+                      height          = height)
 
       if (!is.null(res))
         .ssgsea_boxplot(sc, res, s, db, ct, db_dir,
@@ -1605,7 +1631,9 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
                              run_label       = NULL,
                              contrast_label  = NULL,
                              row_selection   = NULL,
-                             ctx_str         = "") {
+                             ctx_str         = "",
+                             width           = NULL,
+                             height          = NULL) {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) return(invisible())
   if (!requireNamespace("circlize",       quietly = TRUE)) return(invisible())
 
@@ -1719,7 +1747,7 @@ RunGSEA_pseudobulk <- function(seurat_object       = NULL,
   lbl_part  <- if (!is.null(run_label))     paste0(" [", make.names(run_label),    "]") else ""
   by_part   <- if (!is.null(contrast_label)) paste0(" by ", make.names(contrast_label)) else ""
   fp <- file.path(db_dir, paste0("ssGSEA ", db, " ", make.names(ct), by_part, lbl_part, " scores heatmap.pdf"))
-  grDevices::pdf(fp, width = pdf_w, height = pdf_h)
+  grDevices::pdf(fp, width = width %||% pdf_w, height = height %||% pdf_h)
   ComplexHeatmap::draw(ht, padding = grid::unit(c(5, 5, 5, 5), "mm"))
   grDevices::dev.off()
 

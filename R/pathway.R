@@ -13,7 +13,8 @@
 #     override any default without repeating all arguments
 # ---------------------------------------------------------------------------
 .gsea_ht <- function(mat, title, filepath, heatmap_params = list(),
-                     heatmap_colors = NULL, padj_mat = NULL) {
+                     heatmap_colors = NULL, padj_mat = NULL,
+                     width = NULL, height = NULL) {
   if (!requireNamespace("ComplexHeatmap", quietly = TRUE))
     stop("Package 'ComplexHeatmap' is required for GSEA heatmaps.")
   if (!requireNamespace("circlize", quietly = TRUE))
@@ -119,7 +120,7 @@
   ht_args <- utils::modifyList(default_args, heatmap_params)
   ht      <- do.call(ComplexHeatmap::Heatmap, ht_args)
 
-  grDevices::pdf(filepath, width = pdf_w, height = pdf_h)
+  grDevices::pdf(filepath, width = width %||% pdf_w, height = height %||% pdf_h)
   ComplexHeatmap::draw(ht, padding = grid::unit(c(5, 5, 5, 5), "mm"))
   grDevices::dev.off()
 
@@ -306,6 +307,10 @@
 #'   re-running with different settings into the same `output_dir` never
 #'   overwrites a previous run's files or methods JSON. Set `FALSE` to use
 #'   `output_dir` directly (legacy behavior).
+#' @param width,height Numeric or `NULL`. Override the auto-calculated PDF
+#'   dimensions (in inches) applied to every NES heatmap this run saves.
+#'   `NULL` (default) auto-sizes each heatmap from its own row/column count
+#'   and label lengths.
 #' @param caffeinate Logical. If `TRUE`, prevents the Mac from sleeping during
 #'   the run via `caffeinate`. Useful for long multi-database runs overnight.
 #'   Default `FALSE`.
@@ -355,6 +360,8 @@ RunGSEA <- function(seurat_object,
                                            show_row_dend       = FALSE,
                                            row_names_max_width = grid::unit(15, "cm")),
                      heatmap_colors = NULL,
+                     width          = NULL,
+                     height         = NULL,
                      caffeinate     = FALSE) {
 
   # Captured first, exactly as the user typed it (unevaluated) - see
@@ -875,7 +882,9 @@ RunGSEA <- function(seurat_object,
                    filepath       = full_hm_path,
                    heatmap_params = heatmap_params,
                    heatmap_colors = heatmap_colors,
-                   padj_mat       = padj_mat)
+                   padj_mat       = padj_mat,
+                   width          = width,
+                   height         = height)
           .write_legend_sidecar(full_hm_path, paste0(
             "NES heatmap (all pathways) from GSEA using the ", db_name,
             " pathway database",
@@ -925,7 +934,9 @@ RunGSEA <- function(seurat_object,
                                               paste0("top & bottom ", top_n), "(NES)"),
                        filepath       = summary_hm_path,
                        heatmap_params = heatmap_params,
-                       heatmap_colors = heatmap_colors)
+                       heatmap_colors = heatmap_colors,
+                       width          = width,
+                       height         = height)
               .write_legend_sidecar(summary_hm_path, paste0(
                 "Summary NES heatmap (top ", top_n, " up/down per group) from GSEA ",
                 "using the ", db_name, " pathway database",

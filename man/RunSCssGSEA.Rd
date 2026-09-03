@@ -297,7 +297,13 @@ enrichment scores (cells × gene sets) with additional columns for
 If \code{add_to_object = TRUE}: invisibly returns the Seurat object with one
 metadata column per gene set.
 
-\strong{Files saved to \code{output_dir}:}
+\strong{Files saved to \code{output_dir}:} written into a dedicated subfolder named
+\verb{SC ssGSEA <gene-set label>} (e.g. \verb{SC ssGSEA STAT3}, \verb{SC ssGSEA custom}) -
+this subfolder name is how to recognize a figure was made by
+\code{RunSCssGSEA()} specifically (not \code{RunGSEA_pseudobulk()}'s own
+\code{run.ssgsea = TRUE} sub-step, which does not use this naming convention -
+see \code{\link[=RunGSEA_pseudobulk]{RunGSEA_pseudobulk()}}) when working backward from a saved file without
+its \code{analysis_params.json}.
 \itemize{
 \item \verb{<prefix> ssGSEA_scores.csv} - per-cell enrichment scores + group
 labels

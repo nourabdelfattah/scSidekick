@@ -26,7 +26,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,6 +67,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -149,7 +150,14 @@ as PDFs</li>
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
 <span>  split.by   <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"~/Desktop/TestGSEA"</span><span class="op">)</span></span></code></pre></div>
+<span>  output_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+You will get a subfolder per geneset dataset and inside you will have
+heatmaps comparing the NES per group and lollipop plots for each group
+separately,legeneds and source tables are also saved
+<p align="center">
+<img src="figures/gsea_hallmark_top5_heatmap.png" width="100%"></p>
+<p align="center">
+<img src="figures/gsea_lollipop_bcell.png" width="70%" alt="GSEA lollipop plot for the Hallmark pathway database, celltype.l1 = B cell.  Dataset: 30,672 cells [bmcite]. Bars are ranked by Normalized Enrichment Score (NES);  positive NES (red) = pathways enriched in B cell vs. all other celltype.l1 groups;  negative NES (blue) = depleted. Only gene sets with adjusted p &lt; 0.05 are shown."></p>
 <p><code>group.by</code> defines the groups being compared (e.g. cell
 types, clusters). <code>split.by = NULL</code> runs a single GSEA on the
 whole object. Set <code>split.by</code> to a broad cell-type column
@@ -157,7 +165,47 @@ whole object. Set <code>split.by</code> to a broad cell-type column
 major lineage.</p>
 <p>By default <code>RunGSEA</code> tests four MSigDB collections:
 Hallmark, KEGG, Reactome, and WikiPathways.</p>
+<div class="section level3">
+<h3 id="what-gets-saved-alongside-the-plots">What gets saved alongside the plots<a class="anchor" aria-label="anchor" href="#what-gets-saved-alongside-the-plots"></a>
+</h3>
+<p>Every run also writes two small JSON files into its own timestamped
+run folder under <code>output_dir</code>, so a figure is never separated
+from exactly how it was made:</p>
+<ul>
+<li>
+<strong><code>analysis_params.json</code></strong> - the literal
+function call as typed, every parameter that was actually used, and a
+ready-to-paste methods paragraph.</li>
+<li>
+<strong><code>run_fingerprint.json</code></strong> - the parameter
+fingerprint <code>resume</code>/<code>resume_folder</code> match against
+to detect a repeat run, so re-running with the same settings reuses the
+existing output instead of recomputing it.</li>
+</ul>
+<p><strong><code>analysis_params.json</code></strong></p>
+<pre><code>json
+{
+  "date": "2026-09-02",
+  "function_call": "RunGSEA(seurat_object = bmcite, group.by = \"celltype.l1\", split.by = NULL, output_dir = tempdir())",
+  "gsea_method": "single-cell (Wilcoxon/presto + fgsea)",
+  "gsea_group_by": "celltype.l1",
+  "gsea_assay": "RNA",
+  "gsea_min_cells": 20,
+  "gsea_databases": ["Hallmark", "KEGG", "Reactome", "WP"],
+  "gsea_species": "Homo sapiens",
+  "gsea_padj_thresh": 0.05,
+  "gsea_logfc_thresh": 0.1,
+  "gsea_top_n": 5,
+  "gsea_nes_cutoff": 1,
+  "gsea_methods_text": "Gene set enrichment analysis (GSEA) was performed using fgsea (Korotkevich et al., 2021) with Wilcoxon rank-sum AUC pre-ranking via presto (assay: 'RNA'). Differential expression was computed comparing celltype.l1 groups. Subsets with fewer than 20 cells were skipped. The following MSigDB gene-set collections were tested: Hallmark, KEGG, Reactome, WP. Gene sets with fewer than 10 members were excluded. Significance threshold: adjusted p &lt; 0.05; minimum log-fold-change for DE pre-ranking: 0.1. Lollipop plots show the top/bottom 10 significant pathways per celltype.l1 group ranked by Normalized Enrichment Score (NES). Summary heatmaps show the union of the top &amp; bottom 5 pathways per group, filtered to pathways with max |NES| &gt;= 1 across all groups."
+}
+</code></pre>
+<p><strong><code>run_fingerprint.json</code></strong></p>
+<pre><code>json
+{"group.by":"celltype.l1","split.by":null,"label.by":null,"species":"Homo sapiens","assay":"RNA","min_cells":20,"gene_sets_names":null,"deg_df_dim":null,"deg_df_cols":null,"pathway_sets":{"Hallmark":{"category":"H"},"KEGG":{"category":"C2","subcategory":"CP:KEGG"},"Reactome":{"category":"C2","subcategory":"CP:REACTOME"},"WP":{"category":"C2","subcategory":"CP:WIKIPATHWAYS"}},"search_terms":null}
+</code></pre>
 <hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="split-by-broad-cell-type">2. Split by broad cell type<a class="anchor" aria-label="anchor" href="#split-by-broad-cell-type"></a>
@@ -165,7 +213,7 @@ Hallmark, KEGG, Reactome, and WikiPathways.</p>
 <p>The most common use: compare detailed subtypes
 (<code>celltype.l2</code>) within each major lineage
 (<code>celltype.l1</code>).</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"celltype.l2"</span>,</span>
 <span>  split.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
@@ -181,7 +229,7 @@ Hallmark, KEGG, Reactome, and WikiPathways.</p>
 <p>Supply any combination of MSigDB collections via
 <code>pathway_sets</code>. Each element needs a <code>category</code>
 and an optional <code>subcategory</code>.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by     <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
 <span>  split.by     <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -198,7 +246,7 @@ collections.</p>
 <div class="section level2">
 <h2 id="mouse-datasets">4. Mouse datasets<a class="anchor" aria-label="anchor" href="#mouse-datasets"></a>
 </h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">brain</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"seurat_clusters"</span>,</span>
 <span>  split.by   <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -212,7 +260,7 @@ collections.</p>
 <p><code>padj_thresh</code> and <code>logfc_thresh</code> filter DE
 results before ranking. <code>top_n</code> controls how many pathways
 appear per group in summary heatmaps.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by      <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
 <span>  split.by      <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -228,7 +276,7 @@ appear per group in summary heatmaps.</p>
 <p><code>resume = TRUE</code> skips subsets for which output files
 already exist in <code>output_dir</code>. Essential when restarting a
 run that was interrupted.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RunGSEA.html">RunGSEA</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  group.by   <span class="op">=</span> <span class="st">"celltype.l2"</span>,</span>
 <span>  split.by   <span class="op">=</span> <span class="st">"celltype.l1"</span>,</span>
@@ -243,7 +291,7 @@ run that was interrupted.</p>
 (blue - light blue - white - light orange - orange-red). Override with
 any <code><a href="https://rdrr.io/pkg/circlize/man/colorRamp2.html" class="external-link">circlize::colorRamp2</a></code> object via
 <code>heatmap_colors</code>.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Classic blue-white-red (3-stop)</span></span>
 <span><span class="va">col_bwr</span> <span class="op">&lt;-</span> <span class="fu">circlize</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/circlize/man/colorRamp2.html" class="external-link">colorRamp2</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>, <span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#2166ac"</span>, <span class="st">"white"</span>, <span class="st">"#d6604d"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -266,19 +314,49 @@ any <code><a href="https://rdrr.io/pkg/circlize/man/colorRamp2.html" class="exte
 <div class="section level2">
 <h2 id="return-value">8. Return value<a class="anchor" aria-label="anchor" href="#return-value"></a>
 </h2>
-<p><code>RunGSEA</code> returns a nested list. The top level is split by
-<code>split.by</code> level (or <code>"all"</code> when
-<code>split.by = NULL</code>), then by <code>pathway_sets</code>
-name.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># NES heatmap for the Hallmark collection, whole object</span></span>
-<span><span class="va">res</span><span class="op">$</span><span class="va">all</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">heatmap</span></span>
-<span></span>
-<span><span class="co"># Full fgsea results table</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">all</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">results</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Top pathways per group</span></span>
-<span><span class="va">res</span><span class="op">$</span><span class="va">all</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">top_pathways</span></span></code></pre></div>
+<p><code>RunGSEA</code> returns a nested list, three levels deep:
+<code>res[[label.by level]][[split.by level]][[pathway_sets name]]</code>.
+When <code>label.by</code>/<code>split.by</code> are <code>NULL</code>
+(as in the basic call above), both default to a single
+<code>"All"</code> level, so the whole object’s Hallmark result sits at
+<code>res$All$All$Hallmark</code>. Each of those leaf lists holds:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Per-cell-type DE table that fed into fgsea</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">de_table</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##         feature  group     avgExpr         logFC statistic       auc</span></span>
+<span><span class="co">## 1    FO538757.2 B cell 0.091865017 -0.0186039583  49510254 0.4900695</span></span>
+<span><span class="co">## 2    AP006222.2 B cell 0.028147286  0.0041525507  50521083 0.5000750</span></span>
+<span><span class="co">## 3 RP4-669L17.10 B cell 0.001457705  0.0002902015  50505112 0.4999169</span></span>
+<span><span class="co">## 4 RP11-206L10.9 B cell 0.022528025  0.0006810403  50476512 0.4996338</span></span>
+<span><span class="co">## 5     LINC00115 B cell 0.001638244 -0.0052171223  50321794 0.4981024</span></span>
+<span><span class="co">## 6        FAM41C B cell 0.024573551  0.0105087175  50768456 0.5025236</span></span>
+<span><span class="co">##           pval         padj     pct_in    pct_out</span></span>
+<span><span class="co">## 1 1.401575e-05 4.321785e-05 5.59552358 7.67859133</span></span>
+<span><span class="co">## 2 9.491639e-01 9.637830e-01 1.86517453 1.85742412</span></span>
+<span><span class="co">## 3 7.564184e-01 8.081608e-01 0.07993605 0.09658605</span></span>
+<span><span class="co">## 4 7.343831e-01 7.913286e-01 1.49213962 1.56766596</span></span>
+<span><span class="co">## 5 1.386907e-03 3.150360e-03 0.13322675 0.51264906</span></span>
+<span><span class="co">## 6 5.055653e-03 1.035669e-02 1.51878497 1.01786842</span></span></code></pre>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Group x pathway NES matrix (what the summary heatmap is drawn from)</span></span>
+<span><span class="va">res</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">nes_matrix</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span></span></code></pre></div>
+<pre><code><span><span class="co">##                                  B cell  Mono/DC         NK Progenitor cells</span></span>
+<span><span class="co">## HALLMARK_ADIPOGENESIS        -5.0069744 3.734941 -4.3796582         4.833929</span></span>
+<span><span class="co">## HALLMARK_ALLOGRAFT_REJECTION  3.2940329 3.848317  3.5806126        -4.396136</span></span>
+<span><span class="co">## HALLMARK_ANDROGEN_RESPONSE   -2.4689894 2.124402 -2.1480349         2.621058</span></span>
+<span><span class="co">## HALLMARK_ANGIOGENESIS        -0.6820172 2.530392 -0.7475687        -1.347162</span></span>
+<span><span class="co">## HALLMARK_APICAL_JUNCTION     -1.9116398 2.331259  1.1694316         1.008612</span></span>
+<span><span class="co">##                                  T cell</span></span>
+<span><span class="co">## HALLMARK_ADIPOGENESIS        -5.6178413</span></span>
+<span><span class="co">## HALLMARK_ALLOGRAFT_REJECTION  3.8213925</span></span>
+<span><span class="co">## HALLMARK_ANDROGEN_RESPONSE   -2.7903788</span></span>
+<span><span class="co">## HALLMARK_ANGIOGENESIS         0.6048795</span></span>
+<span><span class="co">## HALLMARK_APICAL_JUNCTION     -1.4101986</span></span></code></pre>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Named list of lollipop ggplots, one per group.by level</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">All</span><span class="op">$</span><span class="va">Hallmark</span><span class="op">$</span><span class="va">lollipop_plots</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] "B cell"           "Mono/DC"          "NK"               "Progenitor cells"</span></span>
+<span><span class="co">## [5] "T cell"</span></span></code></pre>
 <hr>
 </div>
 <div class="section level2">
@@ -296,7 +374,7 @@ exact string. Pass a <strong>character vector for OR</strong> logic, or
 a <strong>list of vectors for AND-groups</strong> (which are then OR’d)
 - all case-insensitive regex.</p>
 </blockquote>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># OR: any pathway mentioning "apoptosis" OR "cell_death"</span></span>
 <span><span class="fu"><a href="../reference/PlotGSEAEnrichment.html">PlotGSEAEnrichment</a></span><span class="op">(</span></span>
 <span>  output_dir   <span class="op">=</span> <span class="st">"./Figures/Pathways"</span>,</span>
@@ -328,7 +406,7 @@ with your DEGs.</p>
 “these specific genes are driving it, in these cells” - visually, in one
 call.</p>
 </blockquote>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/VisualizeLeadingEdge.html">VisualizeLeadingEdge</a></span><span class="op">(</span><span class="va">bmcite</span>,</span>
 <span>  gsea_files   <span class="op">=</span> <span class="st">"./Figures/Pathways"</span>,     <span class="co"># a dir of GSEA CSVs, or file paths</span></span>
 <span>  search_terms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"interferon"</span><span class="op">)</span>,</span>
@@ -445,6 +523,28 @@ object)</td>
 <code><a href="https://rdrr.io/pkg/ComplexHeatmap/man/Heatmap.html" class="external-link">ComplexHeatmap::Heatmap()</a></code>
 </td>
 </tr>
+<tr class="even">
+<td><code>width</code></td>
+<td>numeric or <code>NULL</code>
+</td>
+<td><code>NULL</code></td>
+<td>Override the auto-calculated heatmap PDF width in inches</td>
+</tr>
+<tr class="odd">
+<td><code>height</code></td>
+<td>numeric or <code>NULL</code>
+</td>
+<td><code>NULL</code></td>
+<td>Override the auto-calculated heatmap PDF height in inches</td>
+</tr>
+<tr class="even">
+<td><code>timestamp</code></td>
+<td>logical</td>
+<td><code>TRUE</code></td>
+<td>Write each run into its own timestamped subfolder under
+<code>output_dir</code>
+</td>
+</tr>
 </tbody>
 </table>
 <hr>
@@ -470,7 +570,7 @@ communication</li>
 <div class="section level2">
 <h2 id="session-info">Session info<a class="anchor" aria-label="anchor" href="#session-info"></a>
 </h2>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

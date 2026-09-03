@@ -178,6 +178,8 @@ PlotMultiFeature(bmcite,
 | `output_dir` | character | `NULL` | Directory for saving |
 | `object_name` | character | `""` | Label used in filenames |
 | `subset_name` | character | `""` | Sub-label used in filenames |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 
 ## Parameter reference - `PlotMultiFeature`
 
@@ -190,6 +192,8 @@ PlotMultiFeature(bmcite,
 | `pct_cutoff` | numeric | `0.3` | Co-expression cutoff (intersection mode) |
 | `intersection_label` | character | `NULL` | Label for co-expressing population |
 | `output_dir` | character | `NULL` | Directory for saving |
+| `file_name` | character | `NULL` | Override the auto-built saved file name |
+| `timestamp` | logical | `FALSE` | Append a `_YYYYMMDD-HHMMSS` stamp to the saved file name so repeated runs are versioned instead of overwritten |
 
 ---
 

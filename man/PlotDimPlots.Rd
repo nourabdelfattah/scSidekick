@@ -35,6 +35,7 @@ PlotDimPlots(
   object_name = "",
   subset_name = "",
   file_name = NULL,
+  timestamp = FALSE,
   ...
 )
 
@@ -79,16 +80,20 @@ PlotTrendAndUMAP(
 
 \item{row.by}{Character or \code{NULL}. Metadata column for rows.}
 
-\item{number_labels}{Logical. When \code{TRUE}, prefix each legend entry
-and centroid label with a zero-padded index (e.g., "01. CellType").
-Useful when there are many groups and alphanumeric ordering aids
-interpretation. Default \code{FALSE}.}
+\item{number_labels}{Logical. When \code{TRUE}, both the legend and (if
+\code{show_labels = TRUE}) the centroid labels use a zero-padded index
+(e.g., legend "01. CellType", centroid "01") instead of the actual
+group name - useful when there are many groups and alphanumeric
+ordering aids interpretation, or the names are too long to label
+directly on the plot. Default \code{FALSE} (legend and centroid labels
+show the real group name, unnumbered).}
 
 \item{show_trend}{Logical. Add a stacked composition trend panel to the
 left. Default \code{FALSE}.}
 
-\item{show_labels}{Logical. Overlay numbered cluster labels. Default
-\code{FALSE}.}
+\item{show_labels}{Logical. Overlay a label at each cluster's centroid -
+the group name by default, or a zero-padded index when
+\code{number_labels = TRUE}. Default \code{FALSE}.}
 
 \item{label.by}{Character or \code{NULL}. Column for label centroids.
 \code{NULL} → \code{group.by}.}
@@ -144,7 +149,11 @@ one file each. Default \code{FALSE}.}
 
 \item{file_name}{Character or \code{NULL}. Base name (no extension) for the
 saved PDF. \code{NULL} (default) auto-deduces from \code{object_name},
-\code{subset_name}, and \code{group.by}.}
+\code{subset_name}, \code{group.by}, \code{split.by}, and \code{row.by}.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 
 \item{...}{Ignored (forward compatibility).}
 }

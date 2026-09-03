@@ -190,6 +190,16 @@
 #' @param output_dir Directory to save a PDF. \code{NULL} = plot only, no save.
 #' @param object_name Label prefix for the output file name.
 #' @param subset_name Optional subset label appended to the file name.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, and \code{group.by}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to the facet
+#'   grid.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #'
 #' @return A \code{ggplot2} object (invisibly if saved). Printed to the active
 #'   device.
@@ -212,7 +222,11 @@ PlotVolcano <- function(
     max.overlaps    = 20,
     output_dir      = NULL,
     object_name     = "",
-    subset_name     = ""
+    subset_name     = "",
+    file_name       = NULL,
+    width           = NULL,
+    height          = NULL,
+    timestamp       = FALSE
 ) {
   if (!is.data.frame(deg_df) || nrow(deg_df) == 0)
     stop("'deg_df' must be a non-empty data frame.")
@@ -332,15 +346,16 @@ PlotVolcano <- function(
   # ── Save ─────────────────────────────────────────────────────────────────
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    pfx   <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0],
-                   collapse = "_")
     grp_n <- if (!is.null(group.by) && group.by %in% colnames(df))
       length(unique(df[[group.by]])) else 1L
     n_col_out <- ncol %||% min(grp_n, 4L)
     n_row_out <- ceiling(grp_n / n_col_out)
-    pdf(file.path(output_dir, paste0(pfx, " volcano.pdf")),
-        width  = max(5, n_col_out * 4),
-        height = max(5, n_row_out * 5))
+    fname <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, group.by, "volcano"), timestamp
+    )
+    pdf(file.path(output_dir, paste0(fname, ".pdf")),
+        width  = width  %||% max(5, n_col_out * 4),
+        height = height %||% max(5, n_row_out * 5))
     print(p)
     grDevices::dev.off()
   }
@@ -503,6 +518,19 @@ PlotVolcano <- function(
 #' @param output_dir Directory to save PDFs. \code{NULL} = no save.
 #' @param object_name Label prefix for output file names.
 #' @param subset_name Optional subset label.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. Only applies in \strong{direct mode}, which saves one
+#'   combined PDF; \strong{RunGSEA directory mode} can save several PDFs per
+#'   call (one per pathway x label combination) so an explicit override
+#'   isn't applied there. \code{NULL} (default) auto-deduces from
+#'   \code{object_name} and \code{subset_name}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to the
+#'   pathway grid.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to every saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF(s). Default
+#'   \code{FALSE}.
 #'
 #' @return \emph{Direct mode:} a single \code{patchwork} object.
 #'   \emph{RunGSEA directory mode:} invisibly, a nested list
@@ -534,7 +562,11 @@ PlotGSEAEnrichment <- function(
     ncol          = 1,
     output_dir    = NULL,
     object_name   = "",
-    subset_name   = ""
+    subset_name   = "",
+    file_name     = NULL,
+    width         = NULL,
+    height        = NULL,
+    timestamp     = FALSE
 ) {
   col_pos <- colors[["pos"]] %||% "#B40426"
   col_neg <- colors[["neg"]] %||% "#3B4CC0"
@@ -659,19 +691,24 @@ PlotGSEAEnrichment <- function(
         cl_batches <- split(cls_lab, ceiling(seq_along(cls_lab) / max_cols))
         n_batches  <- length(cl_batches)
 
-        pdf_name <- paste0(
-          pfx, if (nchar(pfx)) " " else "",
-          pw_safe,
-          if (length(labs_found) > 1) paste0(" [", lab_safe, "]") else "",
-          " GSEA mountain.pdf"
+        # file_name is intentionally NOT applied here: this loop can write
+        # several PDFs per call (one per pathway x label combination), so a
+        # single explicit override would collide across them - same as the
+        # multi-variable recursion in other plotting functions.
+        pdf_stem <- .nk_resolve_pdf_name(
+          NULL,
+          c(object_name, subset_name, pw_safe,
+            if (length(labs_found) > 1) paste0("[", lab_safe, "]"),
+            "GSEA mountain"),
+          timestamp
         )
         pdf_path <- if (!is.null(output_dir))
-          file.path(output_dir, pdf_name) else NULL
+          file.path(output_dir, paste0(pdf_stem, ".pdf")) else NULL
 
         if (!is.null(pdf_path)) {
           pdf(pdf_path,
-              width  = min(length(cls_lab), max_cols) * 4.5,
-              height = length(sps_lab) * 5.5 + 0.8)
+              width  = width  %||% (min(length(cls_lab), max_cols) * 4.5),
+              height = height %||% (length(sps_lab) * 5.5 + 0.8))
           on.exit(grDevices::dev.off(), add = TRUE)
         }
 
@@ -778,12 +815,12 @@ PlotGSEAEnrichment <- function(
 
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    pfx    <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0],
-                    collapse = "_")
-    pdf(file.path(output_dir, paste0(pfx, if (nchar(pfx)) " " else "",
-                                      "GSEA mountain.pdf")),
-        width  = ncol * 4.5,
-        height = ceiling(length(pw_list) / ncol) * 5.5)
+    fname <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, "GSEA mountain"), timestamp
+    )
+    pdf(file.path(output_dir, paste0(fname, ".pdf")),
+        width  = width  %||% (ncol * 4.5),
+        height = height %||% (ceiling(length(pw_list) / ncol) * 5.5))
     print(combined)
     grDevices::dev.off()
   }
@@ -830,6 +867,16 @@ PlotGSEAEnrichment <- function(
 #' @param output_dir Directory to save a PDF. \code{NULL} = no save.
 #' @param object_name Label prefix for output file names.
 #' @param subset_name Optional subset label.
+#' @param file_name Character or \code{NULL}. Base name (no extension) for
+#'   the saved PDF. \code{NULL} (default) auto-deduces from
+#'   \code{object_name}, \code{subset_name}, and \code{plot_type}.
+#' @param width,height Numeric or \code{NULL}. Override the auto-calculated
+#'   PDF dimensions in inches. \code{NULL} (default) auto-sizes to the
+#'   number of terms shown.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #'
 #' @return A \code{ggplot2} or \code{patchwork} object.
 #'
@@ -849,7 +896,11 @@ PlotEnrichment <- function(
     max_term_length   = 50,
     output_dir        = NULL,
     object_name       = "",
-    subset_name       = ""
+    subset_name       = "",
+    file_name         = NULL,
+    width             = NULL,
+    height            = NULL,
+    timestamp         = FALSE
 ) {
   plot_type <- match.arg(plot_type, c("dot", "bar", "lollipop"))
   x_by      <- match.arg(x_by,      c("gene_ratio", "gene_count", "-log10padj"))
@@ -1011,14 +1062,15 @@ PlotEnrichment <- function(
   # ── Save ─────────────────────────────────────────────────────────────────
   if (!is.null(output_dir)) {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-    pfx  <- paste(c(object_name, subset_name)[nchar(c(object_name, subset_name)) > 0],
-                  collapse = "_")
     n_grp <- if (!is.null(group_column) && group_column %in% colnames(df))
       length(unique(df[[group_column]])) else 1
-    fn_enr <- file.path(output_dir, paste0(pfx, " enrichment ", plot_type, ".pdf"))
+    fn_stem <- .nk_resolve_pdf_name(
+      file_name, c(object_name, subset_name, "enrichment", plot_type), timestamp
+    )
+    fn_enr <- file.path(output_dir, paste0(fn_stem, ".pdf"))
     pdf(fn_enr,
-        width  = 7,
-        height = max(4, min(top_n, nrow(df)) * 0.28 + 2) * n_grp)
+        width  = width  %||% 7,
+        height = height %||% (max(4, min(top_n, nrow(df)) * 0.28 + 2) * n_grp))
     print(out_plot)
     grDevices::dev.off()
     x_desc <- switch(x_by,

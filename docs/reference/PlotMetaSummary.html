@@ -15,7 +15,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -54,6 +54,7 @@ count."><meta property="og:image" content="https://nourabdelfattah.github.io/scS
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -108,7 +109,8 @@ count.</p>
 <span>  separate_tables <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  stats.method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nonparametric"</span>, <span class="st">"parametric"</span>, <span class="st">"auto"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  pdf.width <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  pdf.height <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  pdf.height <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -254,6 +256,12 @@ expected counts &gt;= 5 (categorical); otherwise non-parametric.</p></dd>
 
 
 </dl></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical.  When <code>TRUE</code>, append a
+<code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF.  Default <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

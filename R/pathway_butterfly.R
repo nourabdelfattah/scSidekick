@@ -296,6 +296,10 @@
 #'   (default), height is auto-sized as \code{panel_nrow * 2.8 + 0.4}.
 #' @param file_name Character or \code{NULL}.  Output file name (without
 #'   directory).  Defaults to \code{"<object_name> pathway butterfly.pdf"}.
+#' @param timestamp Logical. When \code{TRUE}, append a
+#'   \code{_YYYYMMDD-HHMMSS} stamp to the saved file name(s) so repeated runs
+#'   are versioned instead of overwriting the previous PDF. Default
+#'   \code{FALSE}.
 #' @param output_dir Character or \code{NULL}.  Directory for saving the PDF.
 #'   Falls back to the PrepObject output directory.  When \code{NULL}, the
 #'   plot is printed to the active device.
@@ -336,6 +340,7 @@ PlotPathwayButterfly <- function(
     width             = NULL,
     height            = NULL,
     file_name         = NULL,
+    timestamp         = FALSE,
     output_dir        = NULL,
     caffeinate        = FALSE) {
 
@@ -458,6 +463,10 @@ PlotPathwayButterfly <- function(
                 paste0(obj_name, " butterfly by ", group.by, " [", q_tag, "]")
   # strip .pdf suffix if user added it — we append it below
   fname_base <- sub("\\.pdf$", "", fname_base, ignore.case = TRUE)
+  # Applied once here (not per-species inside the loop below) so every file
+  # from this call shares the same timestamp.
+  if (isTRUE(timestamp))
+    fname_base <- paste0(fname_base, "_", format(Sys.time(), "%Y%m%d-%H%M%S"))
 
   # ── Main loop over split levels ───────────────────────────────────────────────
   .nk_warn_donor(seurat_object)

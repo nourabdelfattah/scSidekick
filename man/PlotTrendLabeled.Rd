@@ -82,7 +82,10 @@ grid. \code{NULL} (default) auto-arranges into a single row.}
 from \code{PrepObject()} settings when \code{NULL}.}
 
 \item{file_name}{Character or \code{NULL}. Base filename (no extension). Auto-
-deduced from \code{object_name}, \code{subset_name}, and column names when \code{NULL}.}
+deduced from \code{object_name}, \code{subset_name}, and column names when \code{NULL},
+always ending in \code{"TrendLabeled"} - a saved file ending in that suffix
+was made by this function, useful for working backward from a saved PDF
+without its \code{analysis_params.json}.}
 
 \item{object_name}{Character. Prefix for the auto-deduced filename.}
 

@@ -25,7 +25,11 @@ PlotMultiFeature(
   show_legend = TRUE,
   output_dir = NULL,
   object_name = "",
-  subset_name = ""
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -83,6 +87,18 @@ plot is printed to the active graphics device.}
 \item{object_name}{Optional prefix used when building the output file name.}
 
 \item{subset_name}{Optional second prefix for the output file name.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. \code{NULL} (default) auto-deduces from
+\code{object_name}, \code{subset_name}, and the first few gene names.}
+
+\item{width, height}{Numeric or \code{NULL}. Override the saved PDF
+dimensions in inches. \code{NULL} (default) uses a fixed 6 x 5 in panel.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs
+are versioned instead of overwriting the previous PDF. Default
+\code{FALSE}.}
 }
 \value{
 A \code{ggplot} object (invisibly when \code{output_dir} is set).

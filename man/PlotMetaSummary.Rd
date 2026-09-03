@@ -30,7 +30,8 @@ PlotMetaSummary(
   separate_tables = FALSE,
   stats.method = c("nonparametric", "parametric", "auto", "none"),
   pdf.width = NULL,
-  pdf.height = NULL
+  pdf.height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -124,6 +125,10 @@ t-test / ANOVA for numeric.}
 expected counts >= 5 (categorical); otherwise non-parametric.}
 \item{\code{"none"}}{No statistics added.}
 }}
+
+\item{timestamp}{Logical.  When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF.  Default \code{FALSE}.}
 }
 \value{
 When only the plot is requested (default), a \code{ggplot2} object.

@@ -30,7 +30,12 @@ PlotSpatialDimPlots(
   alpha = 1,
   object_name = "",
   group.by = NULL,
-  cluster_colors = NULL
+  cluster_colors = NULL,
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 
 GenerateSpatialDimMaps(
@@ -58,7 +63,12 @@ GenerateSpatialDimMaps(
   alpha = 1,
   object_name = "",
   group.by = NULL,
-  cluster_colors = NULL
+  cluster_colors = NULL,
+  subset_name = "",
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -134,6 +144,22 @@ Default \code{16}.}
 
 \item{cluster_colors}{Named character vector. Deprecated alias for
 \code{colors}.}
+
+\item{subset_name}{Character. Optional second label appended to PDF
+filenames after \code{object_name}. Default \code{""}.}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for
+the saved PDF. \code{NULL} (default) auto-deduces from
+\code{object_name}, \code{subset_name}, \code{row.by}, and the grouping
+variable(s).}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated
+PDF dimensions in inches. \code{NULL} (default) auto-sizes to fit the
+image grid and legend.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
 Invisibly returns the plot, or a named list of plots when

@@ -15,6 +15,8 @@ PlotFeatureTrend(
   color.by = NULL,
   group.by = NULL,
   groups = NULL,
+  split.by = NULL,
+  row.by = NULL,
   method = "loess",
   se = FALSE,
   add_cor = FALSE,
@@ -30,7 +32,8 @@ PlotFeatureTrend(
   subset_name = "",
   file_name = NULL,
   width = NULL,
-  height = NULL
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -65,14 +68,27 @@ to \code{TRUE} when this is set. \code{NULL} (default) keeps cell-level.}
 
 \item{color.by}{Character or \code{NULL}. Metadata column to color the
 smoothed trend lines by (e.g. \code{"Sample"}, to see whether replicates
-agree). \code{NULL} (default) draws a single trend line per feature.}
+agree). \code{NULL} (default) falls back to \code{group.by} for coloring,
+matching every other scSidekick plotting function's default; pass an
+explicit \code{color.by} to color by something other than the variable
+used to restrict cells.}
 
-\item{group.by}{Character or \code{NULL}. Metadata column to restrict
-cells by (e.g. plot the trend within one cluster only).}
+\item{group.by}{Character or \code{NULL}. Metadata column that (1) colors
+the trend lines when \code{color.by} is \code{NULL}, and (2), paired with
+\code{groups}, restricts which cells are plotted (e.g. the trend within
+one cluster only) regardless of which variable ends up coloring the plot.}
 
 \item{groups}{Character vector or \code{NULL}. Which level(s) of
 \code{group.by} to keep. \code{NULL} (default, when \code{group.by} is
 set) keeps all levels.}
+
+\item{split.by}{Character or \code{NULL}. Creates column facets - one
+figure panel per level, each drawn from an independent subset of cells
+(tiled with \pkg{patchwork}). \code{NULL} (default) = no column split.}
+
+\item{row.by}{Character or \code{NULL}. Creates row facets, the same way as
+\code{split.by}. Combined with \code{split.by} produces a two-way grid.
+\code{NULL} (default) = no row split.}
 
 \item{method}{Character. Smoothing method passed to
 \code{ggplot2::geom_smooth()}. \code{"loess"} (default) fits a flexible,
@@ -91,8 +107,9 @@ plotted x/y (donor-level when \code{donor.by} is set) - this is the
 direct way to test the relationship shown by the trend line without
 routing through \code{\link{CorrelateGene}()}/\code{\link{PlotCorrelation}()},
 which are built around a gene-vs-many-genes screen keyed on a Seurat
-object rather than an arbitrary x/y pair. When \code{color.by} is set,
-one annotation is shown per color group. Default \code{FALSE}.}
+object rather than an arbitrary x/y pair. When a color variable is in
+effect (\code{color.by}, or \code{group.by} as its fallback), one
+annotation is shown per color group. Default \code{FALSE}.}
 
 \item{cor_method}{Character. \code{"spearman"} (default; rank-based,
 appropriate for monotonic but not necessarily linear relationships) or
@@ -113,8 +130,9 @@ when \code{show_points = TRUE}. Defaults \code{0.4} and \code{0.25}.}
 
 \item{ncol}{Integer or \code{NULL}. Facet columns. \code{NULL} auto-picks.}
 
-\item{colors}{Named color vector for \code{color.by}. \code{NULL}
-auto-resolves from \code{\link{PrepObject}} or \code{Nour_pal}.}
+\item{colors}{Named color vector for the coloring variable (\code{color.by}
+or, when that's \code{NULL}, \code{group.by}). \code{NULL} auto-resolves
+from \code{\link{PrepObject}} or \code{Nour_pal}.}
 
 \item{output_dir}{Character or \code{NULL}. Directory to save a PDF.
 \code{NULL} (default) walks up to the \code{output_dir} stored by
@@ -127,20 +145,27 @@ auto-resolves from \code{\link{PrepObject}} or \code{Nour_pal}.}
 the saved PDF. \code{NULL} auto-deduces.}
 
 \item{width, height}{Numeric or \code{NULL}. Saved PDF dimensions in
-inches. \code{NULL} (default) auto-sizes from the number of facets.}
+inches. \code{NULL} (default) auto-sizes from the number of facets (or,
+with \code{split.by}/\code{row.by}, from the panel grid).}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
-A \code{ggplot} object.
+A \code{ggplot} object, or (with \code{split.by}/\code{row.by}) a
+\code{patchwork} object.
 }
 \description{
 Smoothed expression (or any numeric feature) vs. pseudotime, one facet
-panel per feature, optionally colored by a grouping variable (e.g.
-\code{"Sample"}) to compare trends across replicates or conditions.
-Equivalent to a \code{geom_smooth()} + \code{facet_wrap(~Gene)} script run
-by hand, but feature extraction goes through the same assay/version-safe
-path as the rest of scSidekick (\code{.nk_feature_matrix()}, which is what
-every other feature-plotting function in the package uses): genes are
-pulled via the v5/BPCells/sketch-safe \code{.get_layer_data()}, and numeric
+panel per feature, colored by \code{group.by} by default (or by
+\code{color.by}, when that's set instead) to compare trends across
+replicates or conditions. Equivalent to a \code{geom_smooth()} +
+\code{facet_wrap(~Gene)} script run by hand, but feature extraction goes
+through the same assay/version-safe path as the rest of scSidekick
+(\code{.nk_feature_matrix()}, which is what every other feature-plotting
+function in the package uses): genes are pulled via the
+v5/BPCells/sketch-safe \code{.get_layer_data()}, and numeric
 \code{meta.data} columns (module scores, cNMF usages, QC metrics, other
 pseudotime columns, ...) are used directly - both are accepted
 interchangeably in \code{features}.

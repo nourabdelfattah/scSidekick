@@ -37,7 +37,11 @@ PlotFeaturePlots(
   comparisons = NULL,
   group_colors = NULL,
   label_format = "p.signif",
-  hide_ns = FALSE
+  hide_ns = FALSE,
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 
 GenerateFeatureMaps(
@@ -72,7 +76,11 @@ GenerateFeatureMaps(
   comparisons = NULL,
   group_colors = NULL,
   label_format = "p.signif",
-  hide_ns = FALSE
+  hide_ns = FALSE,
+  file_name = NULL,
+  width = NULL,
+  height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -162,6 +170,17 @@ or \code{"p.format"} (shows \code{p = 0.023}).}
 
 \item{hide_ns}{Logical. If \code{TRUE}, omit \code{ns} brackets entirely. Default
 \code{FALSE} (shows \code{ns} in gray).}
+
+\item{file_name}{Character or \code{NULL}. Base name (no extension) for the
+saved PDF. \code{NULL} (default) auto-deduces from \code{object_name},
+\code{subset_name}, the gene, \code{split.by}, and \code{row.by}.}
+
+\item{width, height}{Numeric or \code{NULL}. Override the auto-calculated PDF
+dimensions in inches. \code{NULL} (default) auto-sizes to fit the panel grid.}
+
+\item{timestamp}{Logical. When \code{TRUE}, append a \verb{_YYYYMMDD-HHMMSS} stamp
+to the saved file name so repeated runs are versioned instead of
+overwriting the previous PDF. Default \code{FALSE}.}
 }
 \value{
 Invisibly returns the last assembled plot when \code{output_dir = NULL};

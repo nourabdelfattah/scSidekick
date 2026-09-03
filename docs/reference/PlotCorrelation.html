@@ -13,7 +13,7 @@ negatively correlated genes so that both directions are always represented."><me
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +52,7 @@ negatively correlated genes so that both directions are always represented."><me
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -89,7 +90,10 @@ negatively correlated genes so that both directions are always represented.</p>
 <span>  r_cutoff <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ncol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  file_name <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  width <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  height <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -133,6 +137,22 @@ auto-selects: <code>n_compare_groups</code> when <code>compare.by</code> was use
 
 <dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
 <dd><p>Character or <code>NULL</code>. PDF base name.</p></dd>
+
+
+<dt id="arg-width">width<a class="anchor" aria-label="anchor" href="#arg-width"></a></dt>
+<dd><p>Numeric or <code>NULL</code>. Override the auto-calculated PDF width in
+inches. <code>NULL</code> (default) sizes automatically from <code>n_col_out</code>.</p></dd>
+
+
+<dt id="arg-height">height<a class="anchor" aria-label="anchor" href="#arg-height"></a></dt>
+<dd><p>Numeric or <code>NULL</code>. Override the auto-calculated PDF height in
+inches. <code>NULL</code> (default) sizes automatically from the number of panel rows.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, append a <code>_YYYYMMDD-HHMMSS</code> stamp to
+the saved file name so repeated runs are versioned instead of overwriting
+the previous PDF. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-cell-type">cell_type<a class="anchor" aria-label="anchor" href="#arg-cell-type"></a></dt>

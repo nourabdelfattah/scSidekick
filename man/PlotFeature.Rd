@@ -30,7 +30,8 @@ PlotFeature(
   object_name = "",
   file_name = NULL,
   pdf_width = NULL,
-  pdf_height = NULL
+  pdf_height = NULL,
+  timestamp = FALSE
 )
 }
 \arguments{
@@ -129,6 +130,10 @@ number of groups, splits, and features.}
 \item{pdf_height}{Numeric or \code{NULL}.  Override the auto-calculated PDF
 height in inches.  \code{NULL} (default) sizes automatically from the
 number of row facets and features.}
+
+\item{timestamp}{Logical.  When \code{TRUE}, append a
+\code{_YYYYMMDD-HHMMSS} stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF.  Default \code{FALSE}.}
 }
 \value{
 When one feature is requested, a single \code{ggplot2} object.

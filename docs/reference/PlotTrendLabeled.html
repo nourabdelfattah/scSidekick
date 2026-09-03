@@ -13,7 +13,7 @@ position so each cell type is identified without a legend."><meta property="og:i
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +52,7 @@ position so each cell type is identified without a legend."><meta property="og:i
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -200,7 +201,10 @@ from <code><a href="PrepObject.html">PrepObject()</a></code> settings when <code
 
 <dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
 <dd><p>Character or <code>NULL</code>. Base filename (no extension). Auto-
-deduced from <code>object_name</code>, <code>subset_name</code>, and column names when <code>NULL</code>.</p></dd>
+deduced from <code>object_name</code>, <code>subset_name</code>, and column names when <code>NULL</code>,
+always ending in <code>"TrendLabeled"</code> - a saved file ending in that suffix
+was made by this function, useful for working backward from a saved PDF
+without its <code>analysis_params.json</code>.</p></dd>
 
 
 <dt id="arg-object-name">object_name<a class="anchor" aria-label="anchor" href="#arg-object-name"></a></dt>

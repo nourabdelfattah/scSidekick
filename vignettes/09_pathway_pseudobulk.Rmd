@@ -291,6 +291,9 @@ res$`CD4 T`$ssgsea_scores
 | `save.rds` | logical | `TRUE` | Save intermediate RDS after each cell type |
 | `redo_plots` | logical | `FALSE` | Reload saved RDS and regenerate PDFs only |
 | `caffeinate` | logical | `FALSE` | Prevent system sleep during the run |
+| `width` | numeric or `NULL` | `NULL` | Override the auto-calculated heatmap PDF width in inches |
+| `height` | numeric or `NULL` | `NULL` | Override the auto-calculated heatmap PDF height in inches |
+| `timestamp` | logical | `TRUE` | Write each run into its own timestamped subfolder under `output_dir` |
 
 ---
 

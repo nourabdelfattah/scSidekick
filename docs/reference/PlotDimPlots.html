@@ -17,7 +17,7 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,6 +56,7 @@ ggarrange row structure so row heights always align."><meta property="og:image" 
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -114,6 +115,7 @@ bordered boxes.  The optional composition trend panel
 <span>  object_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  subset_name <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  file_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timestamp <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -171,10 +173,13 @@ bordered boxes.  The optional composition trend panel
 
 
 <dt id="arg-number-labels">number_labels<a class="anchor" aria-label="anchor" href="#arg-number-labels"></a></dt>
-<dd><p>Logical. When <code>TRUE</code>, prefix each legend entry
-and centroid label with a zero-padded index (e.g., "01. CellType").
-Useful when there are many groups and alphanumeric ordering aids
-interpretation. Default <code>FALSE</code>.</p></dd>
+<dd><p>Logical. When <code>TRUE</code>, both the legend and (if
+<code>show_labels = TRUE</code>) the centroid labels use a zero-padded index
+(e.g., legend "01. CellType", centroid "01") instead of the actual
+group name - useful when there are many groups and alphanumeric
+ordering aids interpretation, or the names are too long to label
+directly on the plot. Default <code>FALSE</code> (legend and centroid labels
+show the real group name, unnumbered).</p></dd>
 
 
 <dt id="arg-show-trend">show_trend<a class="anchor" aria-label="anchor" href="#arg-show-trend"></a></dt>
@@ -183,8 +188,9 @@ left. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-show-labels">show_labels<a class="anchor" aria-label="anchor" href="#arg-show-labels"></a></dt>
-<dd><p>Logical. Overlay numbered cluster labels. Default
-<code>FALSE</code>.</p></dd>
+<dd><p>Logical. Overlay a label at each cluster's centroid -
+the group name by default, or a zero-padded index when
+<code>number_labels = TRUE</code>. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-label-by">label.by<a class="anchor" aria-label="anchor" href="#arg-label-by"></a></dt>
@@ -280,7 +286,13 @@ one file each. Default <code>FALSE</code>.</p></dd>
 <dt id="arg-file-name">file_name<a class="anchor" aria-label="anchor" href="#arg-file-name"></a></dt>
 <dd><p>Character or <code>NULL</code>. Base name (no extension) for the
 saved PDF. <code>NULL</code> (default) auto-deduces from <code>object_name</code>,
-<code>subset_name</code>, and <code>group.by</code>.</p></dd>
+<code>subset_name</code>, <code>group.by</code>, <code>split.by</code>, and <code>row.by</code>.</p></dd>
+
+
+<dt id="arg-timestamp">timestamp<a class="anchor" aria-label="anchor" href="#arg-timestamp"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, append a
+<code>_YYYYMMDD-HHMMSS</code> stamp to the saved file name so repeated runs are
+versioned instead of overwriting the previous PDF. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

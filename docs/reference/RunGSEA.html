@@ -25,7 +25,7 @@ Build NES heatmaps showing top top_n pathways per cluster.
 
     <a class="navbar-brand me-2" href="../index.html">scSidekick</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,6 +64,7 @@ Build NES heatmaps showing top top_n pathways per cluster.
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/12_reporting_utilities.html">12 - Reporting &amp; Utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/21_ask_sidekick.html">21 - AskSidekick (AI Assistant)</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>─────────────────</h6></li>
     <li><h6 class="dropdown-header" data-toc-skip>Examples</h6></li>
     <li><a class="dropdown-item" href="../articles/example_workflow.html">Full scRNA-seq Workflow</a></li>
@@ -125,6 +126,8 @@ loop) and <code>split.by</code> (inner loop) levels:</p><ol><li><p>Subset the ob
 <span>  heatmap_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>row_names_side <span class="op">=</span> <span class="st">"left"</span>, show_row_dend <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>    row_names_max_width <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/unit.html" class="external-link">unit</a></span><span class="op">(</span><span class="fl">15</span>, <span class="st">"cm"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  heatmap_colors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  width <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  height <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  caffeinate <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -357,6 +360,13 @@ custom function are used as-is (no auto-scaling). Examples:</p><ul><li><p><stron
 <code>circlize::colorRamp2(c(-1.5, -0.75, 0, 0.75, 1.5), c("#007dd1", "#b3d9f5", "white", "#f5c08a", "#ab3000"))</code></p></li>
 </ul><p>Note: for NES heatmaps, diverging palettes (centered at 0) are
 semantically correct because 0 means "no enrichment".</p></dd>
+
+
+<dt id="arg-width-height">width, height<a class="anchor" aria-label="anchor" href="#arg-width-height"></a></dt>
+<dd><p>Numeric or <code>NULL</code>. Override the auto-calculated PDF
+dimensions (in inches) applied to every NES heatmap this run saves.
+<code>NULL</code> (default) auto-sizes each heatmap from its own row/column count
+and label lengths.</p></dd>
 
 
 <dt id="arg-caffeinate">caffeinate<a class="anchor" aria-label="anchor" href="#arg-caffeinate"></a></dt>

@@ -1,6 +1,6 @@
 Package: scSidekick
 Title: A Single-Cell and Spatial Transcriptomics Toolkit
-Version: 1.1.0
+Version: 1.2.0
 Authors@R:
     person(given = "Nourhan",
            family = "Abdelfattah",
@@ -26,6 +26,7 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+VignetteBuilder: knitr
 Depends:
     R (>= 4.1.0)
 Imports:
@@ -46,6 +47,7 @@ Suggests:
     Seurat (>= 5.0.0),
     SeuratObject (>= 5.0.0),
     presto,
+    ellmer,
     reticulate,
     png,
     fgsea,

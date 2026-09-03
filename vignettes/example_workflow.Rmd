@@ -1,6 +1,13 @@
 ---
-title: "YAP Project — scRNA-seq Analysis"
-output: html_notebook
+title: "scSidekick - Full Example Workflow: scRNA-seq Analysis"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Full Example Workflow: scRNA-seq Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 editor_options:
   chunk_output_type: console
 ---

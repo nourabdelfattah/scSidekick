@@ -935,7 +935,13 @@
 #' If `add_to_object = TRUE`: invisibly returns the Seurat object with one
 #' metadata column per gene set.
 #'
-#' **Files saved to `output_dir`:**
+#' **Files saved to `output_dir`:** written into a dedicated subfolder named
+#' `SC ssGSEA <gene-set label>` (e.g. `SC ssGSEA STAT3`, `SC ssGSEA custom`) -
+#' this subfolder name is how to recognize a figure was made by
+#' `RunSCssGSEA()` specifically (not `RunGSEA_pseudobulk()`'s own
+#' `run.ssgsea = TRUE` sub-step, which does not use this naming convention -
+#' see [RunGSEA_pseudobulk()]) when working backward from a saved file without
+#' its `analysis_params.json`.
 #' \itemize{
 #'   \item `<prefix> ssGSEA_scores.csv` - per-cell enrichment scores + group
 #'     labels

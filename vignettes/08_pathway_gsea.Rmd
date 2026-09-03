@@ -33,7 +33,7 @@ For sample-level pseudobulk GSEA with limma-voom contrasts, see
 
 ## Standard setup
 
-```{r standard-setup}
+```{r standard-setup, eval=FALSE}
 library(scSidekick)
 library(Seurat)
 library(SeuratData)
@@ -59,13 +59,47 @@ bmcite <- PrepObject(bmcite,
 
 ## 1. Basic call
 
-```{r gsea-basic}
+```{r gsea-basic, eval=FALSE}
 res <- RunGSEA(bmcite,
   group.by   = "celltype.l1",
   split.by   = NULL,
-  output_dir = "~/Desktop/TestGSEA")
+  output_dir = tempdir())
 ```
 
+You will get  a subfolder per geneset dataset and inside you will have heatmaps comparing the NES per group and lollipop plots for each group separately,legeneds and source tables are also saved
+<p align="center">
+  <img src="figures/gsea_hallmark_top5_heatmap.png" width="100%">
+</p>
+
+```{r loadres, echo=FALSE, eval=TRUE, include=FALSE}
+# Cached from a real RunGSEA() run so the vignette shows genuine output
+# without paying for the full DE + fgsea computation on every build. Paths
+# are relative to this .Rmd's own location (vignettes/), which knitr always
+# uses as the working directory - so this works from any checkout, not just
+# one machine's folder layout.
+load("figures/gsea_cache.rdata")
+analysis_params_json_path <- "figures/analysis_params.json"
+run_fingerprint_json_path <- "figures/run_fingerprint.json"
+
+# Reconstitute a minimal stand-in for the real `res` object so the "Return
+# value" section below can use the exact same res$All$All$Hallmark$... code a
+# user would type against a live run - de_table_head is already head(de_table)
+# so head()'ing it again below is a no-op, and nes_matrix_cached/lollipop_names
+# are the real, unmodified values from that run.
+res <- list(All = list(All = list(Hallmark = list(
+  de_table       = de_table_head,
+  nes_matrix     = nes_matrix_cached,
+  lollipop_plots = stats::setNames(vector("list", length(lollipop_names)), lollipop_names)
+))))
+```
+
+```{r lollipop plots, echo=FALSE, eval=TRUE, results='asis'}
+cat('<p align="center"><img src="figures/gsea_lollipop_bcell.png" width="70%" ',
+    'alt="GSEA lollipop plot for the Hallmark pathway database, celltype.l1 = B cell. ',
+    'Dataset: 30,672 cells [bmcite]. Bars are ranked by Normalized Enrichment Score (NES); ',
+    'positive NES (red) = pathways enriched in B cell vs. all other celltype.l1 groups; ',
+    'negative NES (blue) = depleted. Only gene sets with adjusted p < 0.05 are shown."></p>\n')
+```
 `group.by` defines the groups being compared (e.g. cell types, clusters).
 `split.by = NULL` runs a single GSEA on the whole object. Set `split.by` to
 a broad cell-type column (e.g. `"celltype.l1"`) to run GSEA separately within
@@ -73,6 +107,32 @@ each major lineage.
 
 By default `RunGSEA` tests four MSigDB collections: Hallmark, KEGG, Reactome,
 and WikiPathways.
+
+### What gets saved alongside the plots
+
+Every run also writes two small JSON files into its own timestamped run
+folder under `output_dir`, so a figure is never separated from exactly how it
+was made:
+
+- **`analysis_params.json`** - the literal function call as typed, every
+  parameter that was actually used, and a ready-to-paste methods paragraph.
+- **`run_fingerprint.json`** - the parameter fingerprint `resume`/`resume_folder`
+  match against to detect a repeat run, so re-running with the same settings
+  reuses the existing output instead of recomputing it.
+
+```{r gsea-json, eval=TRUE, echo=F, results='asis'}
+cat("**`analysis_params.json`**")
+cat("\n```\n")
+cat("json\n")
+cat(readLines(analysis_params_json_path), sep = "\n")
+cat("\n```\n")
+
+cat("**`run_fingerprint.json`**")
+cat("\n```\n")
+cat("json\n")
+cat(readLines(run_fingerprint_json_path), sep = "\n")
+cat("\n```\n")
+```
 
 ---
 
@@ -86,6 +146,7 @@ res <- RunGSEA(bmcite,
   group.by   = "celltype.l2",
   split.by   = "celltype.l1",
   output_dir = tempdir())
+
 ```
 
 This produces one independent GSEA per level of `celltype.l1`. For each,
@@ -188,18 +249,21 @@ res <- RunGSEA(bmcite,
 
 ## 8. Return value
 
-`RunGSEA` returns a nested list. The top level is split by `split.by` level
-(or `"all"` when `split.by = NULL`), then by `pathway_sets` name.
+`RunGSEA` returns a nested list, three levels deep: `res[[label.by level]][[split.by
+level]][[pathway_sets name]]`. When `label.by`/`split.by` are `NULL` (as in
+the basic call above), both default to a single `"All"` level, so the whole
+object's Hallmark result sits at `res$All$All$Hallmark`. Each of those leaf
+lists holds:
 
-```{r gsea-return}
-# NES heatmap for the Hallmark collection, whole object
-res$all$Hallmark$heatmap
+```{r gsea-return, eval=TRUE}
+# Per-cell-type DE table that fed into fgsea
+head(res$All$All$Hallmark$de_table)
 
-# Full fgsea results table
-head(res$all$Hallmark$results)
+# Group x pathway NES matrix (what the summary heatmap is drawn from)
+res$All$All$Hallmark$nes_matrix[1:5, ]
 
-# Top pathways per group
-res$all$Hallmark$top_pathways
+# Named list of lollipop ggplots, one per group.by level
+names(res$All$All$Hallmark$lollipop_plots)
 ```
 
 ---
@@ -276,6 +340,9 @@ significant differentially expressed genes for a focused, defensible gene set.
 | `resume` | logical | `FALSE` | Skip already-completed subsets |
 | `heatmap_colors` | `colorRamp2` or `NULL` | `NULL` | Custom color function for NES heatmaps; `NULL` uses the 5-stop blue-white-orange-red default |
 | `heatmap_params` | named list | `list(...)` | Extra arguments forwarded to `ComplexHeatmap::Heatmap()` |
+| `width` | numeric or `NULL` | `NULL` | Override the auto-calculated heatmap PDF width in inches |
+| `height` | numeric or `NULL` | `NULL` | Override the auto-calculated heatmap PDF height in inches |
+| `timestamp` | logical | `TRUE` | Write each run into its own timestamped subfolder under `output_dir` |
 
 ---
 
